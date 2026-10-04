@@ -1,0 +1,48 @@
+{% comment %}
+    "Nearby Landmarks" side panel.
+    - With `landmarks` (saved ComplexLandmarks): rendered on the server.
+    - With `target_id` only: maps.js fills it after the landlord drops a pin.
+{% endcomment %}
+{% load core_maps %}
+
+<aside class="lk-landmarks-panel">
+
+    <div class="lk-landmarks-header">
+        <h3>Nearby Landmarks</h3>
+        <p class="lk-landmarks-subtitle">
+            Estimated travel time from your property
+        </p>
+    </div>
+
+    <ul class="lk-landmark-list" {% if target_id %}id="{{ target_id }}"{% endif %}>
+
+        {% for item in landmarks %}
+            <li class="lk-landmark">
+                <span class="lk-landmark-icon" style="color: {{ item.color }}; background: {{ item.bg }}">
+                    {% landmark_icon item.category 20 %}
+                </span>
+                <div class="lk-landmark-body">
+                    <strong>{{ item.name }}</strong>
+                    <span class="lk-landmark-meta">
+                        <span>{{ item.distance_label }}</span>
+                        <span class="lk-landmark-time">
+                            {% if item.travel_mode == "walking" %}{% include "core_maps/partials/mode_icon.html" with icon="walk" %}{% elif item.travel_mode == "commute" %}{% include "core_maps/partials/mode_icon.html" with icon="jeep" %}{% else %}{% include "core_maps/partials/mode_icon.html" with icon="car" %}{% endif %}
+                            {{ item.minutes }} min{{ item.minutes|pluralize }}
+                        </span>
+                    </span>
+                </div>
+                <span class="lk-landmark-tag">{{ item.label }}</span>
+            </li>
+        {% empty %}
+            <li class="lk-landmarks-empty">
+                {% if target_id %}
+                    Drop a pin on the map to find nearby landmarks.
+                {% else %}
+                    No landmarks saved for this property yet.
+                {% endif %}
+            </li>
+        {% endfor %}
+
+    </ul>
+
+</aside>

@@ -1,8 +1,39 @@
 # core_listings/views.py
 from django.shortcuts import render, redirect, get_object_or_404
 
+from django.db import transaction
+from django.urls import reverse
+
+from core.core_accounts.decorators import role_required
+from core.core_maps.maps.services import resolve_area, save_complex_landmarks
+
 from .models import Complex, ComplexPicture, Unit
 from .forms import ComplexForm
+
+
+def _my_listings_url():
+    # The listings page lives inside the landlord dashboard
+    return f"{reverse('core_landlords:dashboard')}?tab=myListings"
+
+
+@transaction.atomic
+def _save_property(form, landlord):
+    """Save the wizard form + the landmarks picked on the map (step 2)."""
+    property_obj = form.save(commit=False)
+    property_obj.landlord = landlord
+
+    area_name = form.cleaned_data.get("area_name")
+    if area_name or not property_obj.area_id:
+        property_obj.area = resolve_area(area_name)
+
+    property_obj.save()
+
+    save_complex_landmarks(
+        property_obj,
+        form.cleaned_data.get("landmarks_json") or [],
+        form.cleaned_data.get("travel_mode"),
+    )
+    return property_obj
 
 
 def listings(request):
@@ -25,13 +56,14 @@ def listings(request):
     )
 
 
+@role_required("landlord")
 def property_create(request):
     if request.method == "POST":
         form = ComplexForm(request.POST)
 
         if form.is_valid():
-            form.save()
-            return redirect("core_listings:listings")
+            _save_property(form, request.user.landlord)
+            return redirect(_my_listings_url())
 
     else:
         form = ComplexForm()
@@ -69,14 +101,15 @@ def property_detail(request, pk):
     )
 
 
+@role_required("landlord")
 def property_edit(request, pk):
-    property_obj = get_object_or_404(Complex, pk=pk)
+    property_obj = get_object_or_404(Complex, pk=pk, landlord__user=request.user)
 
     if request.method == "POST":
         form = ComplexForm(request.POST, instance=property_obj)
         if form.is_valid():
-            form.save()
-            return redirect("core_listings:listings")
+            _save_property(form, property_obj.landlord)
+            return redirect(_my_listings_url())
     else:
         form = ComplexForm(instance=property_obj)
 

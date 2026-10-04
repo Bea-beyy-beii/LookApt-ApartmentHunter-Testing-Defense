@@ -22,6 +22,8 @@
     <link rel="stylesheet" href="{% static 'core/css/components/sidebar.css' %}">
     <link rel="stylesheet" href="{% static 'core/css/pages/renter_dashboard.css' %}">
 
+    <link rel="stylesheet" href="{% static 'core_maps/maps.css' %}">
+
     {% block extra_css %}{% endblock %}
 </head>
 
@@ -50,6 +52,18 @@
                     </svg>
                 </span>
                 <span class="sidebar-label">Home</span>
+            </a>
+
+            {# FIND NEAR #}
+            <a href="{% url 'core_renters:dashboard' %}?tab=findNear"
+               class="sidebar-link tab-link" data-tab="findNear">
+                <span class="sidebar-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M12 21s7-6.1 7-12A7 7 0 1 0 5 9c0 5.9 7 12 7 12Z"/>
+                        <circle cx="12" cy="9" r="2.5"/>
+                    </svg>
+                </span>
+                <span class="sidebar-label">Find Near</span>
             </a>
 
             {# SAVED LISTINGS #}
@@ -160,6 +174,7 @@
 </div>
 
 <script src="{% static 'core/js/renter_dashboard.js' %}"></script>
+<script src="{% static 'core_maps/maps.js' %}"></script>
 {% block extra_js %}{% endblock %}
 
 </body>

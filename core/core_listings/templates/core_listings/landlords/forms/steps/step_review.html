@@ -1,3 +1,4 @@
+{% load core_maps %}
 <section class="wizard-step-content">
 
     <div class="section-heading">
@@ -122,7 +123,7 @@
         </section>
 
 
-        <!-- Location -->
+        <!-- Location (filled from the step 2 map) -->
         <section class="review-card">
 
             <div class="review-card-header">
@@ -131,16 +132,15 @@
 
                     <h3>Location</h3>
 
-                    <p>
-                        {{ property.address }}
+                    <p id="review-address">
+                        {{ property.address|default:"No location pinned yet." }}
                     </p>
 
                 </div>
 
-                <button type="submit"
-                        name="edit_step"
-                        value="2"
-                        class="review-edit-btn">
+                <button type="button"
+                        class="review-edit-btn"
+                        onclick="goToStep(2)">
 
                     ✎ Edit
 
@@ -151,14 +151,11 @@
 
             <div class="review-map">
 
-                {% include "core_maps/location_picker.html" with
-                    editable=False
-                    latitude=property.lat
-                    longitude=property.lng
-                    radius=5
-                %}
+                {% location_picker kind="landlord" editable=False mirror="wizard" lat=property.latitude lng=property.longitude complex=property.pk results="#review-landmarks" height=260 %}
 
             </div>
+
+            {% include "core_maps/landmark_panel.html" with target_id="review-landmarks" %}
 
         </section>
 

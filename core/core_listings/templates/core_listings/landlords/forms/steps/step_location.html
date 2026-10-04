@@ -1,3 +1,4 @@
+{% load core_maps %}
 <section class="wizard-step-content">
 
     <div class="section-heading">
@@ -6,7 +7,8 @@
 
         <p>
             Click on the map to pin your property's exact location.
-            You can also search for an address.
+            You can also search for an address. Pick how renters would travel
+            and how far, and we'll list the landmarks around your property.
         </p>
 
     </div>
@@ -17,43 +19,41 @@
         <!-- Map -->
         <div class="location-picker-panel">
 
-            {% include "core_maps/location_picker.html" with
-                editable=True
-                latitude=property.lat
-                longitude=property.lng
-                radius=5
-            %}
+            {% location_picker kind="landlord" lat=property.latitude lng=property.longitude results="#wizard-landmarks" %}
+
+            <div class="location-address-fields form-group">
+                <label for="{{ form.address.id_for_label }}">Address <span>*</span></label>
+                {{ form.address }}
+                <small>Filled in from the pin. You can edit it.</small>
+                {% if form.address.errors %}<div class="field-error">{{ form.address.errors }}</div>{% endif %}
+            </div>
+
+            <p class="location-required-note" id="location-required-note" hidden>
+                Please drop a pin on the map before continuing.
+            </p>
+
+            {% if form.latitude.errors %}
+                <div class="field-error">{{ form.latitude.errors }}</div>
+            {% endif %}
 
         </div>
 
 
         <!-- Landmarks -->
-        <aside class="landmarks-panel">
-
-            <h3>Nearby Landmarks</h3>
-
-            <p>
-                Estimated travel time from your property
-                (within 5–10 km)
-            </p>
-
-
-            <div id="wizard-landmarks"
-                 data-radius="10">
-
-                <div class="landmarks-loading">
-                    Select a location to find nearby landmarks.
-                </div>
-
-            </div>
-
-        </aside>
+        {% if property %}
+            {% include "core_maps/landmark_panel.html" with target_id="wizard-landmarks" landmarks=property|saved_landmarks %}
+        {% else %}
+            {% include "core_maps/landmark_panel.html" with target_id="wizard-landmarks" %}
+        {% endif %}
 
     </div>
 
 
-    <!-- Hidden coordinates -->
-    {{ form.lat }}
-    {{ form.lng }}
+    <!-- Hidden values written by the map -->
+    {{ form.latitude }}
+    {{ form.longitude }}
+    {{ form.area_name }}
+    {{ form.travel_mode }}
+    {{ form.landmarks_json }}
 
 </section>

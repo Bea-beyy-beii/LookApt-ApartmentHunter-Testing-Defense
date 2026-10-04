@@ -29,6 +29,7 @@ urlpatterns = [
     path("", include("core.core_listings.urls")),
     path("", include("core.core_calendar.urls")),
     path("", include("core.core_reports.urls")),
+    path("maps/", include("core.core_maps.urls")),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

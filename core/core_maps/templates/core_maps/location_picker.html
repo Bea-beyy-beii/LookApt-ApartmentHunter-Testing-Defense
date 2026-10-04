@@ -1,0 +1,115 @@
+{% comment %}
+    Reusable Folium map picker. Render it with the {% location_picker %} tag
+    (see core_maps/templatetags/core_maps.py), not with {% include %}.
+
+    1. Click the map (or search a place) to drop the pin
+    2. Pick a transport mode and a radius
+    3. Landlords get nearby landmarks, renters get complexes inside the radius
+{% endcomment %}
+
+<div class="lk-map{% if not editable %} lk-map--readonly{% endif %}"
+     id="{{ picker_id }}"
+     data-lk-map
+     data-kind="{{ kind }}"
+     data-editable="{% if editable %}1{% else %}0{% endif %}"
+     data-lat="{{ lat }}"
+     data-lng="{{ lng }}"
+     data-radius="{{ radius }}"
+     data-mode="{{ mode }}"
+     data-complex="{{ complex }}"
+     data-results="{{ results }}"
+     data-mirror="{{ mirror }}"
+     data-label="{{ label }}"
+     data-frame-url="{% url 'core_maps:frame' %}"
+     data-landmarks-url="{% url 'core_maps:landmarks_api' %}"
+     data-complexes-url="{% url 'core_maps:complexes_api' %}"
+     data-search-url="{% url 'core_maps:search_api' %}"
+     data-reverse-url="{% url 'core_maps:reverse_api' %}">
+
+    {% if editable %}
+
+        <!-- Search -->
+        <div class="lk-map-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>
+            </svg>
+            <input type="search"
+                   class="lk-map-search-input"
+                   placeholder="{% if kind == 'renter' %}Search a school, office or place (e.g. Mapúa Malayan Colleges Mindanao)…{% else %}Search address or place…{% endif %}"
+                   autocomplete="off"
+                   aria-label="Search a place">
+            <ul class="lk-map-search-results" role="listbox" hidden></ul>
+        </div>
+
+
+        <!-- Transport mode -->
+        <div class="lk-map-controls">
+
+            <div class="lk-chip-group" role="radiogroup" aria-label="Transport mode">
+                {% for m in modes %}
+                    <button type="button"
+                            class="lk-chip lk-mode-chip{% if m.key == mode %} active{% endif %}"
+                            data-mode="{{ m.key }}"
+                            role="radio"
+                            aria-checked="{% if m.key == mode %}true{% else %}false{% endif %}">
+                        {% include "core_maps/partials/mode_icon.html" with icon=m.icon %}
+                        {{ m.label }}
+                    </button>
+                {% endfor %}
+            </div>
+
+
+            <!-- Radius -->
+            <div class="lk-chip-group lk-radius-group" role="radiogroup" aria-label="Search radius">
+                {% for p in presets %}
+                    <button type="button"
+                            class="lk-chip lk-radius-chip{% if p.km == radius %} active{% endif %}"
+                            data-km="{{ p.km }}"
+                            data-walking="{{ p.minutes.walking }}"
+                            data-commute="{{ p.minutes.commute }}"
+                            data-driving="{{ p.minutes.driving }}"
+                            role="radio"
+                            aria-checked="{% if p.km == radius %}true{% else %}false{% endif %}">
+                        <strong>{{ p.label }}</strong>
+                        <small class="lk-radius-time"></small>
+                    </button>
+                {% endfor %}
+
+                <label class="lk-minutes">
+                    <span>or within</span>
+                    <select class="lk-minutes-select" aria-label="Travel time">
+                        <option value="">— min</option>
+                        <option value="5">5 min</option>
+                        <option value="10">10 min</option>
+                        <option value="15">15 min</option>
+                        <option value="20">20 min</option>
+                        <option value="30">30 min</option>
+                    </select>
+                </label>
+            </div>
+
+        </div>
+
+    {% endif %}
+
+
+    <!-- Folium map -->
+    <div class="lk-map-frame-wrap" style="height: {{ height }}px">
+        <iframe class="lk-map-frame"
+                title="Map"
+                loading="lazy"
+                referrerpolicy="same-origin"></iframe>
+
+        {% if editable %}
+            <div class="lk-map-hint">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M12 21s7-6.1 7-12A7 7 0 1 0 5 9c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/>
+                </svg>
+                Click anywhere on the map to drop a pin
+            </div>
+        {% endif %}
+    </div>
+
+    <p class="lk-map-status" aria-live="polite"></p>
+
+</div>

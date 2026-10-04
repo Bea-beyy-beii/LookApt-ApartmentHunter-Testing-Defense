@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "core.core_reports",
     "core.core_verification",
     "core.core_admin",
+    "core.core_maps",
 ]
 
 MIDDLEWARE = [

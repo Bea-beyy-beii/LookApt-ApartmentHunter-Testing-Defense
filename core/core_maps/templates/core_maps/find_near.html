@@ -1,0 +1,42 @@
+{% comment %}
+    Renter: "Find Near" — pick a point (e.g. your school), a transport mode and
+    a radius, and see the complexes inside it.
+{% endcomment %}
+{% load core_maps %}
+
+<div class="lk-find-near">
+
+    <div class="lk-find-near-heading">
+        <h1>Find a Place Near You</h1>
+        <p>
+            Pin your school, office, or any place on the map, choose how you travel
+            and how far you're willing to go, and we'll show the apartments around it.
+        </p>
+    </div>
+
+    <div class="lk-find-near-layout">
+
+        <section class="lk-card lk-find-near-map">
+            {% location_picker kind="renter" results="#lk-nearby-complexes" height=460 %}
+        </section>
+
+        <aside class="lk-card lk-find-near-results">
+
+            <div class="lk-results-header">
+                <h3>Apartments Nearby</h3>
+                <p class="lk-results-summary" id="lk-nearby-complexes-summary">
+                    Drop a pin to start searching.
+                </p>
+            </div>
+
+            <ul class="lk-complex-list" id="lk-nearby-complexes">
+                <li class="lk-landmarks-empty">
+                    Try searching “Mapúa Malayan Colleges Mindanao” or click on the map.
+                </li>
+            </ul>
+
+        </aside>
+
+    </div>
+
+</div>

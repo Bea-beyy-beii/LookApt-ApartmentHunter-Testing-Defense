@@ -1,10 +1,11 @@
+{% load core_maps %}
 <div class="location-tab">
 
     <div class="tab-section-header">
 
         <div>
             <h2>Property Location</h2>
-            <p>View the property's location and nearby landmarks.</p>
+            <p>{{ property.address|default:"View the property's location and nearby landmarks." }}</p>
         </div>
 
     </div>
@@ -14,36 +15,11 @@
 
         <div class="location-map-container">
 
-            {% include "core_maps/location_picker.html" with
-                editable=False
-                latitude=property.lat
-                longitude=property.lng
-                radius=5
-            %}
+            {% location_picker kind="landlord" editable=False lat=property.latitude lng=property.longitude complex=property.pk label=property.complex_name height=420 %}
 
         </div>
 
-
-        <aside class="nearby-landmarks">
-
-            <h3>Nearby Landmarks</h3>
-
-            <p>
-                Places located within the selected radius.
-            </p>
-
-            <div id="nearby-landmarks-list"
-                 data-lat="{{ property.lat }}"
-                 data-lng="{{ property.lng }}"
-                 data-radius="5">
-
-                <div class="landmarks-loading">
-                    Loading nearby landmarks...
-                </div>
-
-            </div>
-
-        </aside>
+        {% include "core_maps/landmark_panel.html" with landmarks=property|saved_landmarks %}
 
     </div>
 

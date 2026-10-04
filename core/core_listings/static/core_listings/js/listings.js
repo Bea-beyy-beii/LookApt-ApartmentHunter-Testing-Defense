@@ -34,6 +34,10 @@ function wizardNext() {
         }
     }
 
+    if (currentStep === 2 && !hasPinnedLocation()) {
+        return;
+    }
+
     if (currentStep < 4) {
         goToStep(currentStep + 1);
     }
@@ -67,6 +71,28 @@ function goToStep(step) {
 
     // Update navigation buttons
     updateWizardButtons();
+
+    // Maps inside a step that was hidden need a redraw once visible
+    if (window.LookAptMaps) {
+        const panel = document.querySelector(`.wizard-step-panel[data-step="${currentStep}"]`);
+        if (panel) window.LookAptMaps.refreshAll(panel);
+    }
+}
+
+
+// ---------------------------------------------------------
+// STEP 2: a pin on the map is required
+// ---------------------------------------------------------
+
+function hasPinnedLocation() {
+    const form = document.querySelector('.property-wizard-form');
+    const lat = form && form.querySelector('[name="latitude"]');
+    const lng = form && form.querySelector('[name="longitude"]');
+    const note = document.getElementById('location-required-note');
+    const pinned = Boolean(lat && lng && lat.value && lng.value);
+
+    if (note) note.hidden = pinned;
+    return pinned;
 }
 
 
@@ -149,18 +175,37 @@ document.addEventListener('DOMContentLoaded', function () {
         e.preventDefault();
         wizardNext();
     });
-});
 
-form.addEventListener('submit', function (e) {
-    const panels = document.querySelectorAll('.wizard-step-panel');
-    for (const panel of panels) {
-        const invalid = [...panel.querySelectorAll('input, select, textarea')]
-            .find(f => !f.checkValidity());
-        if (invalid) {
-            e.preventDefault();
-            goToStep(Number(panel.dataset.step));
-            invalid.reportValidity();
-            return;
+    form.addEventListener('submit', function (e) {
+        const panels = document.querySelectorAll('.wizard-step-panel');
+        for (const panel of panels) {
+            const invalid = [...panel.querySelectorAll('input, select, textarea')]
+                .find(f => !f.checkValidity());
+            if (invalid) {
+                e.preventDefault();
+                goToStep(Number(panel.dataset.step));
+                invalid.reportValidity();
+                return;
+            }
         }
-    }
+
+        if (!hasPinnedLocation()) {
+            e.preventDefault();
+            goToStep(2);
+        }
+    });
+
+    // Keep the Review step in sync with the map in step 2
+    form.addEventListener('lookapt:map-change', function (e) {
+        const reviewAddress = document.getElementById('review-address');
+        if (reviewAddress && e.detail.address) reviewAddress.textContent = e.detail.address;
+        hasPinnedLocation();
+    });
+
+    form.addEventListener('input', function (e) {
+        if (e.target.name !== 'address') return;
+        e.target.dataset.autofilled = '0';
+        const reviewAddress = document.getElementById('review-address');
+        if (reviewAddress) reviewAddress.textContent = e.target.value;
+    });
 });

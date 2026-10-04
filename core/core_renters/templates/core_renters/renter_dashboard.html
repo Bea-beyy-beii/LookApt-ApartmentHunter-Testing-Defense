@@ -56,7 +56,7 @@
                 </p>
 
 
-                <button class="location-selector" type="button">
+                <button class="location-selector tab-link" type="button" data-tab="findNear" title="Find apartments near a place">
 
                     <span>
 
@@ -1015,6 +1015,16 @@
 
     </section>
 
+</section>
+
+
+
+<!-- =====================================================
+     FIND NEAR (map + radius search)
+====================================================== -->
+
+<section id="find-near-section" class="dashboard-tab" data-section="findNear" hidden>
+    {% include "core_maps/find_near.html" %}
 </section>
 
 
