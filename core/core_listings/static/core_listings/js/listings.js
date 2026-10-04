@@ -77,6 +77,9 @@ function goToStep(step) {
         const panel = document.querySelector(`.wizard-step-panel[data-step="${currentStep}"]`);
         if (panel) window.LookAptMaps.refreshAll(panel);
     }
+
+
+    document.dispatchEvent(new CustomEvent("wizard:step", { detail: { step: currentStep } }));
 }
 
 

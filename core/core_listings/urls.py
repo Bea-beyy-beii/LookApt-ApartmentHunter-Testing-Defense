@@ -31,4 +31,8 @@ urlpatterns = [
         views.unit_detail,
         name="unit_detail"
     ),
+
+    path("property/<uuid:property_pk>/units/create/", views.unit_create, name="unit_create"),
+    path("unit/<uuid:pk>/edit/", views.unit_edit, name="unit_edit"),
+    path("unit/<uuid:pk>/delete/", views.unit_delete, name="unit_delete"),
 ]

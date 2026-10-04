@@ -135,4 +135,6 @@ def map_frame(request):
         editable=editable,
         label=label,
     )
-    return HttpResponse(html)
+    response = HttpResponse(html)
+    response["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response

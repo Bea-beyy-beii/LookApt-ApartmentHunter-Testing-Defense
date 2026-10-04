@@ -1,0 +1,257 @@
+/* =========================================================
+   STEP 3 — PHOTO UPLOAD
+   ========================================================= */
+
+.photo-upload {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+}
+
+
+/* ---------- Drop zone (left) ---------- */
+
+.photo-dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+
+    min-height: 260px;
+    padding: 24px;
+
+    border: 2px dashed var(--border-medium);
+    border-radius: var(--radius-md);
+    background: var(--white);
+
+    color: var(--text-secondary);
+    text-align: center;
+    cursor: pointer;
+
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.photo-dropzone:hover,
+.photo-dropzone:focus-visible,
+.photo-dropzone.is-dragging {
+    border-color: var(--navy);
+    background: #f7f2e9;
+    outline: none;
+}
+
+.photo-dropzone.is-full {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.photo-dropzone-icon {
+    display: grid;
+    place-items: center;
+
+    width: 56px;
+    height: 56px;
+    margin-bottom: 8px;
+
+    border-radius: 50%;
+    background: #f2eee7;
+    color: var(--navy);
+
+    font-size: 28px;
+}
+
+.photo-dropzone strong {
+    color: var(--navy);
+    font-size: 15px;
+}
+
+.photo-dropzone small {
+    font-size: 12px;
+}
+
+.photo-upload-error {
+    margin: 10px 0 0;
+    color: var(--error);
+    font-size: 13px;
+}
+
+.photo-guidelines {
+    margin-top: 16px;
+    padding: 14px 16px;
+
+    border-radius: var(--radius-sm);
+    background: #eef2f8;
+
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+.photo-guidelines ul {
+    margin: 6px 0 0;
+    padding-left: 18px;
+}
+
+
+/* ---------- Preview grid (right) ---------- */
+
+.photo-preview-header {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+    color: var(--navy);
+}
+
+.photo-count {
+    color: var(--text-secondary);
+}
+
+.photo-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.photo-tile {
+    position: relative;
+
+    aspect-ratio: 1;
+    overflow: hidden;
+
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    background: #f4f1ec;
+}
+
+.photo-tile img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    cursor: zoom-in;
+    transition: transform 0.2s ease;
+}
+
+.photo-tile img:hover {
+    transform: scale(1.04);
+}
+
+.photo-tile.is-empty {
+    border-style: dashed;
+}
+
+.photo-remove {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+
+    display: grid;
+    place-items: center;
+
+    width: 26px;
+    height: 26px;
+
+    border: 0;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.photo-remove:hover {
+    background: var(--error);
+}
+
+.photo-cover-badge {
+    position: absolute;
+    left: 6px;
+    bottom: 6px;
+
+    padding: 2px 8px;
+
+    border-radius: var(--radius-pill);
+    background: var(--gold);
+    color: var(--navy);
+
+    font-size: 11px;
+    font-weight: 700;
+}
+
+/* ---------- Drag to reorder ---------- */
+
+.photo-tile.is-new {
+    cursor: grab;
+}
+
+.photo-tile.is-dragging {
+    opacity: 0.4;
+}
+
+.photo-tile.is-drop-target {
+    outline: 3px dashed var(--gold);
+    outline-offset: -3px;
+}
+
+.photo-reorder-hint {
+    margin: -4px 0 10px;
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+/* ---------- Lightbox (enlarged photo) ---------- */
+
+.photo-lightbox {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+
+    width: fit-content;
+    height: fit-content;
+    max-width: min(90vw, 1000px);
+    max-height: 90vh;
+    padding: 0;
+
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    overflow: visible;
+}
+
+.photo-lightbox::backdrop {
+    background: rgba(10, 20, 40, 0.75);
+}
+
+.photo-lightbox img {
+    display: block;
+    max-width: 100%;
+    max-height: 85vh;
+    border-radius: var(--radius-md);
+}
+
+.photo-lightbox-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+
+    width: 34px;
+    height: 34px;
+
+    border: 0;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+
+    font-size: 20px;
+    cursor: pointer;
+}
+
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 900px) {
+    .photo-upload {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

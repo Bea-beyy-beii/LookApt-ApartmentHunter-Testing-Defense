@@ -1,105 +1,80 @@
 <section class="wizard-step-content">
 
     <div class="section-heading">
-
         <h2>Property Photos</h2>
-
         <p>
-            Upload up to 10 photos for the property.
-            Add clear and well-lit photos to attract renters.
+            Upload up to 5 photos of the property.
+            Clear, well-lit photos attract more renters.
         </p>
-
     </div>
 
 
-    <div class="photos-upload-layout">
+    <div class="photo-upload"
+         data-photo-upload
+         data-max="5"
+         data-existing="{% if property %}{{ property.pictures.count }}{% else %}0{% endif %}">
 
-        <!-- Upload Area -->
-        <div class="photo-upload-panel">
+        <!-- LEFT: drop zone -->
+        <div class="photo-upload-left">
 
-            <label for="property-photo-upload"
-                   class="photo-upload-area">
-
-                <span class="upload-plus">
-                    ＋
-                </span>
-
-                <strong>
-                    Upload up to 10 photos for the property
-                </strong>
-
-                <span>
-                    Click anywhere to browse files
-                </span>
-
-                <small>
-                    Supports JPG, PNG, JPG, WEBP
-                </small>
-
+            <label for="{{ form.photos.id_for_label }}" class="photo-dropzone" tabindex="0">
+                <span class="photo-dropzone-icon">＋</span>
+                <strong>Click to upload or drag photos here</strong>
+                <span>Up to 5 photos</span>
+                <small>PNG or JPG only · max 5 MB each</small>
             </label>
 
+            {{ form.photos }}
 
-            <input
-                type="file"
-                id="property-photo-upload"
-                name="photos"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-                hidden
-            >
+            <p class="photo-upload-error" aria-live="polite" hidden></p>
 
+            {% if form.photos.errors %}
+                <div class="field-error">{{ form.photos.errors }}</div>
+            {% endif %}
 
-            <!-- Guidelines -->
             <div class="photo-guidelines">
-
-                <strong>
-                    ⓘ Photo Guidelines
-                </strong>
-
+                <strong>ⓘ Photo Guidelines</strong>
                 <ul>
-                    <li>
-                        Upload clear and recent photos of the property.
-                    </li>
-
-                    <li>
-                        Include photos of the exterior, amenities,
-                        and common areas.
-                    </li>
-
-                    <li>
-                        Avoid blurry, dark, or duplicate images.
-                    </li>
+                    <li>Upload clear and recent photos of the property.</li>
+                    <li>Include photos of the exterior, amenities, and common areas.</li>
+                    <li>Avoid blurry, dark, or duplicate images.</li>
+                    <li>The first photo becomes the cover photo.</li>
                 </ul>
-
             </div>
 
         </div>
 
 
-        <!-- Preview -->
-        <div class="photo-preview-panel">
+        <!-- RIGHT: previews -->
+        <div class="photo-upload-right">
 
             <div class="photo-preview-header">
-
-                <strong>
-                    Photo Preview
-                </strong>
-
-                <span id="photo-count">
-                    (0/10)
-                </span>
-
+                <strong>Photo Preview</strong>
+                <span class="photo-count">(0/5)</span>
             </div>
 
+            <p class="photo-reorder-hint">Drag a photo onto another to swap them. The first photo is the cover.</p>
 
-            <div id="photo-preview-grid"
-                 class="photo-preview-grid">
-
-                <!-- JS inserts previews here -->
-
+            <div class="photo-preview-grid">
+                {# Photos already saved (edit mode). JS adds the new ones after these. #}
+                {% if property %}
+                    {% for picture in property.pictures.all %}
+                        <div class="photo-tile is-saved">
+                            <img src="{{ picture.image.url }}" alt="Saved photo {{ forloop.counter }}">
+                            {% if picture.is_cover %}<span class="photo-cover-badge">Cover</span>{% endif %}
+                        </div>
+                    {% endfor %}
+                {% endif %}
             </div>
 
         </div>
+
+
+        <!-- Enlarged photo -->
+        <dialog class="photo-lightbox">
+            <button type="button" class="photo-lightbox-close" aria-label="Close">×</button>
+            <img src="" alt="">
+        </dialog>
 
     </div>
 

@@ -1,4 +1,5 @@
 # core_listings/views.py
+from django.core.checks import messages
 from django.shortcuts import render, redirect, get_object_or_404
 
 from django.db import transaction
@@ -33,6 +34,19 @@ def _save_property(form, landlord):
         form.cleaned_data.get("landmarks_json") or [],
         form.cleaned_data.get("travel_mode"),
     )
+
+    photos = form.cleaned_data.get("photos") or []
+    has_cover = property_obj.pictures.filter(is_cover=True).exists()
+    start_position = property_obj.pictures.count()
+
+    for index, photo in enumerate(photos):
+        ComplexPicture.objects.create(
+            complex=property_obj,
+            image=photo,
+            position=start_position + index,
+            # model allows only one cover per complex; make the first photo the cover
+            is_cover=(not has_cover and index == 0),
+        )
     return property_obj
 
 
@@ -59,7 +73,7 @@ def listings(request):
 @role_required("landlord")
 def property_create(request):
     if request.method == "POST":
-        form = ComplexForm(request.POST)
+        form = ComplexForm(request.POST, request.FILES)
 
         if form.is_valid():
             _save_property(form, request.user.landlord)
@@ -106,7 +120,7 @@ def property_edit(request, pk):
     property_obj = get_object_or_404(Complex, pk=pk, landlord__user=request.user)
 
     if request.method == "POST":
-        form = ComplexForm(request.POST, instance=property_obj)
+        form = ComplexForm(request.POST, request.FILES, instance=property_obj)
         if form.is_valid():
             _save_property(form, property_obj.landlord)
             return redirect(_my_listings_url())
@@ -137,3 +151,26 @@ def unit_detail(request, pk):
             "unit": unit,
         }
     )
+
+# ---------------------------------------------------------
+# UNITS (placeholders until the Units feature is built)
+# ---------------------------------------------------------
+
+def _units_coming_soon(request):
+    messages.info(request, "Managing units is coming soon.")
+    return redirect(_my_listings_url())
+
+
+@role_required("landlord")
+def unit_create(request, property_pk):
+    return _units_coming_soon(request)
+
+
+@role_required("landlord")
+def unit_edit(request, pk):
+    return _units_coming_soon(request)
+
+
+@role_required("landlord")
+def unit_delete(request, pk):
+    return _units_coming_soon(request)

@@ -1,121 +1,68 @@
 {% load core_maps %}
-<section class="wizard-step-content">
+
+<section class="wizard-step-content review-step">
 
     <div class="section-heading">
-
         <h2>Review Your Property</h2>
-
-        <p>
-            Please review the details before creating your property.
-        </p>
-
+        <p>Please review the details below before creating your property.</p>
     </div>
 
 
-    <!-- Details + Location -->
     <div class="review-grid">
 
-        <!-- Property Details -->
+        <!-- PROPERTY DETAILS -->
         <section class="review-card">
 
-            <div class="review-card-header">
-
+            <header class="review-card-header">
                 <div>
                     <h3>Property Details</h3>
+                    <p>Basic information about your property.</p>
+                </div>
+                <button type="button" class="review-edit-btn" onclick="goToStep(1)">✎ Edit</button>
+            </header>
+
+            <div class="review-details">
+
+                <div class="review-row">
+                    <span class="review-label">Complex Name</span>
+                    <span class="review-value" data-review="complex_name">—</span>
                 </div>
 
-                <button type="submit"
-                        name="edit_step"
-                        value="1"
-                        class="review-edit-btn">
-
-                    ✎ Edit
-
-                </button>
-
-            </div>
-
-
-            <div class="review-property-info">
-
-                <div class="review-property-image">
-
-                    {% with photo=property.pictures.first %}
-
-                        {% if photo %}
-
-                            <img src="{{ photo.image.url }}"
-                                 alt="{{ property.name }}">
-
-                        {% else %}
-
-                            <div class="review-image-placeholder">
-                                ⌂
-                            </div>
-
-                        {% endif %}
-
-                    {% endwith %}
-
+                <div class="review-row">
+                    <span class="review-label">Description</span>
+                    <span class="review-value review-description" data-review="complex_description">—</span>
                 </div>
 
-
-                <div>
-
-                    <h3>{{ property.name }}</h3>
-
-                    <p>
-                        ⌖ {{ property.address }}
-                    </p>
-
-                    <p class="property-description">
-                        {{ property.description }}
-                    </p>
-
+                <div class="review-row review-row--split">
+                    <div class="review-pair">
+                        <span class="review-label">Lease Term</span>
+                        <span class="review-value" data-review="lease_term">—</span>
+                    </div>
+                    <div class="review-pair">
+                        <span class="review-label">Sex Restriction</span>
+                        <span class="review-value" data-review="sex_restriction">—</span>
+                    </div>
                 </div>
 
-            </div>
-
-
-            <div class="review-stat-grid">
-
-                <div>
-                    <span>Total Units</span>
-                    <strong>{{ property.total_units }}</strong>
+                <div class="review-row review-row--split">
+                    <div class="review-pair">
+                        <span class="review-label">Pet Friendly</span>
+                        <span class="review-bool" data-review-bool="pet_friendly">No</span>
+                    </div>
+                    <div class="review-pair">
+                        <span class="review-label">Parking Space</span>
+                        <span class="review-bool" data-review-bool="has_parking_space">No</span>
+                    </div>
                 </div>
 
-                <div>
-                    <span>Price Range</span>
-                    <strong>
-                        ₱{{ property.min_price|floatformat:0 }}
-                        -
-                        ₱{{ property.max_price|floatformat:0 }}
-                    </strong>
-                </div>
-
-                <div>
-                    <span>Pet Friendly</span>
-                    <strong>
-                        {% if property.pet_friendly %}
-                            Yes
-                        {% else %}
-                            No
-                        {% endif %}
-                    </strong>
-                </div>
-
-                <div>
-                    <span>Sex Restriction</span>
-                    <strong>
-                        {{ property.get_sex_restriction_display }}
-                    </strong>
-                </div>
-
-                <div>
-                    <span>Lease Term</span>
-                    <strong>
-                        {{ property.get_lease_term_display }}
-                    </strong>
+                <div class="review-row">
+                    <span class="review-label">Price Range</span>
+                    <span class="review-price">
+                        <strong data-review-price="min_price">₱ —</strong>
+                        <span class="review-price-arrow">→</span>
+                        <strong data-review-price="max_price">₱ —</strong>
+                        <span class="review-price-unit">/ month</span>
+                    </span>
                 </div>
 
             </div>
@@ -123,84 +70,49 @@
         </section>
 
 
-        <!-- Location (filled from the step 2 map) -->
+        <!-- LOCATION -->
         <section class="review-card">
 
-            <div class="review-card-header">
-
+            <header class="review-card-header">
                 <div>
-
                     <h3>Location</h3>
-
-                    <p id="review-address">
-                        {{ property.address|default:"No location pinned yet." }}
-                    </p>
-
+                    <p>Property location and nearby area.</p>
                 </div>
-
-                <button type="button"
-                        class="review-edit-btn"
-                        onclick="goToStep(2)">
-
-                    ✎ Edit
-
-                </button>
-
-            </div>
-
+                <button type="button" class="review-edit-btn" onclick="goToStep(2)">✎ Edit</button>
+            </header>
 
             <div class="review-map">
-
-                {% location_picker kind="landlord" editable=False mirror="wizard" lat=property.latitude lng=property.longitude complex=property.pk results="#review-landmarks" height=260 %}
-
+                {% location_picker kind="landlord" editable=False mirror="wizard" lat=property.latitude lng=property.longitude complex=property.pk height=210 %}
             </div>
 
-            {% include "core_maps/landmark_panel.html" with target_id="review-landmarks" %}
+            <div class="review-address">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <path d="M12 21s7-6.1 7-12A7 7 0 1 0 5 9c0 5.9 7 12 7 12Z"/>
+                    <circle cx="12" cy="9" r="2.5"/>
+                </svg>
+                <div>
+                    <small>Address</small>
+                    <strong data-review="address">—</strong>
+                </div>
+            </div>
 
         </section>
 
     </div>
 
 
-    <!-- Photos -->
-    <section class="review-card">
+    <!-- PHOTOS -->
+    <section class="review-card review-photos">
 
-        <div class="review-card-header">
-
+        <header class="review-card-header">
             <div>
-
-                <h3>
-                    Photos ({{ property.pictures.count }})
-                </h3>
-
+                <h3>Property Photos</h3>
+                <p data-review-photo-count>No photos uploaded yet.</p>
             </div>
+            <button type="button" class="review-edit-btn" onclick="goToStep(3)">✎ Edit</button>
+        </header>
 
-            <button type="submit"
-                    name="edit_step"
-                    value="3"
-                    class="review-edit-btn">
-
-                ✎ Edit
-
-            </button>
-
-        </div>
-
-
-        <div class="review-photo-grid">
-
-            {% for photo in property.pictures.all %}
-
-                <div class="review-photo">
-
-                    <img src="{{ photo.image.url }}"
-                         alt="{{ property.name }}">
-
-                </div>
-
-            {% endfor %}
-
-        </div>
+        <div class="review-photo-strip" data-review-photos></div>
 
     </section>
 

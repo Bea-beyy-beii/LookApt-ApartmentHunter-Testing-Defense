@@ -93,6 +93,18 @@ class Complex(models.Model):
     def __str__(self):
         return self.complex_name
 
+    @property
+    def total_units(self):
+        return self.units.count()
+
+    @property
+    def available_units(self):
+        return self.units.filter(availability=Unit.Availability.AVAILABLE).count()
+
+    @property
+    def occupied_units(self):
+        return self.units.filter(availability=Unit.Availability.OCCUPIED).count()
+
 
 
 
