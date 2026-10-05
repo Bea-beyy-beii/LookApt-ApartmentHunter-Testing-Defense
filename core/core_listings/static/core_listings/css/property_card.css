@@ -849,3 +849,50 @@
         gap: 18px;
     }
 }
+
+/* Clicking anywhere on the header expands/collapses the units */
+.property-card-header {
+    cursor: pointer;
+}
+
+/* Yellow dot for unpublished units */
+.status-dot--pending {
+    background: #d4a017;
+}
+
+/* Videos inside a gallery */
+.property-gallery-track .gallery-slide {
+    position: relative;
+    flex: 0 0 100%;
+    height: 100%;
+}
+
+.property-gallery-track video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.gallery-video-badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+
+    display: grid;
+    place-items: center;
+
+    width: 22px;
+    height: 22px;
+
+    border-radius: 50%;
+    background: rgba(20, 30, 50, 0.65);
+    color: var(--white);
+
+    font-size: 10px;
+}
+
+/* Status filter row: room for the 4th chip */
+.unit-filters {
+    flex-wrap: wrap;
+}

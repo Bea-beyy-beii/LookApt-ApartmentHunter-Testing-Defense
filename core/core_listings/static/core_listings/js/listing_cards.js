@@ -1,7 +1,7 @@
 // =========================================================
-// MY LISTINGS — complex cards
-// Gallery arrows, expand units, ⋮ menu, confirmation pop-ups,
-// delete / change visibility (POST to Django), filters.
+// MY LISTINGS — complex + unit cards
+// Galleries, expand/collapse, ⋮ menus, confirmation pop-up,
+// complex delete/visibility, unit delete/availability, filters.
 // =========================================================
 
 (function () {
@@ -23,10 +23,7 @@
     async function postAction(url, data = {}) {
         const response = await fetch(url, {
             method: "POST",
-            headers: {
-                "X-CSRFToken": csrfToken(),
-                "Accept": "application/json",
-            },
+            headers: { "X-CSRFToken": csrfToken(), "Accept": "application/json" },
             body: new URLSearchParams(data),
             credentials: "same-origin",
         });
@@ -35,7 +32,7 @@
         try {
             payload = await response.json();
         } catch (error) {
-            // Not JSON: e.g. logged out → redirected to the login page
+            /* not JSON: e.g. logged out → login page */
         }
 
         if (!response.ok || payload.error) {
@@ -55,7 +52,7 @@
 
 
     // ---------------------------------------------------------
-    // GALLERY (stops at the first / last photo)
+    // GALLERY (stops at first / last; videos play while hovered)
     // ---------------------------------------------------------
 
     function initGallery(gallery) {
@@ -67,39 +64,56 @@
         const prev = gallery.querySelector("[data-gallery-prev]");
         const next = gallery.querySelector("[data-gallery-next]");
         let index = 0;
+        let hovering = false;
+
+        const videos = () => track.querySelectorAll("video");
+        const currentVideo = () => {
+            const slide = track.children[index];
+            return slide ? (slide.tagName === "VIDEO" ? slide : slide.querySelector("video")) : null;
+        };
+
+        function playCurrent() {
+            videos().forEach(video => video.pause());
+            const video = currentVideo();
+            if (video && hovering) video.play().catch(() => {});
+        }
 
         function show(newIndex) {
             index = Math.max(0, Math.min(total - 1, newIndex));
             track.style.transform = `translateX(-${index * 100}%)`;
-
             if (position) position.textContent = index + 1;
             if (prev) prev.disabled = index === 0;
             if (next) next.disabled = index === total - 1;
+            playCurrent();
         }
 
         if (prev) prev.addEventListener("click", () => show(index - 1));
         if (next) next.addEventListener("click", () => show(index + 1));
+
+        gallery.addEventListener("mouseenter", () => { hovering = true; playCurrent(); });
+        gallery.addEventListener("mouseleave", () => { hovering = false; playCurrent(); });
 
         show(0);
     }
 
 
     // ---------------------------------------------------------
-    // EXPAND UNITS
+    // EXPAND / COLLAPSE UNITS
     // ---------------------------------------------------------
 
-    function toggleUnits(card, button) {
+    function toggleUnits(card) {
         const units = card.querySelector(".property-units");
+        const button = card.querySelector("[data-property-expand]");
         const open = units.hidden;
 
         units.hidden = !open;
         card.classList.toggle("expanded", open);
-        button.setAttribute("aria-expanded", String(open));
+        if (button) button.setAttribute("aria-expanded", String(open));
     }
 
 
     // ---------------------------------------------------------
-    // ⋮ MENU
+    // ⋮ MENUS
     // ---------------------------------------------------------
 
     function closeMenus() {
@@ -124,7 +138,7 @@
 
 
     // ---------------------------------------------------------
-    // CONFIRMATION POP-UP (one dialog, filled per action)
+    // CONFIRMATION POP-UP
     // ---------------------------------------------------------
 
     const ICONS = {
@@ -141,7 +155,6 @@
 
         dialog.querySelector("[data-confirm-title]").textContent = title;
 
-        // Message with the complex name in bold (textContent: names are user input)
         const message = dialog.querySelector("[data-confirm-message]");
         const strong = document.createElement("strong");
         strong.textContent = name;
@@ -165,10 +178,10 @@
 
 
     // ---------------------------------------------------------
-    // ACTIONS
+    // COMPLEX ACTIONS
     // ---------------------------------------------------------
 
-    function confirmDelete(card) {
+    function confirmComplexDelete(card) {
         openConfirm({
             title: "Delete Complex",
             before: "Are you sure you want to delete ",
@@ -179,7 +192,7 @@
             icon: "trash",
             onConfirm: async () => {
                 await postAction(card.dataset.deleteUrl);
-                removeCard(card);
+                fadeOut(card, updatePropertyCounts);
                 showToast(`${card.dataset.propertyName} was deleted.`);
             },
         });
@@ -190,7 +203,7 @@
 
         openConfirm({
             title: makePublic ? "Make Complex Public" : "Unpublish Complex",
-            before: makePublic ? "" : "",
+            before: "",
             name: card.dataset.propertyName,
             after: makePublic
                 ? " will be visible to renters once it's approved by an admin."
@@ -200,31 +213,108 @@
             icon: makePublic ? "eye" : "eyeOff",
             onConfirm: async () => {
                 const result = await postAction(card.dataset.visibilityUrl, { visibility });
-                updateCardStatus(card, result.status, result.label);
-                showToast(makePublic
-                    ? `${card.dataset.propertyName} is now public.`
-                    : `${card.dataset.propertyName} is now unpublished.`);
+                updateComplexStatus(card, result.status, result.label);
+                showToast(`${card.dataset.propertyName} is now ${makePublic ? "public" : "unpublished"}.`);
             },
         });
     }
 
-    function handleMenuAction(item) {
-        const card = item.closest("[data-property-card]");
-        closeMenus();
+    function updateComplexStatus(card, status, label) {
+        card.dataset.status = status;
 
-        if (item.dataset.action === "delete") {
-            confirmDelete(card);
-        } else if (item.dataset.action === "set-visibility") {
-            confirmVisibility(card, item.dataset.visibility);
+        const pill = card.querySelector(".property-card-header .status-pill");
+        pill.className = `status-pill status-pill--${status}`;
+        pill.textContent = label;
+
+        card.querySelectorAll('.property-card-header [data-action="set-visibility"]').forEach(item => {
+            item.hidden = item.dataset.visibility === status;
+        });
+
+        updatePropertyCounts();
+    }
+
+
+    // ---------------------------------------------------------
+    // UNIT ACTIONS
+    // ---------------------------------------------------------
+
+    function confirmUnitDelete(unitCard) {
+        const complexCard = unitCard.closest("[data-property-card]");
+
+        openConfirm({
+            title: "Delete Unit",
+            before: "Are you sure you want to delete ",
+            name: unitCard.dataset.unitName,
+            after: "? Its photos and videos will also be deleted. This action cannot be undone.",
+            confirmLabel: "Delete Unit",
+            variant: "danger",
+            icon: "trash",
+            onConfirm: async () => {
+                await postAction(unitCard.dataset.deleteUrl);
+                fadeOut(unitCard, () => updateUnitCounts(complexCard));
+                showToast(`${unitCard.dataset.unitName} was deleted.`);
+            },
+        });
+    }
+
+    async function setUnitAvailability(unitCard, availability) {
+        try {
+            const result = await postAction(unitCard.dataset.availabilityUrl, { availability });
+
+            unitCard.dataset.availability = result.availability;
+
+            const pill = unitCard.querySelector("[data-unit-status]");
+            pill.className = `unit-status unit-status--${result.availability}`;
+            pill.textContent = result.label;
+
+            unitCard.querySelectorAll('[data-action="unit-availability"]').forEach(item => {
+                item.hidden = item.dataset.availability === result.availability;
+            });
+
+            updateUnitCounts(unitCard.closest("[data-property-card]"));
+            showToast(`${unitCard.dataset.unitName} is now ${result.label.toLowerCase()}.`);
+        } catch (error) {
+            showToast(error.message);
         }
     }
 
 
     // ---------------------------------------------------------
-    // UPDATE THE PAGE AFTER AN ACTION (no reload)
+    // MENU CLICKS
     // ---------------------------------------------------------
 
-    function updateCounts() {
+    function handleMenuAction(item) {
+        const action = item.dataset.action;
+        if (!action) return;   // plain links (e.g. Edit Unit) just navigate
+
+        closeMenus();
+
+        const unitCard = item.closest("[data-unit-card]");
+        if (unitCard) {
+            if (action === "unit-delete") confirmUnitDelete(unitCard);
+            if (action === "unit-availability") setUnitAvailability(unitCard, item.dataset.availability);
+            return;
+        }
+
+        const card = item.closest("[data-property-card]");
+        if (action === "delete") confirmComplexDelete(card);
+        if (action === "set-visibility") confirmVisibility(card, item.dataset.visibility);
+    }
+
+
+    // ---------------------------------------------------------
+    // COUNTS (no page reload)
+    // ---------------------------------------------------------
+
+    function fadeOut(element, after) {
+        element.classList.add("is-removing");
+        setTimeout(() => {
+            element.remove();
+            after();
+        }, 250);
+    }
+
+    function updatePropertyCounts() {
         const cards = [...document.querySelectorAll("[data-property-card]")];
         const counts = {
             all: cards.length,
@@ -237,35 +327,31 @@
             if (badge) badge.textContent = count;
         });
 
-        // Re-apply the selected chip (e.g. an unpublished card leaves the "Active" view)
         const activeChip = document.querySelector("[data-status-filter].active");
         if (activeChip) filterProperties(activeChip);
 
-        // Last card gone: reload to show the empty state
-        if (counts.all === 0) window.location.reload();
+        if (counts.all === 0) window.location.reload();   // show the empty state
     }
 
-    function updateCardStatus(card, status, label) {
-        card.dataset.status = status;
+    function updateUnitCounts(card) {
+        const units = [...card.querySelectorAll("[data-unit-card]")];
+        if (!units.length) {
+            window.location.reload();   // show "No units yet"
+            return;
+        }
 
-        const pill = card.querySelector(".status-pill");
-        pill.className = `status-pill status-pill--${status}`;
-        pill.textContent = label;
+        const counts = {
+            total: units.length,
+            available: units.filter(unit => unit.dataset.availability === "available").length,
+            occupied: units.filter(unit => unit.dataset.availability === "occupied").length,
+            unpublished: units.filter(unit => unit.dataset.availability === "unpublished").length,
+        };
 
-        // Show the menu item for the *other* state
-        card.querySelectorAll('[data-action="set-visibility"]').forEach(item => {
-            item.hidden = item.dataset.visibility === status;
+        Object.entries(counts).forEach(([key, value]) => {
+            card.querySelectorAll(`[data-stat="${key}"]`).forEach(node => { node.textContent = value; });
         });
 
-        updateCounts();
-    }
-
-    function removeCard(card) {
-        card.classList.add("is-removing");
-        setTimeout(() => {
-            card.remove();
-            updateCounts();
-        }, 250);
+        filterUnits(card.querySelector(".property-units"));
     }
 
 
@@ -291,16 +377,23 @@
     }
 
     function filterUnits(section) {
+        if (!section) return;
+
         const search = section.querySelector("[data-unit-search]");
         const query = search ? search.value.trim().toLowerCase() : "";
         const active = section.querySelector(".unit-filter.active");
         const status = active ? active.dataset.unitFilter : "all";
+        let visible = 0;
 
-        section.querySelectorAll(".units-list > *").forEach(unit => {
-            const matchesText = !query || unit.textContent.toLowerCase().includes(query);
+        section.querySelectorAll("[data-unit-card]").forEach(unit => {
+            const matchesText = !query || unit.dataset.unitName.toLowerCase().includes(query);
             const matchesStatus = status === "all" || unit.dataset.availability === status;
             unit.hidden = !(matchesText && matchesStatus);
+            if (!unit.hidden) visible += 1;
         });
+
+        const empty = section.querySelector(".units-filter-empty");
+        if (empty) empty.hidden = visible > 0;
     }
 
 
@@ -308,13 +401,16 @@
     // EVENTS
     // ---------------------------------------------------------
 
+    // Clicks on these never collapse/expand the complex
+    const INTERACTIVE = "a, button, input, select, textarea, label, video, .property-menu";
+
     document.addEventListener("click", event => {
         const target = event.target;
 
         if (!target.closest(".property-menu-wrap")) closeMenus();
 
         const expand = target.closest("[data-property-expand]");
-        if (expand) return toggleUnits(expand.closest("[data-property-card]"), expand);
+        if (expand) return toggleUnits(expand.closest("[data-property-card]"));
 
         const menuToggle = target.closest("[data-property-menu-toggle]");
         if (menuToggle) return toggleMenu(menuToggle);
@@ -330,6 +426,12 @@
             const section = unitChip.closest(".property-units");
             section.querySelectorAll(".unit-filter").forEach(chip => chip.classList.toggle("active", chip === unitChip));
             return filterUnits(section);
+        }
+
+        // Click anywhere else on a complex header → collapse / expand its units
+        const header = target.closest(".property-card-header");
+        if (header && !target.closest(INTERACTIVE) && !window.getSelection().toString()) {
+            toggleUnits(header.closest("[data-property-card]"));
         }
     });
 

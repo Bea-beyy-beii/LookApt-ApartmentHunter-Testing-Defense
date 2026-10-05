@@ -5,6 +5,7 @@ from .models import Complex, Unit
 import os
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxLengthValidator
+from .icons import icon_svg
 
 
 MAX_COMPLEX_PHOTOS = 5
@@ -53,7 +54,44 @@ def validate_photo_uploads(photos, existing_count, max_count):
     return photos
 
 
+MAX_UNIT_VIDEOS = 2
+MAX_VIDEO_SIZE_MB = 50
+ALLOWED_VIDEO_EXTENSIONS = {".mp4", ".webm", ".mov"}
 
+
+class MultipleFileField(forms.FileField):
+    """Like MultipleImageField, but for any file (used for videos)."""
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("widget", MultipleFileInput())
+        super().__init__(*args, **kwargs)
+
+    def clean(self, data, initial=None):
+        single_clean = super().clean
+        if isinstance(data, (list, tuple)):
+            return [single_clean(item, initial) for item in data]
+        return [single_clean(data, initial)] if data else []
+
+
+def _looks_like_video(upload):
+    """Check the file's first bytes, not just its name (MP4/MOV have 'ftyp', WebM starts with 1A45DFA3)."""
+    head = upload.read(12)
+    upload.seek(0)
+    return head[4:8] == b"ftyp" or head[:4] == b"\x1a\x45\xdf\xa3"
+
+
+def validate_video_uploads(videos, existing_count, max_count):
+    if existing_count + len(videos) > max_count:
+        raise ValidationError(
+            f"You can upload up to {max_count} videos ({existing_count} already saved)."
+        )
+    for video in videos:
+        extension = os.path.splitext(video.name)[1].lower()
+        if extension not in ALLOWED_VIDEO_EXTENSIONS or not _looks_like_video(video):
+            raise ValidationError(f"{video.name}: only MP4, WebM or MOV videos are allowed.")
+        if video.size > MAX_VIDEO_SIZE_MB * 1024 * 1024:
+            raise ValidationError(f"{video.name} is larger than {MAX_VIDEO_SIZE_MB} MB.")
+    return videos
 
 
 class ComplexForm(forms.ModelForm):
@@ -82,7 +120,7 @@ class ComplexForm(forms.ModelForm):
     FEATURE_FIELDS = ["pet_friendly", "has_parking_space", "is_gated", "has_laundry_area"]
 
     def feature_fields(self):
-        return [self[name] for name in self.FEATURE_FIELDS]
+        return [{"field": self[name], "icon": icon_svg(name)} for name in self.FEATURE_FIELDS]
 
 
     class Meta:
@@ -199,6 +237,11 @@ class UnitForm(forms.ModelForm):
         widget=MultipleFileInput(attrs={"accept": "image/png,image/jpeg", "hidden": True}),
     )
 
+    videos = MultipleFileField(
+        required=False,
+        widget=MultipleFileInput(attrs={"accept": "video/mp4,video/webm,video/quicktime", "hidden": True}),
+    )
+
     class Meta:
         model = Unit
         fields = [
@@ -233,7 +276,7 @@ class UnitForm(forms.ModelForm):
                 "maxlength": "600",
                 "placeholder": "e.g., special features, inclusions, or reminders for renters...",
             }),
-            
+
             "advance_months": forms.NumberInput(attrs={"min": "0", "max": "12", "placeholder": "e.g. 1"}),
                        
             "deposit_months": forms.NumberInput(attrs={"min": "0", "max": "12", "placeholder": "e.g. 2"}),
@@ -250,7 +293,7 @@ class UnitForm(forms.ModelForm):
         self.fields["unit_description"].validators.append(MaxLengthValidator(600))
 
     def amenity_fields(self):
-        return [self[name] for name in Unit.AMENITY_FIELDS]
+        return [{"field": self[name], "icon": icon_svg(name)} for name in Unit.AMENITY_FIELDS]
 
     # ---------- validation ----------
 
@@ -306,6 +349,11 @@ class UnitForm(forms.ModelForm):
         photos = self.cleaned_data.get("photos") or []
         existing = self.instance.pictures.count() if self.instance.pk else 0
         return validate_photo_uploads(photos, existing, MAX_UNIT_PHOTOS)
+
+    def clean_videos(self):
+        videos = self.cleaned_data.get("videos") or []
+        existing = self.instance.videos.count() if self.instance.pk else 0
+        return validate_video_uploads(videos, existing, MAX_UNIT_VIDEOS)
 
     def _clean_months(self, name):
             value = self.cleaned_data.get(name)

@@ -1,64 +1,78 @@
-<div class="unit-card"
-     data-unit-id="{{ unit.pk }}"
-     data-unit-status="{{ unit.status }}">
+{% with pictures=unit.pictures.all videos=unit.videos.all %}
+{% with photo_count=pictures|length video_count=videos|length %}
+{% with media_count=photo_count|add:video_count %}
 
-    <!-- Image -->
-    <div class="unit-thumbnail">
+<article class="unit-card"
+         data-unit-card
+         data-availability="{{ unit.availability }}"
+         data-unit-name="Unit {{ unit.identifier }}"
+         data-delete-url="{% url 'core_listings:unit_delete' unit.pk %}"
+         data-availability-url="{% url 'core_listings:unit_set_availability' unit.pk %}">
 
-        {% with photo=unit.pictures.first %}
+    <!-- Square gallery (photos, then videos) -->
+    <div class="property-gallery property-gallery--unit" data-gallery>
 
-            {% if photo and photo.image %}
+        {% if media_count %}
 
-                <img src="{{ photo.image.url }}"
-                     alt="{{ unit.unit_number }}">
+            <div class="property-gallery-track">
+                {% for picture in pictures %}
+                    <img src="{{ picture.image.url }}" alt="Unit {{ unit.identifier }} photo {{ forloop.counter }}" loading="lazy">
+                {% endfor %}
+                {% for clip in videos %}
+                    <div class="gallery-slide">
+                        <video src="{{ clip.video.url }}" muted loop playsinline preload="metadata"></video>
+                        <span class="gallery-video-badge">▶</span>
+                    </div>
+                {% endfor %}
+            </div>
 
-            {% else %}
-
-                <div class="unit-thumbnail-placeholder">
-                    ⌂
-                </div>
-
+            {% if media_count > 1 %}
+                <button type="button" class="gallery-arrow gallery-arrow--prev" data-gallery-prev aria-label="Previous">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <button type="button" class="gallery-arrow gallery-arrow--next" data-gallery-next aria-label="Next">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+                <span class="gallery-count"><span data-gallery-position>1</span>/{{ media_count }}</span>
             {% endif %}
 
-        {% endwith %}
+        {% else %}
+
+            <div class="property-gallery-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 17-5-5-9 8"/>
+                </svg>
+            </div>
+
+        {% endif %}
 
     </div>
 
 
-    <!-- Unit Information -->
+    <!-- Name + details -->
     <div class="unit-info">
 
-        <a href="{% url 'core_listings:unit_detail' unit.pk %}"
-           class="unit-number">
+        <a href="{% url 'core_listings:unit_detail' unit.pk %}" class="unit-name">Unit {{ unit.identifier }}</a>
 
-            {{ unit.unit_number }}
-
-        </a>
-
-
-        <div class="unit-details">
-
+        <div class="unit-meta">
             <span>
-                ▧ {{ unit.area_sqm }} sqm
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 4l6 6M4 4v5M4 4h5M20 20l-6-6M20 20v-5M20 20h-5"/></svg>
+                {{ unit.unit_area|floatformat:"-2" }} sqm
             </span>
-
             <span>
-                🛏 {{ unit.bedrooms }}
-                {% if unit.bedrooms == 1 %}
-                    Bedroom
-                {% else %}
-                    Bedrooms
-                {% endif %}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 18V7M21 18v-5a3 3 0 0 0-3-3H10v5M3 15h18M6.5 12.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/></svg>
+                {{ unit.get_bedroom_type_display }}
             </span>
-
             <span>
-                {% if unit.furnished %}
-                    ▣ Furnished
-                {% else %}
-                    ▣ Unfurnished
-                {% endif %}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 11V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3M3 11a2 2 0 0 1 2 2v3h14v-3a2 2 0 1 1 2-2v7H3v-7zM6 19v2M18 19v2"/></svg>
+                {{ unit.get_furnish_level_display }}
             </span>
-
+            {% if unit.floor %}
+                <span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 20h4v-4h4v-4h4V8h4"/></svg>
+                    Floor {{ unit.floor }}
+                </span>
+            {% endif %}
         </div>
 
     </div>
@@ -66,54 +80,79 @@
 
     <!-- Price -->
     <div class="unit-price">
-
-        ₱{{ unit.price|floatformat:0 }}
-        <small>/ month</small>
-
+        <strong>₱{{ unit.price|floatformat:"0g" }}</strong>
+        <span>/ month</span>
     </div>
 
 
     <!-- Status -->
-    <div class="unit-status">
-
-        {% if unit.status == 'available' %}
-
-            <span class="status-pill status-available">
-                <span class="status-dot"></span>
-                Available
-            </span>
-
-        {% else %}
-
-            <span class="status-pill status-occupied">
-                <span class="status-dot"></span>
-                Occupied
-            </span>
-
-        {% endif %}
-
+    <div class="unit-status-cell">
+        <span class="unit-status unit-status--{{ unit.availability }}" data-unit-status>
+            {{ unit.get_availability_display }}
+        </span>
     </div>
 
 
     <!-- Actions -->
     <div class="unit-actions">
 
-        <a href="{% url 'core_listings:unit_detail' unit.pk %}"
-           class="view-listing-btn">
+        <a href="{% url 'core_listings:unit_detail' unit.pk %}" class="view-listing-btn">View Listing</a>
 
-            View Listing
+        <div class="property-menu-wrap">
 
-        </a>
+            <button type="button"
+                    class="property-more-btn"
+                    data-property-menu-toggle
+                    aria-haspopup="menu"
+                    aria-expanded="false"
+                    aria-label="More options for Unit {{ unit.identifier }}">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/>
+                </svg>
+            </button>
 
+            <div class="property-menu" role="menu" hidden>
 
-        <button type="button"
-                class="more-button"
-                aria-label="More unit options">
+                <a href="{% url 'core_listings:unit_edit' unit.pk %}" role="menuitem" class="property-menu-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4"/></svg>
+                    Edit Unit
+                </a>
 
-            ⋮
+                <hr>
 
-        </button>
+                <button type="button" role="menuitem" class="property-menu-item"
+                        data-action="unit-availability" data-availability="available"
+                        {% if unit.availability == "available" %}hidden{% endif %}>
+                    <span class="status-dot status-dot--active"></span> Set as Available
+                </button>
+
+                <button type="button" role="menuitem" class="property-menu-item"
+                        data-action="unit-availability" data-availability="occupied"
+                        {% if unit.availability == "occupied" %}hidden{% endif %}>
+                    <span class="status-dot status-dot--occupied"></span> Set as Occupied
+                </button>
+
+                <button type="button" role="menuitem" class="property-menu-item"
+                        data-action="unit-availability" data-availability="unpublished"
+                        {% if unit.availability == "unpublished" %}hidden{% endif %}>
+                    <span class="status-dot status-dot--pending"></span> Set as Unpublished
+                </button>
+
+                <hr>
+
+                <button type="button" role="menuitem"
+                        class="property-menu-item property-menu-item--danger"
+                        data-action="unit-delete">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3"/></svg>
+                    Delete Unit
+                </button>
+
+            </div>
+
+        </div>
 
     </div>
 
-</div>
+</article>
+
+{% endwith %}{% endwith %}{% endwith %}

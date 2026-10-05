@@ -115,6 +115,10 @@ class Complex(models.Model):
     def occupied_units(self):
         return self.units.filter(availability=Unit.Availability.OCCUPIED).count()
 
+    @property
+    def unpublished_units(self):
+        return self.units.filter(availability=Unit.Availability.UNPUBLISHED).count()
+
 
 
 
@@ -261,3 +265,17 @@ class UnitPicture(ListingPicture):
                 fields=["unit"], condition=Q(is_cover=True), name="one_cover_per_unit"
             )
         ]
+
+
+
+class UnitVideo(models.Model):
+    unit = models.ForeignKey(Unit, on_delete=models.CASCADE, related_name="videos")
+    video = models.FileField(upload_to="unit_videos/")
+    position = models.PositiveSmallIntegerField(default=0)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["position"]
+
+    def __str__(self):
+        return f"{self.unit} – video {self.position + 1}"

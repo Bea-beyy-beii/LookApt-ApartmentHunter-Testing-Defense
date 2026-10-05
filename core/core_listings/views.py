@@ -14,7 +14,7 @@ from .forms import ComplexForm, UnitForm
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 
-from .models import UnitPicture
+from .models import UnitPicture, UnitVideo
 
 
 def _my_listings_url():
@@ -177,22 +177,34 @@ def _own_property(request, pk):
 
 @role_required("landlord")
 @require_POST
+def _delete_files(files):
+    """Remove files from storage (S3). Deleting rows does NOT delete their files."""
+    for file in files:
+        try:
+            file.delete(save=False)
+        except Exception:
+            pass   # a missing file shouldn't block the delete
+
+
+def _unit_media_files(units):
+    files = [picture.image for picture in UnitPicture.objects.filter(unit__in=units)]
+    files += [clip.video for clip in UnitVideo.objects.filter(unit__in=units)]
+    return files
+
+
 def property_delete(request, pk):
     property_obj = _own_property(request, pk)
     name = property_obj.complex_name
 
     # Remember the image files first: deleting rows does NOT delete files in storage (S3)
-    image_files = [picture.image for picture in property_obj.pictures.all()]
-    image_files += [picture.image for picture in UnitPicture.objects.filter(unit__complex=property_obj)]
+    files = [picture.image for picture in property_obj.pictures.all()]
+    files += _unit_media_files(property_obj.units.all())
 
     # Cascades to units, pictures and saved landmarks (on_delete=CASCADE)
     property_obj.delete()
 
-    for image in image_files:
-        try:
-            image.delete(save=False)
-        except Exception:
-            pass   # a missing file shouldn't block the delete
+    property_obj.delete()   # cascades to units, pictures, videos, landmarks
+    _delete_files(files)
 
     if _wants_json(request):
         return JsonResponse({"deleted": True, "name": name})
@@ -243,12 +255,25 @@ def _save_pictures(picture_model, owner_field, owner, photos):
 # UNITS
 # ---------------------------------------------------------
 
+def _save_videos(unit, videos):
+    start = unit.videos.count()
+    for index, clip in enumerate(videos):
+        UnitVideo.objects.create(unit=unit, video=clip, position=start + index)
+
+
 @transaction.atomic
 def _save_unit(form, complex_obj):
     unit = form.save(commit=False)
     unit.complex = complex_obj
+
+    # Which button was clicked: "available" (vacant), "occupied" or "unpublished"
+    availability = form.data.get("availability")
+    if availability in Unit.Availability.values:
+        unit.availability = availability
+
     unit.save()
     _save_pictures(UnitPicture, "unit", unit, form.cleaned_data.get("photos") or [])
+    _save_videos(unit, form.cleaned_data.get("videos") or [])
     return unit
 
 
@@ -279,3 +304,44 @@ def unit_create(request, property_pk):
 def unit_edit(request, pk):
     unit = get_object_or_404(Unit, pk=pk, complex__landlord__user=request.user)
     return _unit_form_page(request, unit.complex, unit)
+
+def _own_unit(request, pk):
+    return get_object_or_404(Unit, pk=pk, complex__landlord__user=request.user)
+
+
+@role_required("landlord")
+@require_POST
+def unit_delete(request, pk):
+    unit = _own_unit(request, pk)
+    name = unit.unit_name
+    files = _unit_media_files(Unit.objects.filter(pk=unit.pk))
+
+    unit.delete()
+    _delete_files(files)
+
+    if _wants_json(request):
+        return JsonResponse({"deleted": True, "name": name})
+    messages.success(request, f"{name} was deleted.")
+    return redirect(_my_listings_url())
+
+
+@role_required("landlord")
+@require_POST
+def unit_set_availability(request, pk):
+    unit = _own_unit(request, pk)
+    availability = request.POST.get("availability")
+
+    if availability not in Unit.Availability.values:
+        if _wants_json(request):
+            return JsonResponse({"error": "Invalid status."}, status=400)
+        return redirect(_my_listings_url())
+
+    unit.availability = availability
+    unit.save(update_fields=["availability", "updated_at"])
+
+    if _wants_json(request):
+        return JsonResponse({
+            "availability": unit.availability,
+            "label": unit.get_availability_display(),
+        })
+    return redirect(_my_listings_url())

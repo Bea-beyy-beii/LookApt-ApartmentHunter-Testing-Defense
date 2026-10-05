@@ -1,44 +1,56 @@
 <section class="wizard-step-content">
 
     <div class="section-heading">
-        <h2>Property Photos</h2>
-            <p>
-                Upload up to {{ max_photos|default:5 }} photos of this {{ photo_subject|default:"property" }}.
-                Clear, well-lit photos attract more renters.
-            </p>
+        <h2>{{ photo_heading|default:"Property Photos" }}</h2>
+        <p>
+            Upload up to {{ max_photos|default:5 }} photos{% if allow_video %} and {{ max_videos }} video{{ max_videos|pluralize }}{% endif %}
+            of this {{ photo_subject|default:"property" }}. Clear, well-lit photos attract more renters.
+        </p>
     </div>
 
 
-        <div class="photo-upload"
+    <div class="photo-upload"
          data-photo-upload
          data-max="{{ max_photos|default:5 }}"
-         data-existing="{{ saved_pictures|length }}">
+         data-existing="{{ saved_pictures|length }}"
+         {% if allow_video %}data-allow-video="1" data-max-videos="{{ max_videos }}" data-existing-videos="{{ saved_videos|length }}"{% endif %}>
 
         <!-- LEFT: drop zone -->
         <div class="photo-upload-left">
 
-            <label for="{{ form.photos.id_for_label }}" class="photo-dropzone" tabindex="0">
+            <label for="{{ form.photos.id_for_label }}-picker" class="photo-dropzone" tabindex="0">
                 <span class="photo-dropzone-icon">＋</span>
-                <strong>Click to upload or drag photos here</strong>
-                <span>Up to 5 photos</span>
-                <small>PNG or JPG only · max 5 MB each</small>
+                <strong>Click to upload or drag {% if allow_video %}photos or videos{% else %}photos{% endif %} here</strong>
+                <span>Up to {{ max_photos|default:5 }} photos{% if allow_video %} · {{ max_videos }} video{{ max_videos|pluralize }}{% endif %}</span>
+                <small>
+                    PNG or JPG · max 5 MB each
+                    {% if allow_video %}<br>MP4, WebM or MOV · max 50 MB each{% endif %}
+                </small>
             </label>
 
+            {# What the user picks lands here first; JS sorts files into "photos" / "videos" #}
+            <input type="file"
+                   id="{{ form.photos.id_for_label }}-picker"
+                   data-media-picker
+                   multiple
+                   hidden
+                   accept="image/png,image/jpeg{% if allow_video %},video/mp4,video/webm,video/quicktime{% endif %}">
+
             {{ form.photos }}
+            {% if allow_video %}{{ form.videos }}{% endif %}
 
             <p class="photo-upload-error" aria-live="polite" hidden></p>
 
-            {% if form.photos.errors %}
-                <div class="field-error">{{ form.photos.errors }}</div>
-            {% endif %}
+            {% if form.photos.errors %}<div class="field-error">{{ form.photos.errors }}</div>{% endif %}
+            {% if allow_video and form.videos.errors %}<div class="field-error">{{ form.videos.errors }}</div>{% endif %}
 
             <div class="photo-guidelines">
-                <strong>ⓘ Photo Guidelines</strong>
+                <strong>ⓘ Guidelines</strong>
                 <ul>
-                    <li>Upload clear and recent photos of the property.</li>
-                    <li>Include photos of the exterior, amenities, and common areas.</li>
+                    <li>Upload clear and recent photos of the {{ photo_subject|default:"property" }}.</li>
                     <li>Avoid blurry, dark, or duplicate images.</li>
                     <li>The first photo becomes the cover photo.</li>
+                    {% if allow_video %}<li>Short walkthrough videos (under a minute) work best.</li>{% endif %}
                 </ul>
             </div>
 
@@ -49,31 +61,35 @@
         <div class="photo-upload-right">
 
             <div class="photo-preview-header">
-                <strong>Photo Preview</strong>
-                <span class="photo-count">(0/5)</span>
+                <strong>Preview</strong>
+                <span class="photo-count">(0/{{ max_photos|default:5 }})</span>
             </div>
 
             <p class="photo-reorder-hint">Drag a photo onto another to swap them. The first photo is the cover.</p>
 
             <div class="photo-preview-grid">
-                {# Photos already saved (edit mode). JS adds the new ones after these. #}
-                {% if property %}
-                    {% for picture in saved_pictures %}
-                        <div class="photo-tile is-saved">
-                            <img src="{{ picture.image.url }}" alt="Saved photo {{ forloop.counter }}">
-                            {% if picture.is_cover %}<span class="photo-cover-badge">Cover</span>{% endif %}
-                        </div>
-                    {% endfor %}
-                {% endif %}
+                {% for picture in saved_pictures %}
+                    <div class="photo-tile is-saved">
+                        <img src="{{ picture.image.url }}" alt="Saved photo {{ forloop.counter }}">
+                        {% if picture.is_cover %}<span class="photo-cover-badge">Cover</span>{% endif %}
+                    </div>
+                {% endfor %}
+                {% for clip in saved_videos %}
+                    <div class="photo-tile is-saved is-video">
+                        <video src="{{ clip.video.url }}" muted playsinline preload="metadata"></video>
+                        <span class="photo-video-badge">▶ Video</span>
+                    </div>
+                {% endfor %}
             </div>
 
         </div>
 
 
-        <!-- Enlarged photo -->
+        <!-- Enlarged photo / video -->
         <dialog class="photo-lightbox">
             <button type="button" class="photo-lightbox-close" aria-label="Close">×</button>
             <img src="" alt="">
+            <video controls playsinline hidden></video>
         </dialog>
 
     </div>

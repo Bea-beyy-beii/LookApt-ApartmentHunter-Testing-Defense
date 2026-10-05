@@ -1,15 +1,13 @@
 // =========================================================
-// STEP 4 — REVIEW
-// Copies what the landlord typed in steps 1–3 into the review cards.
+// REVIEW STEP (last step of the property / unit wizard)
+// Copies what the landlord entered into the review cards.
 // =========================================================
 
 (function () {
 
     const peso = new Intl.NumberFormat("en-PH", { maximumFractionDigits: 0 });
 
-    function getForm() {
-        return document.querySelector(".wizard-form");
-    }
+    const getForm = () => document.querySelector(".wizard-form");
 
     function fieldText(form, name) {
         const field = form.elements[name];
@@ -17,10 +15,57 @@
         if (field.tagName === "SELECT") {
             return field.selectedOptions[0] ? field.selectedOptions[0].text : "";
         }
-        return field.value.trim();
+        return String(field.value || "").trim();
     }
 
-    function renderPhotos(form) {
+    function featureLabel(input) {
+        const holder = input.closest("[data-check-feature]");
+        const label = holder.querySelector("[data-feature-label]") || holder.querySelector("span");
+        return label ? label.textContent.trim() : input.name;
+    }
+
+
+    // ---------- checked amenities / features as removable chips ----------
+
+    function renderFeatures(form) {
+        form.querySelectorAll("[data-review-features]").forEach(box => {
+            const checked = [...form.querySelectorAll("[data-check-feature] input:checked")];
+
+            if (!checked.length) {
+                box.textContent = "—";
+                return;
+            }
+
+            box.replaceChildren(...checked.map(input => {
+                const name = featureLabel(input);
+
+                const chip = document.createElement("span");
+                chip.className = "review-chip";
+
+                const text = document.createElement("span");
+                text.textContent = name;
+
+                const remove = document.createElement("button");
+                remove.type = "button";
+                remove.className = "review-chip-remove";
+                remove.textContent = "×";
+                remove.setAttribute("aria-label", `Remove ${name}`);
+                remove.addEventListener("click", () => {
+                    input.checked = false;                                          // unticks it in step 1
+                    input.dispatchEvent(new Event("change", { bubbles: true }));    // saves the draft
+                    fillReview();
+                });
+
+                chip.append(text, remove);
+                return chip;
+            }));
+        });
+    }
+
+
+    // ---------- photos + videos ----------
+
+    function renderMedia(form) {
         const strip = form.querySelector("[data-review-photos]");
         const count = form.querySelector("[data-review-photo-count]");
         if (!strip) return;
@@ -28,23 +73,42 @@
         const uploader = form.querySelector("[data-photo-upload]");
         const api = uploader && uploader.photoUpload;
 
-        // Saved photos (edit mode) first, then the newly added ones
-        const saved = [...form.querySelectorAll(".photo-tile.is-saved img")]
-            .map(img => ({ url: img.src, name: img.alt }));
+        const saved = [...form.querySelectorAll(".photo-tile.is-saved img, .photo-tile.is-saved video")]
+            .map(media => ({
+                url: media.src,
+                name: media.getAttribute("alt") || "Saved video",
+                kind: media.tagName === "VIDEO" ? "video" : "image",
+            }));
         const added = api ? api.items() : [];
-        const photos = [...saved, ...added];
+        const all = [...saved, ...added];
+        const photos = all.filter(item => item.kind === "image");
+        const videos = all.filter(item => item.kind === "video");
 
-        strip.replaceChildren(...photos.map((photo, index) => {
+        strip.replaceChildren(...[...photos, ...videos].map((item, index) => {
             const tile = document.createElement("figure");
             tile.className = "review-photo";
 
-            const img = document.createElement("img");
-            img.src = photo.url;
-            img.alt = photo.name;
-            if (api) img.addEventListener("click", () => api.open(photo.url, photo.name));
-            tile.append(img);
+            let media;
+            if (item.kind === "video") {
+                media = document.createElement("video");
+                media.src = item.url;
+                media.muted = true;
+                media.playsInline = true;
+                media.preload = "metadata";
 
-            if (index === 0) {
+                const badge = document.createElement("span");
+                badge.className = "photo-video-badge";
+                badge.textContent = "▶ Video";
+                tile.append(media, badge);
+            } else {
+                media = document.createElement("img");
+                media.src = item.url;
+                media.alt = item.name;
+                tile.append(media);
+            }
+            if (api) media.addEventListener("click", () => api.open(item.url, item.name, item.kind));
+
+            if (index === 0 && item.kind === "image") {
                 const badge = document.createElement("span");
                 badge.className = "photo-cover-badge";
                 badge.textContent = "Cover";
@@ -53,37 +117,24 @@
             return tile;
         }));
 
-        count.textContent = photos.length
-            ? `${photos.length} photo${photos.length === 1 ? "" : "s"} uploaded.`
-            : "No photos uploaded yet.";
+        const parts = [];
+        if (photos.length) parts.push(`${photos.length} photo${photos.length === 1 ? "" : "s"}`);
+        if (videos.length) parts.push(`${videos.length} video${videos.length === 1 ? "" : "s"}`);
+        count.textContent = parts.length ? `${parts.join(" · ")} uploaded.` : "No photos uploaded yet.";
     }
+
+
+    // ---------- fill everything ----------
 
     function fillReview() {
         const form = getForm();
         if (!form) return;
 
-                form.querySelectorAll("[data-review]").forEach(el => {
+        form.querySelectorAll("[data-review]").forEach(el => {
             const value = fieldText(form, el.dataset.review);
             el.textContent = value
                 ? `${el.dataset.prefix || ""}${value}${el.dataset.suffix || ""}`
                 : "—";
-        });
-
-        // Checked feature/amenity checkboxes → chips
-        form.querySelectorAll("[data-review-features]").forEach(box => {
-            const labels = [...form.querySelectorAll("[data-check-feature] input:checked")]
-                .map(input => input.closest("[data-check-feature]").querySelector("span").textContent.trim());
-
-            if (!labels.length) {
-                box.textContent = "—";
-                return;
-            }
-            box.replaceChildren(...labels.map(text => {
-                const chip = document.createElement("span");
-                chip.className = "review-chip";
-                chip.textContent = `✓ ${text}`;
-                return chip;
-            }));
         });
 
         form.querySelectorAll("[data-review-bool]").forEach(el => {
@@ -99,10 +150,10 @@
             el.textContent = isNaN(value) ? "₱ —" : `₱ ${peso.format(value)}`;
         });
 
-        renderPhotos(form);
+        renderFeatures(form);
+        renderMedia(form);
     }
 
-    // Refresh when entering step 4, and when photos change while on it
     document.addEventListener("wizard:step", event => {
         if (event.detail.step === totalSteps()) fillReview();
     });

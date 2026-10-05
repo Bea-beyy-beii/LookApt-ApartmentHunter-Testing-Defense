@@ -41,7 +41,7 @@
                 {% include "core_listings/landlords/forms/unit_steps/step_details.html" %}
             </div>
             <div class="wizard-step-panel" data-step="2" hidden>
-                {% include "core_listings/landlords/forms/steps/step_photos.html" with max_photos=10 saved_pictures=unit.pictures.all photo_subject="unit" %}
+               {% include "core_listings/landlords/forms/steps/step_photos.html" with max_photos=10 saved_pictures=unit.pictures.all photo_subject="unit" photo_heading="Unit Photos & Videos" allow_video=True max_videos=2 saved_videos=unit.videos.all %}
             </div>
             <div class="wizard-step-panel" data-step="3" hidden>
                 {% include "core_listings/landlords/forms/unit_steps/step_review.html" %}
@@ -52,10 +52,24 @@
             <button type="button" class="btn btn-secondary wizard-back" onclick="wizardBack()">← Back</button>
             <button type="button" class="btn btn-primary wizard-next" onclick="wizardNext()">Next →</button>
 
+            
+            
             <div class="wizard-submit-group" hidden>
-                <button type="submit" class="btn btn-primary wizard-submit">
-                    {% if unit %}Save Changes{% else %}Add Unit{% endif %}
+
+                <button type="submit" name="availability" value="unpublished" class="btn btn-secondary wizard-submit">
+                    {% if unit %}Save as Unpublished{% else %}Create as Unpublished{% endif %}
                 </button>
+
+                <button type="submit" name="availability" value="occupied" class="btn btn-secondary wizard-submit">
+                    {% if unit %}Save as Occupied{% else %}Create as Occupied{% endif %}
+                </button>
+
+                <button type="submit" name="availability" value="available" class="btn btn-primary wizard-submit">
+                    {% if unit %}Save as Vacant{% else %}Create as Vacant{% endif %}
+                </button>
+
+                <small class="wizard-submit-note">Vacant units are shown to renters as <strong>Available</strong>.</small>
+
             </div>
         </div>
 

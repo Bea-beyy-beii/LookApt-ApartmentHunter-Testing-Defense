@@ -1,15 +1,17 @@
 // =========================================================
-// STEP 3 — PHOTO UPLOAD
+// STEP 2/3 — PHOTO (+ VIDEO) UPLOAD
 // Left: drop zone (click or drag & drop). Right: previews.
-// - Drag a preview onto another to swap them (slot 1 = cover)
-// - Photos survive a page refresh (stored in IndexedDB)
+// - Photos and videos go into separate hidden inputs ("photos" / "videos")
+// - Drag a preview onto another of the same kind to swap them (photo 1 = cover)
+// - Files survive a page refresh (stored in IndexedDB)
 // =========================================================
 
 (function () {
 
-    const ALLOWED_TYPES = ["image/png", "image/jpeg"];
-    const ALLOWED_EXTENSIONS = /\.(png|jpe?g)$/i;
-    const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+    const KINDS = {
+        image: { types: ["image/png", "image/jpeg"], ext: /\.(png|jpe?g)$/i, maxMb: 5 },
+        video: { types: ["video/mp4", "video/webm", "video/quicktime"], ext: /\.(mp4|webm|mov)$/i, maxMb: 50 },
+    };
 
 
     // ---------------------------------------------------------
@@ -34,30 +36,39 @@
         });
     }
 
-    const savePhotos = (key, fileList) => withStore("readwrite", store => store.put(fileList, key));
-    const loadPhotos = key => withStore("readonly", store => store.get(key));
-    const clearPhotos = key => withStore("readwrite", store => store.delete(key));
+    const saveDraftFiles = (key, fileList) => withStore("readwrite", store => store.put(fileList, key));
+    const loadDraftFiles = key => withStore("readonly", store => store.get(key));
+    const clearDraftFiles = key => withStore("readwrite", store => store.delete(key));
 
 
     function initPhotoUpload(root) {
-        const max = Number(root.dataset.max) || 5;
-        const existing = Number(root.dataset.existing) || 0;
+        const maxPhotos = Number(root.dataset.max) || 5;
+        const existingPhotos = Number(root.dataset.existing) || 0;
+        const allowVideo = root.dataset.allowVideo === "1";
+        const maxVideos = allowVideo ? Number(root.dataset.maxVideos) || 0 : 0;
+        const existingVideos = Number(root.dataset.existingVideos) || 0;
 
         const form = root.closest("form");
         const draftKey = "lookapt:wizard:" + (form ? form.getAttribute("action") : location.pathname);
 
-        const input = root.querySelector('input[type="file"]');
+        const picker = root.querySelector("[data-media-picker]");
+        const photoInput = root.querySelector('input[type="file"][name="photos"]');
+        const videoInput = root.querySelector('input[type="file"][name="videos"]');
         const zone = root.querySelector(".photo-dropzone");
         const grid = root.querySelector(".photo-preview-grid");
         const counter = root.querySelector(".photo-count");
         const errorBox = root.querySelector(".photo-upload-error");
         const lightbox = root.querySelector(".photo-lightbox");
         const lightboxImg = lightbox.querySelector("img");
+        const lightboxVideo = lightbox.querySelector("video");
 
-        let files = [];        // [{ file, url }]
-        let dragFrom = null;   // index of the tile being dragged
+        let files = [];        // [{ file, url, kind: "image" | "video" }]
+        let dragFrom = null;
 
-        const total = () => existing + files.length;
+        const ofKind = kind => files.filter(item => item.kind === kind);
+        const photoTotal = () => existingPhotos + ofKind("image").length;
+        const videoTotal = () => existingVideos + ofKind("video").length;
+        const isFull = () => photoTotal() >= maxPhotos && (!allowVideo || videoTotal() >= maxVideos);
 
 
         // ---------- helpers ----------
@@ -67,21 +78,42 @@
             errorBox.hidden = !message;
         }
 
-        function syncInput() {
-            const transfer = new DataTransfer();
-            files.forEach(item => transfer.items.add(item.file));
-            input.files = transfer.files;
+        function kindOf(file) {
+            for (const [kind, rule] of Object.entries(KINDS)) {
+                if (kind === "video" && !allowVideo) continue;
+                if (rule.types.includes(file.type) && rule.ext.test(file.name)) return kind;
+            }
+            return null;
         }
 
-        function openLightbox(src, alt) {
-            lightboxImg.src = src;
-            lightboxImg.alt = alt || "";
+        // Copy our list back into the real inputs so the form submits them (in order)
+        function syncInputs() {
+            const fill = (input, kind) => {
+                if (!input) return;
+                const transfer = new DataTransfer();
+                ofKind(kind).forEach(item => transfer.items.add(item.file));
+                input.files = transfer.files;
+            };
+            fill(photoInput, "image");
+            fill(videoInput, "video");
+        }
+
+        function openLightbox(src, alt, kind = "image") {
+            const isVideo = kind === "video";
+            lightboxImg.hidden = isVideo;
+            if (lightboxVideo) lightboxVideo.hidden = !isVideo;
+
+            if (isVideo && lightboxVideo) {
+                lightboxVideo.src = src;
+            } else {
+                lightboxImg.src = src;
+                lightboxImg.alt = alt || "";
+            }
             lightbox.showModal();
         }
 
-        // Called after every change: save for refresh + tell the review step
         function changed() {
-            savePhotos(draftKey, files.map(item => item.file)).catch(() => {});
+            saveDraftFiles(draftKey, files.map(item => item.file)).catch(() => {});
             root.dispatchEvent(new CustomEvent("photos:change", { bubbles: true }));
         }
 
@@ -92,26 +124,34 @@
             const errors = [];
 
             for (const file of fileList) {
-                if (total() >= max) {
-                    errors.push(`You can only upload ${max} photos.`);
-                    break;
-                }
-                if (!ALLOWED_TYPES.includes(file.type) || !ALLOWED_EXTENSIONS.test(file.name)) {
-                    errors.push(`${file.name}: only PNG or JPG files are allowed.`);
+                const kind = kindOf(file);
+
+                if (!kind) {
+                    errors.push(allowVideo
+                        ? `${file.name}: only PNG/JPG photos or MP4/WebM/MOV videos are allowed.`
+                        : `${file.name}: only PNG or JPG files are allowed.`);
                     continue;
                 }
-                if (file.size > MAX_SIZE) {
-                    errors.push(`${file.name} is larger than 5 MB.`);
+                if (file.size > KINDS[kind].maxMb * 1024 * 1024) {
+                    errors.push(`${file.name} is larger than ${KINDS[kind].maxMb} MB.`);
+                    continue;
+                }
+                if (kind === "image" && photoTotal() >= maxPhotos) {
+                    errors.push(`You can only upload ${maxPhotos} photos.`);
+                    continue;
+                }
+                if (kind === "video" && videoTotal() >= maxVideos) {
+                    errors.push(`You can only upload ${maxVideos} video${maxVideos === 1 ? "" : "s"}.`);
                     continue;
                 }
                 const duplicate = files.some(item => item.file.name === file.name && item.file.size === file.size);
                 if (duplicate) continue;
 
-                files.push({ file, url: URL.createObjectURL(file) });
+                files.push({ file, kind, url: URL.createObjectURL(file) });
             }
 
-            showError(errors.join(" "));
-            syncInput();
+            showError([...new Set(errors)].join(" "));
+            syncInputs();
             render();
             changed();
         }
@@ -120,15 +160,15 @@
             URL.revokeObjectURL(files[index].url);
             files.splice(index, 1);
             showError("");
-            syncInput();
+            syncInputs();
             render();
             changed();
         }
 
         function swapFiles(a, b) {
-            if (a === b) return;
+            if (a === b || files[a].kind !== files[b].kind) return;   // photos with photos, videos with videos
             [files[a], files[b]] = [files[b], files[a]];
-            syncInput();   // the input order is the order the server saves (first = cover)
+            syncInputs();
             render();
             changed();
         }
@@ -143,7 +183,7 @@
                 dragFrom = index;
                 tile.classList.add("is-dragging");
                 event.dataTransfer.effectAllowed = "move";
-                event.dataTransfer.setData("text/plain", String(index));   // required by Firefox
+                event.dataTransfer.setData("text/plain", String(index));
             });
 
             tile.addEventListener("dragend", () => {
@@ -153,7 +193,7 @@
             });
 
             tile.addEventListener("dragover", event => {
-                if (dragFrom === null) return;   // ignore files dragged in from outside
+                if (dragFrom === null || files[dragFrom].kind !== files[index].kind) return;
                 event.preventDefault();
                 tile.classList.add("is-drop-target");
             });
@@ -168,68 +208,99 @@
             });
         }
 
+        function buildTile(item, index, isCover) {
+            const tile = document.createElement("div");
+            tile.className = "photo-tile is-new" + (item.kind === "video" ? " is-video" : "");
+
+            let media;
+            if (item.kind === "video") {
+                media = document.createElement("video");
+                media.src = item.url;
+                media.muted = true;
+                media.playsInline = true;
+                media.preload = "metadata";
+            } else {
+                media = document.createElement("img");
+                media.src = item.url;
+                media.alt = item.file.name;
+            }
+            media.draggable = false;
+            media.addEventListener("click", () => openLightbox(item.url, item.file.name, item.kind));
+
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "photo-remove";
+            remove.textContent = "×";
+            remove.setAttribute("aria-label", `Remove ${item.file.name}`);
+            remove.addEventListener("click", () => removeFile(index));
+
+            tile.append(media, remove);
+
+            if (item.kind === "video") {
+                const badge = document.createElement("span");
+                badge.className = "photo-video-badge";
+                badge.textContent = "▶ Video";
+                tile.append(badge);
+            }
+
+            if (isCover) {
+                const badge = document.createElement("span");
+                badge.className = "photo-cover-badge";
+                badge.textContent = "Cover";
+                tile.append(badge);
+            }
+
+            makeDraggable(tile, index);
+            return tile;
+        }
+
         function render() {
             grid.querySelectorAll(".is-new, .is-empty").forEach(tile => tile.remove());
 
-            files.forEach((item, index) => {
-                const tile = document.createElement("div");
-                tile.className = "photo-tile is-new";
+            // Photos first, then videos (keeps each group's own order)
+            const order = [...files.keys()].sort(
+                (a, b) => (files[a].kind === "video") - (files[b].kind === "video")
+            );
 
-                const img = document.createElement("img");
-                img.src = item.url;
-                img.alt = item.file.name;
-                img.draggable = false;   // drag the tile, not the image itself
-                img.addEventListener("click", () => openLightbox(item.url, item.file.name));
-
-                const remove = document.createElement("button");
-                remove.type = "button";
-                remove.className = "photo-remove";
-                remove.textContent = "×";
-                remove.setAttribute("aria-label", `Remove ${item.file.name}`);
-                remove.addEventListener("click", () => removeFile(index));
-
-                tile.append(img, remove);
-
-                if (existing === 0 && index === 0) {
-                    const badge = document.createElement("span");
-                    badge.className = "photo-cover-badge";
-                    badge.textContent = "Cover";
-                    tile.append(badge);
-                }
-
-                makeDraggable(tile, index);
-                grid.append(tile);
+            let firstPhoto = true;
+            order.forEach(index => {
+                const item = files[index];
+                const isCover = item.kind === "image" && existingPhotos === 0 && firstPhoto;
+                if (item.kind === "image") firstPhoto = false;
+                grid.append(buildTile(item, index, isCover));
             });
 
-            for (let i = total(); i < max; i++) {
+            for (let i = photoTotal(); i < maxPhotos; i++) {
                 const empty = document.createElement("div");
                 empty.className = "photo-tile is-empty";
                 grid.append(empty);
             }
 
-            counter.textContent = `(${total()}/${max})`;
-            zone.classList.toggle("is-full", total() >= max);
+            counter.textContent = allowVideo
+                ? `(${photoTotal()}/${maxPhotos} photos · ${videoTotal()}/${maxVideos} videos)`
+                : `(${photoTotal()}/${maxPhotos})`;
+            zone.classList.toggle("is-full", isFull());
         }
 
 
         // ---------- events ----------
 
-        input.addEventListener("change", () => {
-            const picked = [...input.files];
-            addFiles(picked);
+        picker.addEventListener("change", () => {
+            addFiles([...picker.files]);
+            picker.value = "";   // allow picking the same file again after removing it
         });
 
         zone.addEventListener("click", event => {
-            if (total() >= max) {
+            if (isFull()) {
                 event.preventDefault();
-                showError(`You can only upload ${max} photos. Remove one to add another.`);
+                showError("You've reached the upload limit. Remove a file to add another.");
             }
         });
 
         zone.addEventListener("keydown", event => {
             if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
-                event.stopPropagation();
+                event.stopPropagation();   // don't trigger the wizard's Enter = Next
                 zone.click();
             }
         });
@@ -252,23 +323,25 @@
             if (event.dataTransfer.files.length) addFiles(event.dataTransfer.files);
         });
 
-        grid.querySelectorAll(".is-saved img").forEach(img => {
-            img.addEventListener("click", () => openLightbox(img.src, img.alt));
+        grid.querySelectorAll(".is-saved img, .is-saved video").forEach(media => {
+            const kind = media.tagName === "VIDEO" ? "video" : "image";
+            media.addEventListener("click", () => openLightbox(media.src, media.alt, kind));
         });
 
         lightbox.querySelector(".photo-lightbox-close").addEventListener("click", () => lightbox.close());
         lightbox.addEventListener("click", event => {
             if (event.target === lightbox) lightbox.close();
         });
+        lightbox.addEventListener("close", () => { if (lightboxVideo) lightboxVideo.pause(); });
 
-        // Clear stored photos once the form is really submitted
-        document.addEventListener("wizard:clear", () => clearPhotos(draftKey).catch(() => {}));
+        document.addEventListener("wizard:clear", () => clearDraftFiles(draftKey).catch(() => {}));
 
 
         // ---------- public API (used by review.js) ----------
 
         root.photoUpload = {
-            items: () => files.map(item => ({ url: item.url, name: item.file.name })),
+            items: () => [...ofKind("image"), ...ofKind("video")]
+                .map(item => ({ url: item.url, name: item.file.name, kind: item.kind })),
             open: openLightbox,
         };
 
@@ -278,12 +351,11 @@
         render();
 
         if (sessionStorage.getItem(draftKey)) {
-            loadPhotos(draftKey)
+            loadDraftFiles(draftKey)
                 .then(saved => { if (saved && saved.length) addFiles(saved); })
                 .catch(() => {});
         } else {
-            // New visit (no draft in this tab): don't bring back old photos
-            clearPhotos(draftKey).catch(() => {});
+            clearDraftFiles(draftKey).catch(() => {});
         }
     }
 

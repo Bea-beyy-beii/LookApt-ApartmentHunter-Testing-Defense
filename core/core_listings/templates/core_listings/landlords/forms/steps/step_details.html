@@ -75,10 +75,11 @@
         <p class="field-hint">Select what your property offers.</p>
 
         <div class="check-grid">
-            {% for field in form.feature_fields %}
-                <label class="check-option" data-check-feature>
-                    {{ field }}
-                    <span>{{ field.label }}</span>
+            {% for item in form.feature_fields %}
+                <label class="check-option check-tile" data-check-feature>
+                    {{ item.field }}
+                    <span class="check-tile-icon">{{ item.icon }}</span>
+                    <span class="check-tile-label" data-feature-label>{{ item.field.label }}</span>
                 </label>
             {% endfor %}
         </div>

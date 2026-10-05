@@ -907,3 +907,51 @@
         text-align: center;
     }
 }
+
+/* ---------- Checkbox tiles (icon + label) ---------- */
+
+.check-grid {
+    gap: 12px;
+}
+
+.check-tile {
+    gap: 14px !important;
+
+    min-height: 54px;
+    padding: 10px 16px;
+
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    background: var(--white);
+
+    transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.check-tile:hover {
+    border-color: #c9b28d;
+}
+
+.check-tile:has(input:checked) {
+    border-color: var(--navy);
+    background: #f3f6fb;
+    box-shadow: inset 0 0 0 1px var(--navy);
+}
+
+.check-tile:has(input:focus-visible) {
+    outline: 3px solid rgba(32, 58, 104, 0.2);
+    outline-offset: 2px;
+}
+
+/* Beat the old ".form-group label span { color: red }" rule */
+.form-group .check-tile .check-tile-icon {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+
+    color: var(--navy);
+}
+
+.form-group .check-tile .check-tile-label {
+    color: var(--text-primary);
+    font-size: 14px;
+}

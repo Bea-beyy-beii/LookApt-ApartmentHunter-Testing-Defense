@@ -20,7 +20,6 @@
         <div class="form-group">
             <label for="{{ form.floor.id_for_label }}">Floor <small class="optional">(Optional)</small></label>
             {{ form.floor }}
-            <small class="field-hint">Up to floor {{ complex.num_of_floors }}</small>
             {% if form.floor.errors %}<div class="field-error">{{ form.floor.errors }}</div>{% endif %}
         </div>
 
@@ -162,10 +161,11 @@
         <p class="field-hint">Select the features available in this unit.</p>
 
         <div class="check-grid">
-            {% for field in form.amenity_fields %}
-                <label class="check-option" data-check-feature>
-                    {{ field }}
-                    <span>{{ field.label }}</span>
+            {% for item in form.amenity_fields %}
+                <label class="check-option check-tile" data-check-feature>
+                    {{ item.field }}
+                    <span class="check-tile-icon">{{ item.icon }}</span>
+                    <span class="check-tile-label" data-feature-label>{{ item.field.label }}</span>
                 </label>
             {% endfor %}
         </div>

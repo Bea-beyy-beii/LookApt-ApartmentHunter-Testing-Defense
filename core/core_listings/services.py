@@ -9,7 +9,7 @@ def get_listings_context(user):
     properties = (
         Complex.objects
         .filter(landlord=landlord)
-        .prefetch_related("pictures", "units")   # avoids one query per card
+        .prefetch_related("pictures", "units", "units__pictures", "units__videos")
         .order_by("-created_at")
     )
 

@@ -76,7 +76,7 @@
                         </svg>
                     </span>
                     <div>
-                        <strong>{{ total }}</strong>
+                        <strong data-stat="total">{{ total }}</strong>
                         <small>Units</small>
                     </div>
                 </div>
@@ -88,7 +88,7 @@
                         </svg>
                     </span>
                     <div>
-                        <strong>{{ available }}</strong>
+                        <strong data-stat="available">{{ available }}</strong>
                         <small>Available</small>
                     </div>
                 </div>
@@ -100,7 +100,7 @@
                         </svg>
                     </span>
                     <div>
-                        <strong>{{ occupied }}</strong>
+                        <strong data-stat="occupied">{{ occupied }}</strong>
                         <small>Occupied</small>
                     </div>
                 </div>
@@ -202,7 +202,7 @@
 
         <div class="property-units-header">
 
-            <h3>Units ({{ total }})</h3>
+            <h3>Units (<span data-stat="total">{{ total }}</span>)</h3>
 
             <div class="unit-controls">
 
@@ -216,36 +216,34 @@
 
                     <div class="unit-filters">
                         <button type="button" class="unit-filter active" data-unit-filter="all">
-                            All <span>{{ total }}</span>
+                            All <span data-stat="total">{{ total }}</span>
                         </button>
                         <button type="button" class="unit-filter" data-unit-filter="available">
-                            <span class="status-dot status-dot--active"></span> Available <span>{{ available }}</span>
+                            <span class="status-dot status-dot--active"></span> Available <span data-stat="available">{{ available }}</span>
                         </button>
                         <button type="button" class="unit-filter" data-unit-filter="occupied">
-                            <span class="status-dot status-dot--occupied"></span> Occupied <span>{{ occupied }}</span>
+                            <span class="status-dot status-dot--occupied"></span> Occupied <span data-stat="occupied">{{ occupied }}</span>
+                        </button>
+                        <button type="button" class="unit-filter" data-unit-filter="unpublished">
+                            <span class="status-dot status-dot--pending"></span> Unpublished <span data-stat="unpublished">{{ property.unpublished_units }}</span>
                         </button>
                     </div>
                 {% endif %}
 
-                <a href="{% url 'core_listings:unit_create' property.pk %}" class="add-unit-btn">
-                    ＋ Add Unit
-                </a>
+                <a href="{% url 'core_listings:unit_create' property.pk %}" class="add-unit-btn">＋ Add Unit</a>
 
             </div>
 
         </div>
 
-
         {% if total %}
-
             <div class="units-list">
                 {% for unit in property.units.all %}
                     {% include "core_listings/shared/unit_card.html" with unit=unit %}
                 {% endfor %}
+                <p class="units-filter-empty" hidden>No units match this filter.</p>
             </div>
-
         {% else %}
-
             <div class="units-empty">
                 <span class="units-empty-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
@@ -255,7 +253,6 @@
                 <strong>No units yet</strong>
                 <p>Add your first unit so renters can see what's available in {{ property.complex_name }}.</p>
             </div>
-
         {% endif %}
 
     </section>
