@@ -1,6 +1,6 @@
 {% load static %}
 
-<div class="property-form-view">
+<div class="property-wizard-form wizard-form">
 
     <!-- Breadcrumb -->
     <div class="breadcrumb">
@@ -57,7 +57,7 @@
         <div class="wizard-content">
             <div class="wizard-step-panel" data-step="1">{% include "core_listings/landlords/forms/steps/step_details.html" %}</div>
             <div class="wizard-step-panel" data-step="2" hidden>{% include "core_listings/landlords/forms/steps/step_location.html" %}</div>
-            <div class="wizard-step-panel" data-step="3" hidden>{% include "core_listings/landlords/forms/steps/step_photos.html" %}</div>
+            <div class="wizard-step-panel" data-step="3" hidden>{% include "core_listings/landlords/forms/steps/step_photos.html" with max_photos=5 saved_pictures=property.pictures.all photo_subject="property" %}</div>
             <div class="wizard-step-panel" data-step="4" hidden>{% include "core_listings/landlords/forms/steps/step_review.html" %}</div>
         </div>
 

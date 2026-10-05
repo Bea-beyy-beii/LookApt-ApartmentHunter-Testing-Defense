@@ -12,6 +12,10 @@ function showListingsList() {
     document.getElementById('listings-list-view').hidden = false;
 }
 
+function totalSteps() {
+    return document.querySelectorAll('.wizard-step-panel').length || 1;
+}
+
 
 // =========================================================
 // WIZARD
@@ -34,11 +38,12 @@ function wizardNext() {
         }
     }
 
-    if (currentStep === 2 && !hasPinnedLocation()) {
+    // Only the property wizard's location step has a map pin
+    if (panel.querySelector('[name="latitude"]') && !hasPinnedLocation()) {
         return;
     }
 
-    if (currentStep < 4) {
+    if (currentStep < totalSteps()) {
         goToStep(currentStep + 1);
     }
 }
@@ -88,7 +93,7 @@ function goToStep(step) {
 // ---------------------------------------------------------
 
 function hasPinnedLocation() {
-    const form = document.querySelector('.property-wizard-form');
+    const form = document.querySelector('.wizard-form');
     const lat = form && form.querySelector('[name="latitude"]');
     const lng = form && form.querySelector('[name="longitude"]');
     const note = document.getElementById('location-required-note');
@@ -114,8 +119,8 @@ function updateWizardButtons() {
     }
 
     backButton.hidden = currentStep === 1;
-    nextButton.hidden = currentStep === 4;
-    submitGroup.hidden = currentStep !== 4;
+    nextButton.hidden = currentStep === totalSteps();
+    submitGroup.hidden = currentStep !== totalSteps();
 }
 
 
@@ -137,13 +142,16 @@ function updateStepIndicator(step) {
 // ---------------------------------------------------------
 
 document.addEventListener('DOMContentLoaded', function () {
-    goToStep(1);
 
-    const form = document.querySelector('.property-wizard-form');
+    // After a failed submit, open the first step that has an error
+    const firstError = document.querySelector('.wizard-step-panel .field-error');
+    goToStep(firstError ? Number(firstError.closest('.wizard-step-panel').dataset.step) : 1);
+
+    const form = document.querySelector('.wizard-form');
     if (!form) return;
 
     form.addEventListener('keydown', function (e) {
-        if (e.key !== 'Enter' || currentStep >= 4) return;
+        if (e.key !== 'Enter' || currentStep >= totalSteps()) return;
         if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'BUTTON') return;
 
         e.preventDefault();

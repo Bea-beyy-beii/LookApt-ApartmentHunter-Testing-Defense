@@ -8,7 +8,7 @@
     const peso = new Intl.NumberFormat("en-PH", { maximumFractionDigits: 0 });
 
     function getForm() {
-        return document.querySelector(".property-wizard-form");
+        return document.querySelector(".wizard-form");
     }
 
     function fieldText(form, name) {
@@ -62,8 +62,28 @@
         const form = getForm();
         if (!form) return;
 
-        form.querySelectorAll("[data-review]").forEach(el => {
-            el.textContent = fieldText(form, el.dataset.review) || "—";
+                form.querySelectorAll("[data-review]").forEach(el => {
+            const value = fieldText(form, el.dataset.review);
+            el.textContent = value
+                ? `${el.dataset.prefix || ""}${value}${el.dataset.suffix || ""}`
+                : "—";
+        });
+
+        // Checked feature/amenity checkboxes → chips
+        form.querySelectorAll("[data-review-features]").forEach(box => {
+            const labels = [...form.querySelectorAll("[data-check-feature] input:checked")]
+                .map(input => input.closest("[data-check-feature]").querySelector("span").textContent.trim());
+
+            if (!labels.length) {
+                box.textContent = "—";
+                return;
+            }
+            box.replaceChildren(...labels.map(text => {
+                const chip = document.createElement("span");
+                chip.className = "review-chip";
+                chip.textContent = `✓ ${text}`;
+                return chip;
+            }));
         });
 
         form.querySelectorAll("[data-review-bool]").forEach(el => {
@@ -84,11 +104,11 @@
 
     // Refresh when entering step 4, and when photos change while on it
     document.addEventListener("wizard:step", event => {
-        if (event.detail.step === 4) fillReview();
+        if (event.detail.step === totalSteps()) fillReview();
     });
 
     document.addEventListener("photos:change", () => {
-        if (typeof currentStep !== "undefined" && currentStep === 4) fillReview();
+        if (typeof currentStep !== "undefined" && currentStep === totalSteps()) fillReview();
     });
 
 })();

@@ -1,0 +1,64 @@
+<section class="wizard-step-content review-step">
+
+    <div class="section-heading">
+        <h2>Review Unit Information</h2>
+        <p>Please review the details below before adding this unit. You can go back to edit any section.</p>
+    </div>
+
+    <div class="review-grid">
+
+        <section class="review-card">
+
+            <header class="review-card-header">
+                <div><h3>Unit Details</h3></div>
+                <button type="button" class="review-edit-btn" onclick="goToStep(1)">✎ Edit</button>
+            </header>
+
+            <div class="review-details review-details--compact">
+                <div class="review-row"><span class="review-label">Unit Number</span><span class="review-value" data-review="identifier" data-prefix="Unit ">—</span></div>
+                <div class="review-row"><span class="review-label">Floor</span><span class="review-value" data-review="floor">—</span></div>
+                <div class="review-row"><span class="review-label">Unit Type</span><span class="review-value" data-review="bedroom_type">—</span></div>
+                <div class="review-row"><span class="review-label">Width</span><span class="review-value" data-review="width_dimension" data-suffix=" m">—</span></div>
+                <div class="review-row"><span class="review-label">Length</span><span class="review-value" data-review="length_dimension" data-suffix=" m">—</span></div>
+                <div class="review-row"><span class="review-label">Area</span><span class="review-value" data-review="area_display">—</span></div>
+                <div class="review-row"><span class="review-label">Max Occupants</span><span class="review-value" data-review="max_occupant">—</span></div>
+                <div class="review-row">
+                    <span class="review-label">Monthly Rent</span>
+                    <span class="review-value"><span data-review-price="price">₱ —</span> / month</span>
+                </div>
+                <div class="review-row">
+                    <span class="review-label">Advance</span>
+                    <span class="review-value" data-review="advance_months" data-suffix=" month(s)">—</span>
+                </div>
+                <div class="review-row">
+                    <span class="review-label">Deposit</span>
+                    <span class="review-value" data-review="deposit_months" data-suffix=" month(s)">—</span>
+                </div>
+                <div class="review-row">
+                    <span class="review-label">Due Upon Rental</span>
+                    <strong class="review-value" data-pay-total>₱0.00</strong>
+                </div>
+                <div class="review-row"><span class="review-label">Furnishing</span><span class="review-value" data-review="furnish_level">—</span></div>
+                <div class="review-row"><span class="review-label">Amenities</span><span class="review-chips" data-review-features>—</span></div>
+                <div class="review-row"><span class="review-label">Additional Notes</span><span class="review-value review-description" data-review="unit_description">—</span></div>
+            </div>
+
+        </section>
+
+        <section class="review-card review-photos">
+
+            <header class="review-card-header">
+                <div>
+                    <h3>Unit Photos</h3>
+                    <p data-review-photo-count>No photos uploaded yet.</p>
+                </div>
+                <button type="button" class="review-edit-btn" onclick="goToStep(2)">Edit</button>
+            </header>
+
+            <div class="review-photo-strip review-photo-strip--grid" data-review-photos></div>
+
+        </section>
+
+    </div>
+
+</section>

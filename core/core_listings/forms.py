@@ -1,9 +1,10 @@
 # core_listings/forms.py
 import json
 from django import forms
-from .models import Complex
+from .models import Complex, Unit
 import os
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxLengthValidator
 
 
 MAX_COMPLEX_PHOTOS = 5
@@ -30,6 +31,31 @@ class MultipleImageField(forms.ImageField):
         return [single_clean(data, initial)] if data else []
 
 
+
+
+
+
+MAX_UNIT_PHOTOS = 10
+
+def validate_photo_uploads(photos, existing_count, max_count):
+    """Shared by ComplexForm and UnitForm."""
+    if existing_count + len(photos) > max_count:
+        raise ValidationError(
+            f"You can upload up to {max_count} photos ({existing_count} already saved)."
+        )
+    for photo in photos:
+        extension = os.path.splitext(photo.name)[1].lower()
+        detected = getattr(getattr(photo, "image", None), "format", None)
+        if extension not in ALLOWED_PHOTO_EXTENSIONS or detected not in ALLOWED_PHOTO_FORMATS:
+            raise ValidationError(f"{photo.name}: only PNG or JPG files are allowed.")
+        if photo.size > MAX_PHOTO_SIZE_MB * 1024 * 1024:
+            raise ValidationError(f"{photo.name} is larger than {MAX_PHOTO_SIZE_MB} MB.")
+    return photos
+
+
+
+
+
 class ComplexForm(forms.ModelForm):
 
     # Filled by the map picker (core_maps) in step 2
@@ -49,24 +75,17 @@ class ComplexForm(forms.ModelForm):
     def clean_photos(self):
         photos = self.cleaned_data.get("photos") or []
         existing = self.instance.pictures.count() if self.instance.pk else 0
+        return validate_photo_uploads(photos, existing, MAX_COMPLEX_PHOTOS)
 
-        if existing + len(photos) > MAX_COMPLEX_PHOTOS:
-            raise ValidationError(
-                f"You can upload up to {MAX_COMPLEX_PHOTOS} photos "
-                f"({existing} already saved)."
-            )
+    
+    
+    FEATURE_FIELDS = ["pet_friendly", "has_parking_space", "is_gated", "has_laundry_area"]
 
-        for photo in photos:
-            extension = os.path.splitext(photo.name)[1].lower()
-            detected = getattr(getattr(photo, "image", None), "format", None)
+    def feature_fields(self):
+        return [self[name] for name in self.FEATURE_FIELDS]
 
-            if extension not in ALLOWED_PHOTO_EXTENSIONS or detected not in ALLOWED_PHOTO_FORMATS:
-                raise ValidationError(f"{photo.name}: only PNG or JPG files are allowed.")
 
-            if photo.size > MAX_PHOTO_SIZE_MB * 1024 * 1024:
-                raise ValidationError(f"{photo.name} is larger than {MAX_PHOTO_SIZE_MB} MB.")
-
-        return photos
+    
 
     class Meta:
         model = Complex
@@ -83,6 +102,11 @@ class ComplexForm(forms.ModelForm):
             "has_parking_space",
             "min_price",
             "max_price",
+            "num_of_floors",
+            "advance_months",
+            "deposit_months",
+            "is_gated",
+            "has_laundry_area",
         ]
 
         widgets = {
@@ -132,6 +156,22 @@ class ComplexForm(forms.ModelForm):
                     "step": "0.01"
                 }
             ),
+
+            "num_of_floors": forms.NumberInput(attrs={"min": "1", "max": "100", "placeholder": "e.g. 3"}),
+
+            "advance_months": forms.NumberInput(attrs={"min": "0", "max": "12", "placeholder": "e.g. 1"}),
+           
+            "deposit_months": forms.NumberInput(attrs={"min": "0", "max": "12", "placeholder": "e.g. 2"}),
+        }
+
+        labels = {
+            "num_of_floors": "Number of Floors",
+            "pet_friendly": "Pet Friendly",
+            "has_parking_space": "Parking Space",
+            "is_gated": "Gated Complex",
+            "has_laundry_area": "Laundry Area",
+            "advance_months": "Advance Payment (months)",
+            "deposit_months": "Security Deposit (months)",
         }
 
     def __init__(self, *args, **kwargs):
@@ -158,3 +198,126 @@ class ComplexForm(forms.ModelForm):
         if min_price and max_price and min_price > max_price:
             self.add_error("max_price", "Max price must be greater than or equal to min price.")
         return cleaned
+
+
+    def _clean_months(self, name):
+        value = self.cleaned_data.get(name)
+        if value is not None and value > 12:
+            raise ValidationError("Maximum is 12 months.")
+        return value
+
+    def clean_advance_months(self):
+        return self._clean_months("advance_months")
+
+    def clean_deposit_months(self):
+        return self._clean_months("deposit_months")
+
+
+
+class UnitForm(forms.ModelForm):
+
+    photos = MultipleImageField(
+        required=False,
+        widget=MultipleFileInput(attrs={"accept": "image/png,image/jpeg", "hidden": True}),
+    )
+
+    class Meta:
+        model = Unit
+        fields = [
+            "identifier", "floor", "bedroom_type",
+            "width_dimension", "length_dimension",
+            "max_occupant", "furnish_level", "price",
+            *Unit.AMENITY_FIELDS,
+            "unit_description",
+        ]
+        labels = {
+            "identifier": "Unit Number",
+            "bedroom_type": "Unit Type",
+            "width_dimension": "Width (m)",
+            "length_dimension": "Length (m)",
+            "max_occupant": "Max Occupants",
+            "furnish_level": "Furnishing",
+            "price": "Monthly Rent",
+            "unit_description": "Additional Notes",
+        }
+        widgets = {
+            "identifier": forms.NumberInput(attrs={"min": "1", "placeholder": "101"}),
+            "floor": forms.NumberInput(attrs={"min": "1", "placeholder": "e.g. 1"}),
+            "width_dimension": forms.NumberInput(attrs={"min": "0.5", "step": "0.01", "placeholder": "0"}),
+            "length_dimension": forms.NumberInput(attrs={"min": "0.5", "step": "0.01", "placeholder": "0"}),
+            "max_occupant": forms.NumberInput(attrs={"min": "1", "placeholder": "e.g. 2"}),
+            "price": forms.NumberInput(attrs={"min": "1", "step": "0.01", "placeholder": "0"}),
+            "unit_description": forms.Textarea(attrs={
+                "rows": 3,
+                "maxlength": "600",
+                "placeholder": "e.g., special features, inclusions, or reminders for renters...",
+            }),
+        }
+
+    def __init__(self, *args, complex_obj, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.complex = complex_obj
+
+        # Browser-side limits (the clean_* methods below are the real check)
+        self.fields["floor"].widget.attrs["max"] = complex_obj.num_of_floors
+        self.fields["price"].widget.attrs["min"] = complex_obj.min_price
+        self.fields["price"].widget.attrs["max"] = complex_obj.max_price
+        self.fields["unit_description"].validators.append(MaxLengthValidator(600))
+
+    def amenity_fields(self):
+        return [self[name] for name in Unit.AMENITY_FIELDS]
+
+    # ---------- validation ----------
+
+    def clean_identifier(self):
+        identifier = self.cleaned_data["identifier"]
+        if identifier < 1:
+            raise ValidationError("Unit number must be at least 1.")
+
+        duplicates = Unit.objects.filter(complex=self.complex, identifier=identifier)
+        if self.instance.pk:
+            duplicates = duplicates.exclude(pk=self.instance.pk)
+        if duplicates.exists():
+            raise ValidationError(f"Unit {identifier} already exists in {self.complex.complex_name}.")
+        return identifier
+
+    def clean_floor(self):
+        floor = self.cleaned_data.get("floor")
+        if floor and floor > self.complex.num_of_floors:
+            raise ValidationError(
+                f"{self.complex.complex_name} only has {self.complex.num_of_floors} floor(s)."
+            )
+        return floor
+
+    def _clean_dimension(self, name):
+        value = self.cleaned_data.get(name)
+        if value is not None and value <= 0:
+            raise ValidationError("Must be greater than 0.")
+        return value
+
+    def clean_width_dimension(self):
+        return self._clean_dimension("width_dimension")
+
+    def clean_length_dimension(self):
+        return self._clean_dimension("length_dimension")
+
+    def clean_max_occupant(self):
+        value = self.cleaned_data.get("max_occupant")
+        if value is not None and value < 1:
+            raise ValidationError("At least 1 occupant.")
+        return value
+
+    def clean_price(self):
+        # Unit rent must be inside the complex's declared price range
+        price = self.cleaned_data.get("price")
+        low, high = self.complex.min_price, self.complex.max_price
+        if price is not None and not (low <= price <= high):
+            raise ValidationError(
+                f"Monthly rent must be within this complex's price range (₱{low:,.0f} – ₱{high:,.0f})."
+            )
+        return price
+
+    def clean_photos(self):
+        photos = self.cleaned_data.get("photos") or []
+        existing = self.instance.pictures.count() if self.instance.pk else 0
+        return validate_photo_uploads(photos, existing, MAX_UNIT_PHOTOS)

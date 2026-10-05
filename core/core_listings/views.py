@@ -1,5 +1,5 @@
 # core_listings/views.py
-from django.core.checks import messages
+from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
 
 from django.db import transaction
@@ -8,8 +8,8 @@ from django.urls import reverse
 from core.core_accounts.decorators import role_required
 from core.core_maps.maps.services import resolve_area, save_complex_landmarks
 
-from .models import Complex, ComplexPicture, Unit
-from .forms import ComplexForm
+from .models import Complex, ComplexPicture, Unit, UnitPicture
+from .forms import ComplexForm, UnitForm
 
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
@@ -245,3 +245,62 @@ def property_set_visibility(request, pk):
             "approval_status": property_obj.approval_status,
         })
     return redirect(_my_listings_url())
+
+
+
+
+def _save_pictures(picture_model, owner_field, owner, photos):
+    """Save uploaded photos in order; the first becomes cover if there isn't one yet."""
+    existing = picture_model.objects.filter(**{owner_field: owner})
+    has_cover = existing.filter(is_cover=True).exists()
+    start_position = existing.count()
+
+    for index, photo in enumerate(photos):
+        picture_model.objects.create(
+            **{owner_field: owner},
+            image=photo,
+            position=start_position + index,
+            is_cover=(not has_cover and index == 0),
+        )
+
+
+# ---------------------------------------------------------
+# UNITS
+# ---------------------------------------------------------
+
+@transaction.atomic
+def _save_unit(form, complex_obj):
+    unit = form.save(commit=False)
+    unit.complex = complex_obj
+    unit.save()
+    _save_pictures(UnitPicture, "unit", unit, form.cleaned_data.get("photos") or [])
+    return unit
+
+
+def _unit_form_page(request, complex_obj, unit=None):
+    if request.method == "POST":
+        form = UnitForm(request.POST, request.FILES, instance=unit, complex_obj=complex_obj)
+        if form.is_valid():
+            saved = _save_unit(form, complex_obj)
+            messages.success(request, f"Unit {saved.identifier} was saved.")
+            return redirect(_my_listings_url())
+    else:
+        form = UnitForm(instance=unit, complex_obj=complex_obj)
+
+    return render(request, "core_listings/landlords/forms/unit_form.html", {
+        "form": form,
+        "complex": complex_obj,
+        "unit": unit,
+    })
+
+
+@role_required("landlord")
+def unit_create(request, property_pk):
+    complex_obj = get_object_or_404(Complex, pk=property_pk, landlord__user=request.user)
+    return _unit_form_page(request, complex_obj)
+
+
+@role_required("landlord")
+def unit_edit(request, pk):
+    unit = get_object_or_404(Unit, pk=pk, complex__landlord__user=request.user)
+    return _unit_form_page(request, unit.complex, unit)

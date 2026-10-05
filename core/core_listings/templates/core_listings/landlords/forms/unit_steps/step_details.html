@@ -1,0 +1,185 @@
+<section class="wizard-step-content">
+
+    <div class="section-heading">
+        <h2>Unit Details</h2>
+        <p>Provide the basic information about this unit.</p>
+    </div>
+
+    <!-- Row 1: number / floor / type / occupants / furnishing -->
+    <div class="form-grid five-columns">
+
+        <div class="form-group">
+            <label for="{{ form.identifier.id_for_label }}">Unit Number <span>*</span></label>
+            <div class="affix-input">
+                <span class="affix affix--prefix">Unit</span>
+                {{ form.identifier }}
+            </div>
+            {% if form.identifier.errors %}<div class="field-error">{{ form.identifier.errors }}</div>{% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.floor.id_for_label }}">Floor <small class="optional">(Optional)</small></label>
+            {{ form.floor }}
+            <small class="field-hint">Up to floor {{ complex.num_of_floors }}</small>
+            {% if form.floor.errors %}<div class="field-error">{{ form.floor.errors }}</div>{% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.bedroom_type.id_for_label }}">Unit Type <span>*</span></label>
+            {{ form.bedroom_type }}
+            {% if form.bedroom_type.errors %}<div class="field-error">{{ form.bedroom_type.errors }}</div>{% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.max_occupant.id_for_label }}">Max Occupants <span>*</span></label>
+            {{ form.max_occupant }}
+            {% if form.max_occupant.errors %}<div class="field-error">{{ form.max_occupant.errors }}</div>{% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.furnish_level.id_for_label }}">Furnishing <span>*</span></label>
+            {{ form.furnish_level }}
+            {% if form.furnish_level.errors %}<div class="field-error">{{ form.furnish_level.errors }}</div>{% endif %}
+        </div>
+
+    </div>
+
+
+    <!-- Row 2: dimensions -->
+    <div class="form-group">
+        <label class="group-label">Dimensions (meters) <span>*</span></label>
+
+        <div class="dimension-row">
+
+            <div class="form-group">
+                <label class="sub-label" for="{{ form.width_dimension.id_for_label }}">Width (m)</label>
+                {{ form.width_dimension }}
+                {% if form.width_dimension.errors %}<div class="field-error">{{ form.width_dimension.errors }}</div>{% endif %}
+            </div>
+
+            <span class="dimension-symbol" aria-hidden="true">×</span>
+
+            <div class="form-group">
+                <label class="sub-label" for="{{ form.length_dimension.id_for_label }}">Length (m)</label>
+                {{ form.length_dimension }}
+                {% if form.length_dimension.errors %}<div class="field-error">{{ form.length_dimension.errors }}</div>{% endif %}
+            </div>
+
+            <span class="dimension-symbol" aria-hidden="true">→</span>
+
+            <div class="area-box" aria-live="polite">
+                <small>Area (sqm)</small>
+                <output name="area_display">— sqm</output>
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- Row 3: pricing -->
+    <section class="pricing-card">
+
+        <h3 class="pricing-title">Pricing</h3>
+
+        <div class="form-grid three-columns">
+
+            <div class="form-group">
+                <label for="{{ form.price.id_for_label }}">Monthly Rent <span>*</span></label>
+                <div class="affix-input">
+                    <span class="affix affix--prefix">₱</span>
+                    {{ form.price }}
+                </div>
+                <small class="field-hint">
+                    Within ₱{{ complex.min_price|floatformat:"0g" }} – ₱{{ complex.max_price|floatformat:"0g" }}
+                </small>
+                {% if form.price.errors %}<div class="field-error">{{ form.price.errors }}</div>{% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.advance_months.id_for_label }}">Advance Payment (months) <span>*</span></label>
+                {{ form.advance_months }}
+                <small class="field-hint">e.g., 1 month advance</small>
+                {% if form.advance_months.errors %}<div class="field-error">{{ form.advance_months.errors }}</div>{% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.deposit_months.id_for_label }}">Security Deposit (months) <span>*</span></label>
+                {{ form.deposit_months }}
+                <small class="field-hint">e.g., 2 months deposit</small>
+                {% if form.deposit_months.errors %}<div class="field-error">{{ form.deposit_months.errors }}</div>{% endif %}
+            </div>
+
+        </div>
+
+
+        <!-- Payment upon rental (calculated by unit_form.js) -->
+        <div class="payment-summary">
+
+            <div class="payment-summary-text">
+                <h4>Payment upon rental</h4>
+                <p>Total amount the renter will pay upon signing the contract.</p>
+            </div>
+
+            <div class="payment-calc">
+
+                <div class="payment-box">
+                    <small>Advance Payment</small>
+                    <strong data-pay-advance>₱0.00</strong>
+                    <span>× <span data-pay-advance-months>0 months</span></span>
+                </div>
+
+                <span class="payment-op" aria-hidden="true">+</span>
+
+                <div class="payment-box">
+                    <small>Security Deposit</small>
+                    <strong data-pay-deposit>₱0.00</strong>
+                    <span>× <span data-pay-deposit-months>0 months</span></span>
+                </div>
+
+                <span class="payment-op" aria-hidden="true">=</span>
+
+                <div class="payment-box payment-box--total">
+                    <small>Total Due Upon Rental</small>
+                    <strong data-pay-total>₱0.00</strong>
+                </div>
+
+            </div>
+
+            <p class="payment-note">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>
+                </svg>
+                <span>Monthly rent is <strong>not included</strong> in the amount due upon rental. Monthly rent is charged for succeeding months.</span>
+            </p>
+
+        </div>
+
+    </section>
+
+    <!-- Amenities -->
+    <div class="form-group">
+        <label class="group-label">Amenities / Features</label>
+        <p class="field-hint">Select the features available in this unit.</p>
+
+        <div class="check-grid">
+            {% for field in form.amenity_fields %}
+                <label class="check-option" data-check-feature>
+                    {{ field }}
+                    <span>{{ field.label }}</span>
+                </label>
+            {% endfor %}
+        </div>
+    </div>
+
+
+    <!-- Notes -->
+    <div class="form-group">
+        <label for="{{ form.unit_description.id_for_label }}">Additional Notes <small class="optional">(Optional)</small></label>
+        <div class="textarea-wrap">
+            {{ form.unit_description }}
+            <span class="char-count" data-char-count>0/600</span>
+        </div>
+        {% if form.unit_description.errors %}<div class="field-error">{{ form.unit_description.errors }}</div>{% endif %}
+    </div>
+
+</section>

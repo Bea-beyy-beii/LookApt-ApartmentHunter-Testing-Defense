@@ -1,252 +1,73 @@
 {% extends "core_landlords/base.html" %}
 {% load static %}
 
-{% block title %}
-    {% if unit %}
-        Edit Unit
-    {% else %}
-        Add Unit
-    {% endif %}
-    | LookApt
-{% endblock %}
-
-
-{% block extra_css %}
-<link rel="stylesheet" href="{% static 'core_listings/unit_form.css' %}">
-{% endblock %}
-
+{% block title %}LookApt — {% if unit %}Edit Unit{% else %}Add Unit{% endif %}{% endblock %}
 
 {% block content %}
 
-<div class="unit-form-page">
+<div class="property-form-view unit-form-view">
 
     <!-- Breadcrumb -->
-    <div class="breadcrumb">
-
-        <a href="{% url 'core_listings:listings' %}">
-            My Listings
-        </a>
-
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="{% url 'core_landlords:dashboard' %}?tab=myListings">My Listings</a>
         <span>›</span>
-
-        <a href="{% url 'core_listings:property_detail' property.pk %}">
-            {{ property.name }}
-        </a>
-
+        <a href="{% url 'core_landlords:dashboard' %}?tab=myListings">{{ complex.complex_name }}</a>
         <span>›</span>
+        <span>Units</span>
+        <span>›</span>
+        <strong>{% if unit %}Edit Unit {{ unit.identifier }}{% else %}Add Unit{% endif %}</strong>
+    </nav>
 
-        <span>
-            {% if unit %}
-                Edit Unit
-            {% else %}
-                Add Unit
-            {% endif %}
-        </span>
-
-    </div>
-
-
-    <!-- Header -->
-    <div class="form-page-header">
-
-        <h1>
-            {% if unit %}
-                Edit Unit
-            {% else %}
-                Add Unit
-            {% endif %}
-        </h1>
-
-        <p>
-            Add the details for this rental unit.
-        </p>
-
-    </div>
-
+    <!-- Steps -->
+    <nav class="wizard-steps wizard-steps--three">
+        <div class="wizard-step active"><span class="step-circle">1</span><span>Unit Details</span></div>
+        <div class="wizard-step"><span class="step-circle">2</span><span>Photos</span></div>
+        <div class="wizard-step"><span class="step-circle">3</span><span>Review</span></div>
+    </nav>
 
     <form method="post"
           enctype="multipart/form-data"
-          class="unit-form">
+          action="{% if unit %}{% url 'core_listings:unit_edit' unit.pk %}{% else %}{% url 'core_listings:unit_create' complex.pk %}{% endif %}"
+          class="unit-wizard-form wizard-form">
 
         {% csrf_token %}
 
-
         {% if form.non_field_errors %}
-
-            <div class="form-errors">
-                {{ form.non_field_errors }}
-            </div>
-
+            <div class="form-errors">{{ form.non_field_errors }}</div>
         {% endif %}
 
-
-        <!-- Basic Information -->
-        <section class="form-section">
-
-            <div class="section-heading">
-
-                <h2>Unit Information</h2>
-
-                <p>
-                    Provide the basic details for this unit.
-                </p>
-
+        <div class="wizard-content">
+            <div class="wizard-step-panel" data-step="1">
+                {% include "core_listings/landlords/forms/unit_steps/step_details.html" %}
             </div>
-
-
-            <div class="form-grid two-columns">
-
-                <div class="form-group">
-
-                    <label for="{{ form.unit_number.id_for_label }}">
-                        Unit Number
-                    </label>
-
-                    {{ form.unit_number }}
-
-                </div>
-
-
-                <div class="form-group">
-
-                    <label for="{{ form.area_sqm.id_for_label }}">
-                        Area (sqm)
-                    </label>
-
-                    {{ form.area_sqm }}
-
-                </div>
-
-
-                <div class="form-group">
-
-                    <label for="{{ form.bedrooms.id_for_label }}">
-                        Bedrooms
-                    </label>
-
-                    {{ form.bedrooms }}
-
-                </div>
-
-
-                <div class="form-group">
-
-                    <label for="{{ form.price.id_for_label }}">
-                        Monthly Price
-                    </label>
-
-                    <div class="price-input">
-                        <span>₱</span>
-                        {{ form.price }}
-                    </div>
-
-                </div>
-
+            <div class="wizard-step-panel" data-step="2" hidden>
+                {% include "core_listings/landlords/forms/steps/step_photos.html" with max_photos=10 saved_pictures=unit.pictures.all photo_subject="unit" %}
             </div>
-
-
-            <!-- Furnished -->
-            <div class="form-group">
-
-                <label>Furnished</label>
-
-                <label class="toggle-switch">
-
-                    {{ form.furnished }}
-
-                    <span class="toggle-slider"></span>
-
-                    <span class="toggle-label">
-                        Yes
-                    </span>
-
-                </label>
-
+            <div class="wizard-step-panel" data-step="3" hidden>
+                {% include "core_listings/landlords/forms/unit_steps/step_review.html" %}
             </div>
+        </div>
 
+        <div class="wizard-actions">
+            <button type="button" class="btn btn-secondary wizard-back" onclick="wizardBack()">← Back</button>
+            <button type="button" class="btn btn-primary wizard-next" onclick="wizardNext()">Next →</button>
 
-            <!-- Description -->
-            <div class="form-group">
-
-                <label for="{{ form.description.id_for_label }}">
-                    Description
-                </label>
-
-                {{ form.description }}
-
+            <div class="wizard-submit-group" hidden>
+                <button type="submit" class="btn btn-primary wizard-submit">
+                    {% if unit %}Save Changes{% else %}Add Unit{% endif %}
+                </button>
             </div>
-
-        </section>
-
-
-        <!-- Photos -->
-        <section class="form-section">
-
-            <div class="section-heading">
-
-                <h2>Unit Photos</h2>
-
-                <p>
-                    Upload photos of the unit.
-                </p>
-
-            </div>
-
-
-            <input type="file"
-                   name="photos"
-                   accept="image/jpeg,image/png,image/webp"
-                   multiple>
-
-
-            {% if unit %}
-
-                <div class="existing-unit-photos">
-
-                    {% for photo in unit.pictures.all %}
-
-                        <div class="existing-photo">
-
-                            <img src="{{ photo.image.url }}"
-                                 alt="{{ unit.unit_number }}">
-
-                        </div>
-
-                    {% endfor %}
-
-                </div>
-
-            {% endif %}
-
-        </section>
-
-
-        <!-- Actions -->
-        <div class="form-actions">
-
-            <a href="{% url 'core_listings:property_detail' property.pk %}"
-               class="btn btn-secondary">
-
-                Cancel
-
-            </a>
-
-
-            <button type="submit"
-                    class="btn btn-primary">
-
-                {% if unit %}
-                    Save Changes
-                {% else %}
-                    Add Unit
-                {% endif %}
-
-            </button>
-
         </div>
 
     </form>
 
 </div>
 
+{# Loaded here (not in extra_js) so it runs before wizard_draft.js restores the draft #}
+<script src="{% static 'core_listings/js/listings.js' %}"></script>
+
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'core_listings/js/unit_form.js' %}"></script>
 {% endblock %}

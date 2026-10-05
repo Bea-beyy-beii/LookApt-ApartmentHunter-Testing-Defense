@@ -1,8 +1,9 @@
 # core_listings/models.py
 import uuid
 from django.db import models
-from django.core.validators import MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models import Q
+from decimal import Decimal
 
 
 class SexRestriction(models.TextChoices):
@@ -68,10 +69,19 @@ class Complex(models.Model):
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     complex_description = models.TextField()
-    pet_friendly = models.BooleanField(default=False)
+
     sex_restriction = models.CharField(max_length=12, choices=SexRestriction.choices, default=SexRestriction.NO_RESTRICTION)
-    has_parking_space = models.BooleanField(default=False)
     lease_term = models.CharField(max_length=10, choices=LeaseTerm.choices, default=LeaseTerm.MONTHLY)
+
+    num_of_floors = models.PositiveSmallIntegerField(
+        default=1, validators=[MinValueValidator(1), MaxValueValidator(100)]
+    )
+
+    pet_friendly = models.BooleanField(default=False)
+    has_parking_space = models.BooleanField(default=False)
+    is_gated = models.BooleanField(default=False)
+    has_laundry_area = models.BooleanField(default=False)
+
     min_price = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(1)])
     max_price = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(1)])
 
@@ -115,6 +125,12 @@ class Unit(models.Model):
         OCCUPIED = "occupied", "Occupied"
         UNPUBLISHED = "unpublished", "Unpublished"
 
+    # Amenity checkboxes shown in the unit form (order = display order)
+    AMENITY_FIELDS = [
+        "air_conditioned", "wifi_ready", "own_bathroom", "has_kitchen_area",
+        "has_balcony", "has_window_view", "own_electric_meter", "has_water_heater",
+    ]
+
 
     unit_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     complex = models.ForeignKey(Complex, on_delete=models.CASCADE, related_name="units")
@@ -124,9 +140,22 @@ class Unit(models.Model):
     bedroom_type = models.CharField(max_length=12, choices=BedroomType.choices)
     length_dimension = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
     width_dimension = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
-    air_conditioned = models.BooleanField(default=False)
+    unit_area = models.DecimalField(max_digits=8, decimal_places=2, default=0, editable=False)  # Stored so renters can filter by size; always calculated in save(), never typed in
     furnish_level = models.CharField(max_length=15, choices=FurnishLevel.choices)
     max_occupant = models.PositiveSmallIntegerField()
+
+    floor = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1)])
+
+    # Amenities / features
+    air_conditioned = models.BooleanField("Air Conditioned", default=False)  
+    wifi_ready = models.BooleanField("Wi-Fi Ready", default=False)
+    own_bathroom = models.BooleanField("Own Bathroom", default=False)
+    has_kitchen_area = models.BooleanField("Kitchen Area", default=False)
+    has_balcony = models.BooleanField("With Balcony", default=False)
+    has_window_view = models.BooleanField("With Window View", default=False)
+    own_electric_meter = models.BooleanField("Own Electric Meter", default=False)
+    has_water_heater = models.BooleanField("Hot Shower / Water Heater", default=False)
+
     unit_description = models.TextField(blank=True)
 
     # pricing: price is always the MONTHLY rent; lease_term is the commitment length
@@ -150,6 +179,12 @@ class Unit(models.Model):
     @property
     def unit_name(self):
             return f"Unit {self.identifier}"
+
+
+    def save(self, *args, **kwargs):
+        if self.width_dimension is not None and self.length_dimension is not None:
+            self.unit_area = (self.width_dimension * self.length_dimension).quantize(Decimal("0.01"))
+        super().save(*args, **kwargs)
 
 
 

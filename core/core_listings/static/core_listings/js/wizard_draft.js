@@ -9,7 +9,7 @@
     const SKIP = new Set(["csrfmiddlewaretoken", "photos"]);
 
     document.addEventListener("DOMContentLoaded", () => {
-        const form = document.querySelector(".property-wizard-form");
+        const form = document.querySelector(".wizard-form");
         if (!form) return;
 
         const key = "lookapt:wizard:" + form.getAttribute("action");
@@ -93,6 +93,11 @@
             }
             goToStep(draft.step || 1);
             restoreMap(draft);
+
+                        if (draft.formOpen && document.getElementById("listings-form-view")
+                && typeof showPropertyForm === "function") {
+                showPropertyForm();
+            }
         }
 
 

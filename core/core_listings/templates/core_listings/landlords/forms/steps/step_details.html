@@ -47,71 +47,41 @@
     </div>
 
 
-    <!-- Row -->
-    <div class="form-grid four-columns">
+    <!-- Lease / Sex / Floors -->
+    <div class="form-grid three-columns">
 
-        <!-- Lease Term -->
         <div class="form-group">
-
-            <label for="{{ form.lease_term.id_for_label }}">
-                Lease Term
-            </label>
-
+            <label for="{{ form.lease_term.id_for_label }}">Lease Term</label>
             {{ form.lease_term }}
-
         </div>
 
-
-        <!-- Sex Restriction -->
         <div class="form-group">
-
-            <label for="{{ form.sex_restriction.id_for_label }}">
-                Sex Restriction
-            </label>
-
+            <label for="{{ form.sex_restriction.id_for_label }}">Sex Restriction</label>
             {{ form.sex_restriction }}
-
         </div>
 
-
-        <!-- Pet Friendly -->
         <div class="form-group">
-
-            <label>Pet Friendly</label>
-
-            <label class="toggle-switch">
-
-                {{ form.pet_friendly }}
-
-                <span class="toggle-slider"></span>
-
-                <span class="toggle-label">
-                    Yes
-                </span>
-
-            </label>
-
+            <label for="{{ form.num_of_floors.id_for_label }}">Number of Floors <span>*</span></label>
+            {{ form.num_of_floors }}
+            {% if form.num_of_floors.errors %}<div class="field-error">{{ form.num_of_floors.errors }}</div>{% endif %}
         </div>
 
-        <!-- Has Parking Space -->
-        <div class="form-group">
+    </div>
 
-            <label>Has Parking Space</label>
 
-            <label class="toggle-switch">
+    <!-- Features -->
+    <div class="form-group">
+        <label class="group-label">Property Features</label>
+        <p class="field-hint">Select what your property offers.</p>
 
-                {{ form.has_parking_space }}
-
-                <span class="toggle-slider"></span>
-
-                <span class="toggle-label">
-                    Yes
-                </span>
-
-            </label>
-
+        <div class="check-grid">
+            {% for field in form.feature_fields %}
+                <label class="check-option" data-check-feature>
+                    {{ field }}
+                    <span>{{ field.label }}</span>
+                </label>
+            {% endfor %}
         </div>
-
     </div>
 
 

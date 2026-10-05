@@ -2,17 +2,17 @@
 
     <div class="section-heading">
         <h2>Property Photos</h2>
-        <p>
-            Upload up to 5 photos of the property.
-            Clear, well-lit photos attract more renters.
-        </p>
+            <p>
+                Upload up to {{ max_photos|default:5 }} photos of this {{ photo_subject|default:"property" }}.
+                Clear, well-lit photos attract more renters.
+            </p>
     </div>
 
 
-    <div class="photo-upload"
+        <div class="photo-upload"
          data-photo-upload
-         data-max="5"
-         data-existing="{% if property %}{{ property.pictures.count }}{% else %}0{% endif %}">
+         data-max="{{ max_photos|default:5 }}"
+         data-existing="{{ saved_pictures|length }}">
 
         <!-- LEFT: drop zone -->
         <div class="photo-upload-left">
@@ -58,7 +58,7 @@
             <div class="photo-preview-grid">
                 {# Photos already saved (edit mode). JS adds the new ones after these. #}
                 {% if property %}
-                    {% for picture in property.pictures.all %}
+                    {% for picture in saved_pictures %}
                         <div class="photo-tile is-saved">
                             <img src="{{ picture.image.url }}" alt="Saved photo {{ forloop.counter }}">
                             {% if picture.is_cover %}<span class="photo-cover-badge">Cover</span>{% endif %}

@@ -278,3 +278,38 @@
         border-left: 0;
     }
 }
+
+/* ---------- Feature chips ---------- */
+
+.review-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.review-chip {
+    padding: 4px 10px;
+
+    border-radius: var(--radius-pill);
+    background: #e4e9f2;
+    color: var(--navy);
+
+    font-size: 12px;
+    font-weight: 600;
+}
+
+
+/* ---------- Unit review: compact rows + photo grid ---------- */
+
+.review-details--compact .review-row {
+    grid-template-columns: 130px minmax(0, 1fr);
+    padding: 9px 0;
+}
+
+.review-photo-strip--grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.review-photo-strip--grid .review-photo {
+    aspect-ratio: 4 / 5;
+}
