@@ -3,20 +3,21 @@
 
 {% block title %}LookApt — {% if unit %}Edit Unit{% else %}Add Unit{% endif %}{% endblock %}
 
+{% block breadcrumbs %}
+    <li class="crumb">
+        <a class="crumb-link" href="{% url 'core_landlords:dashboard' %}?tab=myListings">My Listings</a>
+    </li>
+    <li class="crumb">
+        <a class="crumb-link" href="{% url 'core_landlords:dashboard' %}?tab=myListings">{{ complex.complex_name }}</a>
+    </li>
+    <li class="crumb" aria-current="page">
+        <span class="crumb-link">{% if unit %}Edit Unit {{ unit.identifier }}{% else %}Add Unit{% endif %}</span>
+    </li>
+{% endblock %}
+
 {% block content %}
 
 <div class="property-form-view unit-form-view">
-
-    <!-- Breadcrumb -->
-    <nav class="breadcrumb" aria-label="Breadcrumb">
-        <a href="{% url 'core_landlords:dashboard' %}?tab=myListings">My Listings</a>
-        <span>›</span>
-        <a href="{% url 'core_landlords:dashboard' %}?tab=myListings">{{ complex.complex_name }}</a>
-        <span>›</span>
-        <span>Units</span>
-        <span>›</span>
-        <strong>{% if unit %}Edit Unit {{ unit.identifier }}{% else %}Add Unit{% endif %}</strong>
-    </nav>
 
     <!-- Steps -->
     <nav class="wizard-steps wizard-steps--three">
@@ -28,7 +29,8 @@
     <form method="post"
           enctype="multipart/form-data"
           action="{% if unit %}{% url 'core_listings:unit_edit' unit.pk %}{% else %}{% url 'core_listings:unit_create' complex.pk %}{% endif %}"
-          class="unit-wizard-form wizard-form">
+          class="unit-wizard-form wizard-form"
+          data-saving-messages='{% if unit %}["Saving your changes…", "Checking unit details…", "Uploading photos & videos…", "Almost done…"]{% else %}["Creating your unit…", "Checking unit details…", "Verifying rent against the complex price range…", "Uploading photos & videos…", "Adding it to your listings…"]{% endif %}'>
 
         {% csrf_token %}
 

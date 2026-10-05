@@ -62,6 +62,10 @@
         const lightboxImg = lightbox.querySelector("img");
         const lightboxVideo = lightbox.querySelector("video");
 
+        // Move the lightbox to <body>: inside a hidden wizard step it can't be seen,
+        // but showModal() would still block the whole page.
+        document.body.append(lightbox);
+
         let files = [];        // [{ file, url, kind: "image" | "video" }]
         let dragFrom = null;
 

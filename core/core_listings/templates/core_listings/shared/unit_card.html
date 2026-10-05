@@ -1,3 +1,4 @@
+{% load listing_tags %}
 {% with pictures=unit.pictures.all videos=unit.videos.all %}
 {% with photo_count=pictures|length video_count=videos|length %}
 {% with media_count=photo_count|add:video_count %}
@@ -20,7 +21,7 @@
                 {% endfor %}
                 {% for clip in videos %}
                     <div class="gallery-slide">
-                        <video src="{{ clip.video.url }}" muted loop playsinline preload="metadata"></video>
+                        <video src="{{ clip.video.url }}" muted loop playsinline preload="none"></video>
                         <span class="gallery-video-badge">▶</span>
                     </div>
                 {% endfor %}
@@ -49,14 +50,14 @@
     </div>
 
 
-    <!-- Name + details -->
+    <!-- Name, details, amenities -->
     <div class="unit-info">
 
         <a href="{% url 'core_listings:unit_detail' unit.pk %}" class="unit-name">Unit {{ unit.identifier }}</a>
 
         <div class="unit-meta">
             <span>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 4l6 6M4 4v5M4 4h5M20 20l-6-6M20 20v-5M20 20h-5"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
                 {{ unit.unit_area|floatformat:"-2" }} sqm
             </span>
             <span>
@@ -67,13 +68,30 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 11V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3M3 11a2 2 0 0 1 2 2v3h14v-3a2 2 0 1 1 2-2v7H3v-7zM6 19v2M18 19v2"/></svg>
                 {{ unit.get_furnish_level_display }}
             </span>
+            <span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1M16 4a3 3 0 0 1 0 6M18 14a4 4 0 0 1 3 4v2"/></svg>
+                Max {{ unit.max_occupant }} occupant{{ unit.max_occupant|pluralize }}
+            </span>
             {% if unit.floor %}
                 <span>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 20h4v-4h4v-4h4V8h4"/></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 21h4v-5h4v-5h4V6h6"/></svg>
                     Floor {{ unit.floor }}
                 </span>
             {% endif %}
         </div>
+
+        {% with amenities=unit.amenity_list %}
+            {% if amenities %}
+                <div class="feature-chips feature-chips--grid">
+                    {% for amenity in amenities %}
+                        <span class="feature-chip feature-chip--{{ amenity.key }}" title="{{ amenity.label }}">
+                            {% feature_icon amenity.key %}
+                            <span class="feature-chip-text">{{ amenity.label }}</span>
+                        </span>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
 
     </div>
 
@@ -93,11 +111,8 @@
     </div>
 
 
-    <!-- Actions -->
+    <!-- ⋮ menu -->
     <div class="unit-actions">
-
-        <a href="{% url 'core_listings:unit_detail' unit.pk %}" class="view-listing-btn">View Listing</a>
-
         <div class="property-menu-wrap">
 
             <button type="button"
@@ -112,6 +127,11 @@
             </button>
 
             <div class="property-menu" role="menu" hidden>
+
+                <a href="{% url 'core_listings:unit_detail' unit.pk %}" role="menuitem" class="property-menu-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                    View Listing
+                </a>
 
                 <a href="{% url 'core_listings:unit_edit' unit.pk %}" role="menuitem" class="property-menu-item">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4"/></svg>
@@ -150,7 +170,6 @@
             </div>
 
         </div>
-
     </div>
 
 </article>

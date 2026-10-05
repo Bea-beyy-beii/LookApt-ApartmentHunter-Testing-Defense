@@ -1,0 +1,28 @@
+{% extends "core_landlords/base.html" %}
+{% load static %}
+
+{% block title %}LookApt — {% if property %}Edit {{ property.complex_name }}{% else %}Create Property{% endif %}{% endblock %}
+
+{% block breadcrumbs %}
+    <li class="crumb">
+        <a class="crumb-link" href="{% url 'core_landlords:dashboard' %}?tab=myListings">My Listings</a>
+    </li>
+    {% if property %}
+        <li class="crumb">
+            <a class="crumb-link" href="{% url 'core_landlords:dashboard' %}?tab=myListings">{{ property.complex_name }}</a>
+        </li>
+        <li class="crumb" aria-current="page"><span class="crumb-link">Edit Property</span></li>
+    {% else %}
+        <li class="crumb" aria-current="page"><span class="crumb-link">Create New Property</span></li>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+
+    {# Same wizard as on the dashboard, as its own page (Edit Property, or a create that came back with errors) #}
+    {% include "core_listings/landlords/forms/property_form.html" with standalone=True %}
+
+    {# Loaded here (not in extra_js) so it runs before wizard_draft.js restores the draft #}
+    <script src="{% static 'core_listings/js/listings.js' %}"></script>
+
+{% endblock %}

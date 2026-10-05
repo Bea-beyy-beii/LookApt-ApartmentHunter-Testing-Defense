@@ -1,5 +1,6 @@
 /* =========================================================
    UNIT CARD (inside an expanded complex)
+   gallery | info | price | status | ⋮
    ========================================================= */
 
 [data-unit-card][hidden] {
@@ -7,8 +8,10 @@
 }
 
 .unit-card {
+    position: relative;               /* anchor for the status badge */
+
     display: grid;
-    grid-template-columns: 132px minmax(0, 1fr) 190px 170px auto;
+    grid-template-columns: 150px minmax(0, 1fr) 170px auto;
     align-items: center;
     gap: 24px;
 
@@ -30,28 +33,35 @@
     transform: scale(0.98);
 }
 
-/* Vertical dividers between the columns */
-.unit-card > :not(:first-child) {
-    align-self: stretch;
-    display: flex;
-    align-items: center;
-
-    padding-left: 24px;
-
-    border-left: 1px solid #efe9df;
-}
-
 .unit-info {
+    display: flex;
     flex-direction: column;
-    align-items: flex-start !important;
+    align-items: flex-start;
     justify-content: center;
+    min-width: 0;
+}
+
+/* Status badge: pinned to the card's top-right corner */
+.unit-card > .unit-status-cell {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    z-index: 1;
+}
+
+.unit-price {
+    padding-left: 22px;
+}
+
+.unit-actions {
+    padding-left: 14px;
 }
 
 
-/* ---------- Gallery (square, smaller than the complex one) ---------- */
+/* ---------- Gallery (square) ---------- */
 
 .property-gallery--unit {
-    width: 132px;
+    width: 150px;
     border-radius: 12px;
 }
 
@@ -83,9 +93,18 @@
 
 /* ---------- Info ---------- */
 
+.unit-info {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 10px;
+    min-width: 0;
+}
+
 .unit-name {
     color: var(--navy);
 
+    font-family: var(--font-heading, Georgia, serif);
     font-size: 22px;
     font-weight: 700;
     text-decoration: none;
@@ -95,12 +114,11 @@
     text-decoration: underline;
 }
 
+/* Row 2: never cut — wraps to a new line if there isn't room */
 .unit-meta {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px 22px;
-
-    margin-top: 10px;
+    gap: 6px 22px;
 
     color: var(--text-secondary);
     font-size: 14px;
@@ -110,6 +128,7 @@
     display: inline-flex;
     align-items: center;
     gap: 7px;
+    white-space: nowrap;
 }
 
 .unit-meta svg {
@@ -119,44 +138,48 @@
 }
 
 
-/* ---------- Price ---------- */
+/* ---------- Price (stacked) ---------- */
 
 .unit-price {
-    gap: 6px;
+    flex-direction: column;
+    align-items: flex-end;      
+    padding-right: 10px;
+    justify-content: center;
     white-space: nowrap;
 }
 
 .unit-price strong {
     color: var(--navy);
-    font-size: 22px;
+    font-size: 24px;
+    line-height: 1.1;
 }
 
 .unit-price span {
-    color: var(--navy);
+    color: var(--text-secondary);
     font-size: 14px;
-    font-weight: 600;
 }
 
 
-/* ---------- Status ---------- */
+/* ---------- Status: small badge in the card's top-right corner ---------- */
 
 .unit-status {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 
-    padding: 6px 14px;
+    padding: 3px 10px;
 
     border-radius: var(--radius-pill);
 
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 600;
+    white-space: nowrap;
 }
 
 .unit-status::before {
     content: "";
-    width: 10px;
-    height: 10px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
     background: currentColor;
 }
@@ -177,31 +200,14 @@
 }
 
 
-/* ---------- Actions ---------- */
+/* ---------- ⋮ ---------- */
 
-.unit-actions {
-    gap: 10px;
+.unit-actions .property-more-btn {
+    background: #f3f5f9;
 }
 
-.view-listing-btn {
-    padding: 10px 22px;
-
-    border: 1.5px solid #d6b48a;
-    border-radius: var(--radius-sm);
-    background: var(--white);
-    color: var(--navy);
-
-    font-size: 14px;
-    font-weight: 700;
-    text-decoration: none;
-    white-space: nowrap;
-
-    transition: background 0.2s ease, border-color 0.2s ease;
-}
-
-.view-listing-btn:hover {
-    border-color: #c58d4b;
-    background: var(--cream);
+.unit-actions .property-more-btn:hover {
+    background: #e7ebf2;
 }
 
 .units-filter-empty {
@@ -216,35 +222,26 @@
 @media (max-width: 1200px) {
 
     .unit-card {
-        grid-template-columns: 110px minmax(0, 1fr) auto;
+        grid-template-columns: 120px minmax(0, 1fr) 140px auto;
     }
 
     .property-gallery--unit {
-        width: 110px;
-    }
-
-    .unit-status-cell {
-        display: none !important;
+        width: 120px;
     }
 }
 
 @media (max-width: 760px) {
 
     .unit-card {
-        grid-template-columns: 90px minmax(0, 1fr);
+        grid-template-columns: 96px minmax(0, 1fr) auto;
     }
 
     .property-gallery--unit {
-        width: 90px;
+        width: 96px;
     }
 
-    .unit-card > :not(:first-child) {
+    .unit-info {
+        grid-column: 1 / -1;
         padding-left: 0;
-        border-left: 0;
-    }
-
-    .unit-price,
-    .unit-actions {
-        grid-column: 2;
     }
 }

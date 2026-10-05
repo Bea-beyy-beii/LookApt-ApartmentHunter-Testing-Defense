@@ -103,22 +103,39 @@ class Complex(models.Model):
     def __str__(self):
         return self.complex_name
 
+        # Counted in Python from self.units.all(), so the listings page's
+    # prefetch_related("units") answers them without extra queries.
+    def _count_units(self, availability=None):
+        return sum(1 for unit in self.units.all() if availability is None or unit.availability == availability)
+
     @property
     def total_units(self):
-        return self.units.count()
+        return self._count_units()
 
     @property
     def available_units(self):
-        return self.units.filter(availability=Unit.Availability.AVAILABLE).count()
+        return self._count_units(Unit.Availability.AVAILABLE)
 
     @property
     def occupied_units(self):
-        return self.units.filter(availability=Unit.Availability.OCCUPIED).count()
+        return self._count_units(Unit.Availability.OCCUPIED)
 
     @property
     def unpublished_units(self):
-        return self.units.filter(availability=Unit.Availability.UNPUBLISHED).count()
+        return self._count_units(Unit.Availability.UNPUBLISHED)
 
+    
+    # Feature checkboxes shown on the card and in the form (order = display order)
+    FEATURE_LABELS = {
+        "pet_friendly": "Pet Friendly",
+        "has_parking_space": "Parking Space",
+        "is_gated": "Gated Complex",
+        "has_laundry_area": "Laundry Area",
+    }
+
+    def feature_list(self):
+        """Ticked features, e.g. [{"key": "pet_friendly", "label": "Pet Friendly"}]."""
+        return [{"key": key, "label": label} for key, label in self.FEATURE_LABELS.items() if getattr(self, key)]
 
 
 
@@ -184,10 +201,18 @@ class Unit(models.Model):
     def unit_name(self):
             return f"Unit {self.identifier}"
 
+    def amenity_list(self):
+        """Ticked amenities, e.g. [{"key": "wifi_ready", "label": "Wi-Fi Ready"}]."""
+        return [
+            {"key": name, "label": self._meta.get_field(name).verbose_name}
+            for name in self.AMENITY_FIELDS
+            if getattr(self, name)
+        ]
 
     def save(self, *args, **kwargs):
         if self.width_dimension is not None and self.length_dimension is not None:
-            self.unit_area = (self.width_dimension * self.length_dimension).quantize(Decimal("0.01"))
+            area = Decimal(str(self.width_dimension)) * Decimal(str(self.length_dimension))
+            self.unit_area = area.quantize(Decimal("0.01"))
         super().save(*args, **kwargs)
 
 

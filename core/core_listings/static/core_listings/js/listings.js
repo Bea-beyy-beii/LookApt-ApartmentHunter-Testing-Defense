@@ -5,11 +5,15 @@ function showPropertyForm() {
     // Reset wizard to Step 1
     currentStep = 1;
     goToStep(1);
+    
+    window.Breadcrumbs?.push("Create New Property", showListingsList);
 }
 
 function showListingsList() {
     document.getElementById('listings-form-view').hidden = true;
     document.getElementById('listings-list-view').hidden = false;
+
+    window.Breadcrumbs?.pop();
 }
 
 function totalSteps() {
@@ -175,7 +179,17 @@ document.addEventListener('DOMContentLoaded', function () {
             e.preventDefault();
             goToStep(2);
         }
+
+        // Valid submit: cover the page with a "Creating…" screen while files upload
+        if (!e.defaultPrevented) showSavingOverlay(form);
     });
+
+    // Back button after submitting: the browser may restore the page with the overlay still on
+    window.addEventListener('pageshow', hideSavingOverlay);
+    });
+
+    // Coming back with the browser's Back button: unlock the form again
+    window.addEventListener('pageshow', () => form.classList.remove('is-saving'));
 
     // Keep the Review step in sync with the map in step 2
     form.addEventListener('lookapt:map-change', function (e) {
@@ -190,4 +204,60 @@ document.addEventListener('DOMContentLoaded', function () {
         const reviewAddress = document.getElementById('review-address');
         if (reviewAddress) reviewAddress.textContent = e.target.value;
     });
-});
+
+    // ---------------------------------------------------------
+// "CREATING…" OVERLAY (shown while the form uploads)
+// Messages come from the form's data-saving-messages attribute.
+// ---------------------------------------------------------
+
+let savingTimer = null;
+
+function showSavingOverlay(form) {
+    let messages = ['Saving…'];
+    try {
+        messages = JSON.parse(form.dataset.savingMessages || '["Saving…"]');
+    } catch (error) {
+        /* keep the default */
+    }
+
+    let overlay = document.querySelector('.saving-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.className = 'saving-overlay';
+        overlay.setAttribute('role', 'status');
+        overlay.setAttribute('aria-live', 'polite');
+        overlay.innerHTML = `
+            <div class="saving-card">
+                <div class="saving-spinner" aria-hidden="true"></div>
+                <strong class="saving-text"></strong>
+                <div class="saving-progress" aria-hidden="true"><span></span></div>
+                <small>This can take a moment for photos and videos. Please don't close this page.</small>
+            </div>`;
+        document.body.append(overlay);
+    }
+
+    const text = overlay.querySelector('.saving-text');
+    let index = 0;
+
+    function showMessage() {
+        text.classList.remove('is-visible');
+        // let the fade-out finish, then swap the text and fade back in
+        setTimeout(() => {
+            text.textContent = messages[index];
+            text.classList.add('is-visible');
+            index = (index + 1) % messages.length;   // loop through the messages
+        }, 200);
+    }
+
+    clearInterval(savingTimer);
+    showMessage();
+    savingTimer = setInterval(showMessage, 2200);
+    overlay.hidden = false;
+}
+
+function hideSavingOverlay() {
+    clearInterval(savingTimer);
+    const overlay = document.querySelector('.saving-overlay');
+    if (overlay) overlay.hidden = true;
+}
+

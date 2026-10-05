@@ -2,13 +2,6 @@
 
 <div class="property-form-view">
 
-    <!-- Breadcrumb -->
-    <div class="breadcrumb">
-        <a href="#" onclick="showListingsList(); return false;">My Listings</a>
-        <span>></span>
-        <span>{% if property %}Edit Property{% else %}Create New Property{% endif %}</span>
-    </div>
-
     <!-- Header -->
     <div class="wizard-header">
         <div>
@@ -47,7 +40,8 @@
     <form method="post"
       enctype="multipart/form-data"
       action="{% if property %}{% url 'core_listings:property_edit' property.pk %}{% else %}{% url 'core_listings:property_create' %}{% endif %}"
-      class="property-wizard-form wizard-form">
+      class="property-wizard-form wizard-form"
+      data-saving-messages='{% if property %}["Saving your changes…", "Checking property details…", "Updating location & landmarks…", "Uploading photos…", "Almost done…"]{% else %}["Creating your property…", "Checking property details…", "Saving location & nearby landmarks…", "Uploading photos…", "Adding it to your listings…"]{% endif %}'>
         {% csrf_token %}
 
         {% if form.non_field_errors %}

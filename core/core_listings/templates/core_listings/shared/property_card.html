@@ -1,4 +1,5 @@
-{% with pictures=property.pictures.all total=property.total_units available=property.available_units occupied=property.occupied_units %}
+{% load listing_tags %}
+{% with pictures=property.pictures.all total=property.total_units %}
 
 <article class="property-card"
          data-property-card
@@ -67,45 +68,68 @@
                 {{ property.address|default:"No address yet" }}
             </p>
 
-            <div class="property-stats">
+            {% if property.complex_description %}
+                <p class="property-description">{{ property.complex_description }}</p>
+            {% endif %}
 
-                <div class="property-stat">
-                    <span class="property-stat-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-                            <path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 9h4a1 1 0 0 1 1 1v11M3 21h18M8 8h3M8 12h3M8 16h3"/>
-                        </svg>
-                    </span>
+            <!-- Key facts -->
+            <div class="property-facts">
+
+                <div class="property-fact">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                        <path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 9h4a1 1 0 0 1 1 1v11M3 21h18M8 8h3M8 12h3M8 16h3"/>
+                    </svg>
                     <div>
+                        <small>Total Units</small>
                         <strong data-stat="total">{{ total }}</strong>
-                        <small>Units</small>
                     </div>
                 </div>
 
-                <div class="property-stat property-stat--available">
-                    <span class="property-stat-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-                            <path d="M3 18V8M21 18v-5a3 3 0 0 0-3-3H10v5M3 15h18M6.5 12.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/>
-                        </svg>
-                    </span>
+                <div class="property-fact">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                        <rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>
+                    </svg>
                     <div>
-                        <strong data-stat="available">{{ available }}</strong>
-                        <small>Available</small>
+                        <small>Lease Term</small>
+                        <strong>{{ property.get_lease_term_display }}</strong>
                     </div>
                 </div>
 
-                <div class="property-stat property-stat--occupied">
-                    <span class="property-stat-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-                            <path d="M3 18V8M21 18v-5a3 3 0 0 0-3-3H10v5M3 15h18M6.5 12.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/>
-                        </svg>
-                    </span>
+                <div class="property-fact">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                        <circle cx="8" cy="7" r="3"/><circle cx="16" cy="7" r="3"/><path d="M3 20v-2a4 4 0 0 1 4-4h2a4 4 0 0 1 4 4v2M13 14h2a4 4 0 0 1 4 4v2"/>
+                    </svg>
                     <div>
-                        <strong data-stat="occupied">{{ occupied }}</strong>
-                        <small>Occupied</small>
+                        <small>Sex Restriction</small>
+                        <strong>{{ property.get_sex_restriction_display }}</strong>
+                    </div>
+                </div>
+
+                <div class="property-fact">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                        <path d="M3 21h4v-5h4v-5h4V6h6"/>
+                    </svg>
+                    <div>
+                        <small>Number of Floors</small>
+                        <strong>{{ property.num_of_floors }}</strong>
                     </div>
                 </div>
 
             </div>
+
+            <!-- Features -->
+            {% with features=property.feature_list %}
+                {% if features %}
+                    <div class="feature-chips">
+                        {% for feature in features %}
+                            <span class="feature-chip feature-chip--{{ feature.key }}">
+                                {% feature_icon feature.key %}
+                                {{ feature.label }}
+                            </span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
 
         </div>
 
@@ -130,63 +154,65 @@
 
             </div>
 
+            <div class="property-menu-wrap">
 
-            <div class="property-actions-row">
-
-                <a href="{% url 'core_listings:property_edit' property.pk %}" class="edit-property-btn">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                        <path d="M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4"/>
+                <button type="button"
+                        class="property-more-btn"
+                        data-property-menu-toggle
+                        aria-haspopup="menu"
+                        aria-expanded="false"
+                        aria-label="More options for {{ property.complex_name }}">
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/>
                     </svg>
-                    Edit Property
-                </a>
+                </button>
 
-                <div class="property-menu-wrap">
+                <div class="property-menu" role="menu" hidden>
 
-                    <button type="button"
-                            class="property-more-btn"
-                            data-property-menu-toggle
-                            aria-haspopup="menu"
-                            aria-expanded="false"
-                            aria-label="More options for {{ property.complex_name }}">
-                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                            <circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/>
+                    <a href="{% url 'core_listings:property_edit' property.pk %}" role="menuitem" class="property-menu-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                            <path d="M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4"/>
                         </svg>
+                        Edit Property
+                    </a>
+
+                    <a href="{% url 'core_listings:property_detail' property.pk %}" role="menuitem" class="property-menu-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                            <path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 9h4a1 1 0 0 1 1 1v11M3 21h18M8 8h3M8 12h3M8 16h3"/>
+                        </svg>
+                        View Complex
+                    </a>
+
+                    <hr>
+
+                    <button type="button" role="menuitem" class="property-menu-item"
+                            data-action="set-visibility" data-visibility="unpublished"
+                            {% if property.status != "active" %}hidden{% endif %}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                            <path d="M3 3l18 18M10.6 5.1A9.8 9.8 0 0 1 12 5c6 0 9.5 7 9.5 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.9 8.4 2.5 12 2.5 12S6 19 12 19a9.4 9.4 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/>
+                        </svg>
+                        Set visibility as unpublished
                     </button>
 
-                    <div class="property-menu" role="menu" hidden>
+                    <button type="button" role="menuitem" class="property-menu-item"
+                            data-action="set-visibility" data-visibility="active"
+                            {% if property.status == "active" %}hidden{% endif %}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                            <path d="M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z"/><circle cx="12" cy="12" r="3"/>
+                        </svg>
+                        Set visibility as active and public
+                    </button>
 
-                        {% if property.status == "active" %}
-                        <button type="button" role="menuitem" class="property-menu-item"
-                                data-action="set-visibility" data-visibility="unpublished"
-                                {% if property.status != "active" %}hidden{% endif %}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                <path d="M3 3l18 18M10.6 5.1A9.8 9.8 0 0 1 12 5c6 0 9.5 7 9.5 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.9 8.4 2.5 12 2.5 12S6 19 12 19a9.4 9.4 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/>
-                            </svg>
-                            Set visibility as unpublished
-                        </button>
+                    <hr>
 
-                        <button type="button" role="menuitem" class="property-menu-item"
-                                data-action="set-visibility" data-visibility="active"
-                                {% if property.status == "active" %}hidden{% endif %}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                <path d="M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z"/><circle cx="12" cy="12" r="3"/>
-                            </svg>
-                            Set visibility as active and public
-                        </button>
-                        {% endif %}
-
-                        <hr>
-
-                        <button type="button" role="menuitem"
-                                class="property-menu-item property-menu-item--danger"
-                                data-action="delete">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                <path d="M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3"/>
-                            </svg>
-                            Delete Complex
-                        </button>
-
-                    </div>
+                    <button type="button" role="menuitem"
+                            class="property-menu-item property-menu-item--danger"
+                            data-action="delete">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                            <path d="M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3"/>
+                        </svg>
+                        Delete Complex
+                    </button>
 
                 </div>
 
@@ -195,6 +221,8 @@
         </div>
 
     </div>
+
+
 
 
     <!-- ================= Units (expanded) ================= -->
@@ -219,11 +247,10 @@
                             All <span data-stat="total">{{ total }}</span>
                         </button>
                         <button type="button" class="unit-filter" data-unit-filter="available">
-                            <span class="status-dot status-dot--active"></span> Available <span data-stat="available">{{ available }}</span>
+                            <span class="status-dot status-dot--active"></span> Available <span data-stat="available">{{ property.available_units }}</span>
                         </button>
                         <button type="button" class="unit-filter" data-unit-filter="occupied">
-                            <span class="status-dot status-dot--occupied"></span> Occupied <span data-stat="occupied">{{ occupied }}</span>
-                        </button>
+                            <span class="status-dot status-dot--occupied"></span> Occupied <span data-stat="occupied">{{ property.occupied_units }}</span>
                         <button type="button" class="unit-filter" data-unit-filter="unpublished">
                             <span class="status-dot status-dot--pending"></span> Unpublished <span data-stat="unpublished">{{ property.unpublished_units }}</span>
                         </button>

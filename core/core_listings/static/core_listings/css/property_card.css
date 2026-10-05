@@ -342,35 +342,6 @@
     transform: rotate(180deg);
 }
 
-.edit-property-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-
-    padding: 9px 18px;
-
-    border: 1.5px solid #d6b48a;
-    border-radius: var(--radius-sm);
-    background: var(--white);
-    color: var(--navy);
-
-    font-size: 14px;
-    font-weight: 600;
-    text-decoration: none;
-
-    transition: background 0.2s ease, border-color 0.2s ease;
-}
-
-.edit-property-btn:hover {
-    border-color: #c58d4b;
-    background: var(--cream);
-}
-
-.edit-property-btn svg {
-    width: 16px;
-    height: 16px;
-}
-
 
 /* ---------- ⋮ menu ---------- */
 
@@ -895,4 +866,167 @@
 /* Status filter row: room for the 4th chip */
 .unit-filters {
     flex-wrap: wrap;
+}
+
+/* =========================================================
+   COMPLEX CARD — description, key facts, feature chips
+   ========================================================= */
+
+.property-card-header {
+    align-items: start;
+}
+
+.property-gallery {
+    align-self: center;
+}
+
+.property-description {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+
+    max-width: 900px;
+    margin: 0;
+
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+/* Small fact tiles: Total Units / Lease Term / Sex Restriction / Floors */
+.property-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+
+    margin-top: 4px;
+}
+
+.property-fact {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    min-width: 150px;
+    padding: 8px 16px 8px 12px;
+
+    border-radius: var(--radius-sm);
+    background: #faf6ef;
+}
+
+.property-fact svg {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    color: var(--navy);
+}
+
+.property-fact small {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 11px;
+}
+
+.property-fact strong {
+    color: var(--navy);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+
+/* ---------- Coloured feature / amenity chips ---------- */
+
+.feature-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* Unit cards: 4 columns, so 8 amenities = at most 2 rows */
+.feature-chips--grid {
+    display: grid;
+    grid-template-columns: repeat(4, max-content);
+    justify-items: start;   /* each chip only as wide as its text (no stretching to the column) */
+    gap: 6px;
+}
+
+.feature-chips--grid .feature-chip {
+    gap: 5px;
+    padding: 3px 9px 3px 6px;
+    border-radius: 8px;
+    font-size: 12px;
+}
+
+.feature-chips--grid .feature-chip svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Narrow card (small laptop): keep 4 × 2, show icons only (label on hover) */
+.unit-info {
+    container-type: inline-size;
+}
+
+@container (max-width: 620px) {
+
+    .feature-chips--grid .feature-chip {
+        justify-content: center;
+        padding: 6px 10px;
+    }
+
+    .feature-chips--grid .feature-chip-text {
+        display: none;
+    }
+}
+
+.feature-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    min-width: 0;
+    padding: 6px 14px 6px 10px;
+
+    border-radius: 10px;
+
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.feature-chip svg {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+}
+
+.feature-chip-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Complex features */
+.feature-chip--pet_friendly       { background: #fde8e8; color: #c0392b; }
+.feature-chip--has_parking_space  { background: #e6eefb; color: #2f5fb3; }
+.feature-chip--is_gated           { background: #fbf0dc; color: #9a6a1f; }
+.feature-chip--has_laundry_area   { background: #e8edfa; color: #3b4f9a; }
+
+/* Unit amenities */
+.feature-chip--air_conditioned    { background: #e5f0fb; color: #1f6fbf; }
+.feature-chip--wifi_ready         { background: #ece8fb; color: #5b45b0; }
+.feature-chip--own_bathroom       { background: #e3f4ea; color: #2f8a52; }
+.feature-chip--has_kitchen_area   { background: #fdeee0; color: #b8621b; }
+.feature-chip--has_balcony        { background: #e2f3f4; color: #178a94; }
+.feature-chip--has_window_view    { background: #eef2f7; color: #4a5a78; }
+.feature-chip--own_electric_meter { background: #fff4d6; color: #a67c00; }
+.feature-chip--has_water_heater   { background: #fde8ec; color: #c0394f; }
+
+
+/* ---------- Actions column: status + chevron, ⋮ underneath ---------- */
+
+.property-actions {
+    align-self: stretch;
+    justify-content: space-between;
+    gap: 16px;
 }

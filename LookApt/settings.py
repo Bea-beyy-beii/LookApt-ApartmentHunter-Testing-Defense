@@ -100,6 +100,8 @@ DATABASES = {
         'PASSWORD': env('DB_PASSWORD'), 
         'HOST': env('DB_HOST'), 
         'PORT': env('DB_PORT'),
+        'CONN_MAX_AGE': 60,           # reuse the connection for 60s
+        'CONN_HEALTH_CHECKS': True,   # but check it's still alive first
     } 
 }
 

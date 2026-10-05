@@ -15,6 +15,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 
 from .models import UnitPicture, UnitVideo
+import logging
 
 
 def _my_listings_url():
@@ -94,11 +95,12 @@ def property_create(request):
 
     return render(
         request,
-        "core_listings/landlords/forms/property_form.html",
+        "core_listings/landlords/forms/property_form_page.html",
         {
             "property": None,
             "current_step": 1,
             "form": form,
+            "active_tab": "myListings",
         }
     )
 
@@ -139,11 +141,12 @@ def property_edit(request, pk):
 
     return render(
         request,
-        "core_listings/landlords/forms/property_form.html",
+        "core_listings/landlords/forms/property_form_page.html",
         {
             "property": property_obj,
             "current_step": 1,
             "form": form,
+            "active_tab": "myListings",
         }
     )
 
@@ -175,15 +178,18 @@ def _own_property(request, pk):
     return get_object_or_404(Complex, pk=pk, landlord__user=request.user)
 
 
-@role_required("landlord")
-@require_POST
+
+logger = logging.getLogger(__name__)
+
+
 def _delete_files(files):
     """Remove files from storage (S3). Deleting rows does NOT delete their files."""
     for file in files:
         try:
             file.delete(save=False)
-        except Exception:
-            pass   # a missing file shouldn't block the delete
+        except Exception as error:
+            # Don't block the delete, but don't hide the problem either
+            logger.warning("Could not delete %s: %s", file.name, error)
 
 
 def _unit_media_files(units):
@@ -192,16 +198,14 @@ def _unit_media_files(units):
     return files
 
 
+@role_required("landlord")
+@require_POST
 def property_delete(request, pk):
     property_obj = _own_property(request, pk)
     name = property_obj.complex_name
 
-    # Remember the image files first: deleting rows does NOT delete files in storage (S3)
     files = [picture.image for picture in property_obj.pictures.all()]
     files += _unit_media_files(property_obj.units.all())
-
-    # Cascades to units, pictures and saved landmarks (on_delete=CASCADE)
-    property_obj.delete()
 
     property_obj.delete()   # cascades to units, pictures, videos, landmarks
     _delete_files(files)
@@ -291,6 +295,7 @@ def _unit_form_page(request, complex_obj, unit=None):
         "form": form,
         "complex": complex_obj,
         "unit": unit,
+        "active_tab": "myListings",
     })
 
 

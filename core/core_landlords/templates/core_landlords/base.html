@@ -36,6 +36,7 @@
     <link rel="stylesheet" href="{% static 'core_listings/css/property_card.css' %}">
     <link rel="stylesheet" href="{% static 'core_listings/css/unit_card.css' %}">
     <link rel="stylesheet" href="{% static 'core_listings/css/empty_state.css' %}">
+    <link rel="stylesheet" href="{% static 'core/css/components/breadcrumbs.css' %}">
 
     {% block extra_css %}{% endblock %}
 </head>
@@ -69,7 +70,9 @@
 
             {# MY LISTINGS #}
             <a href="{% url 'core_landlords:dashboard' %}?tab=myListings"
-               class="sidebar-link tab-link" data-tab="myListings">
+                class="sidebar-link tab-link {% if active_tab == 'myListings' %}active{% endif %}"
+                data-tab="myListings">
+                
                 <span class="sidebar-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                         <path d="M6 3.8h12a1 1 0 0 1 1 1V21l-7-3.8L5 21V4.8a1 1 0 0 1 1-1Z"/>
@@ -132,34 +135,28 @@
 
     <main class="landlord-dashboard">
 
-        <header class="dashboard-topbar">
+    <header class="dashboard-topbar">
 
-            <label class="dashboard-search">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <circle cx="11" cy="11" r="7"/>
-                    <path d="m20 20-4-4"/>
-                </svg>
-                <input type="search" placeholder="Search by Area, Name, or Landmark" aria-label="Search listings">
-            </label>
+            <nav class="topbar-breadcrumb" aria-label="Breadcrumb">
+                <ol class="crumbs" data-crumbs>
 
-            <button class="filter-button" type="button">
-                <span>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path d="M4 5h16l-6.5 7.3V18l-3 1.5v-7.2z"/>
-                    </svg>
-                    Filter by
-                </span>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="m7 9 5 5 5-5"/>
-                </svg>
-            </button>
+                    <li class="crumb crumb-home">
+                        <a class="crumb-link" href="{% url 'core_landlords:dashboard' %}?tab=home" aria-label="Dashboard home">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h5v-6h4v6h5V9.5"/>
+                            </svg>
+                        </a>
+                    </li>
 
-            <button class="notification-button" type="button" aria-label="Notifications">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>
-                </svg>
-                <span class="notification-dot"></span>
-            </button>
+                    {% block breadcrumbs %}
+                        <!-- Dashboard: this crumb follows the active tab (breadcrumbs.js) -->
+                        <li class="crumb" aria-current="page" data-crumb-tab>
+                            <a class="crumb-link" href="{% url 'core_landlords:dashboard' %}?tab=home">Home</a>
+                        </li>
+                    {% endblock %}
+
+                </ol>
+            </nav>
 
             <div class="profile-overview">
                 <img src="{% static 'core/images/looka.png' %}" alt="Profile Picture" class="profile-picture">
@@ -180,6 +177,7 @@
 <script src="{% static 'core_listings/js/review.js' %}"></script>
 <script src="{% static 'core_listings/js/wizard_draft.js' %}"></script>
 <script src="{% static 'core_listings/js/listing_cards.js' %}"></script>
+<script src="{% static 'core/js/breadcrumbs.js' %}"></script>
 {% block extra_js %}{% endblock %}
 
 </body>

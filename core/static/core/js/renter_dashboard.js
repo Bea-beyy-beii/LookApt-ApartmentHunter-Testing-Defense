@@ -13,11 +13,18 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         tabLinks.forEach(link => {
-            link.classList.toggle("active", link.dataset.tab === tabName);
+            link.classList.toggle(
+                "active",
+                link.dataset.tab === tabName
+            );
         });
 
         if (updateURL) {
-            window.history.pushState({ tab: tabName }, "", `?tab=${tabName}`);
+            window.history.pushState(
+                { tab: tabName },
+                "",
+                `?tab=${tabName}`
+            );
         }
     }
 
@@ -29,12 +36,27 @@ document.addEventListener("DOMContentLoaded", () => {
     tabLinks.forEach(link => {
         link.addEventListener("click", event => {
             event.preventDefault();
+
             showTab(link.dataset.tab);
         });
     });
 
     window.addEventListener("popstate", () => {
-        showTab(getCurrentTab(), false);
+
+        const tabName = getCurrentTab();
+
+        showTab(tabName, false);
+
+        const activeLink = document.querySelector(
+            `.tab-link[data-tab="${tabName}"] .sidebar-label`
+        );
+
+        window.Breadcrumbs?.setTab(
+            tabName,
+            activeLink
+                ? activeLink.textContent.trim()
+                : "Home"
+        );
     });
 
     showTab(getCurrentTab(), false);
