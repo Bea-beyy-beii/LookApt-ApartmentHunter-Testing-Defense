@@ -1,26 +1,5 @@
 {% load static %}
 
-{% block extra_css %}
-
-<link rel="stylesheet"
-      href="{% static 'core_listings/css/listings.css' %}">
-
-<link rel="stylesheet"
-      href="{% static 'core_listings/css/search_filter.css' %}">
-
-<link rel="stylesheet"
-      href="{% static 'core_listings/css/property_card.css' %}">
-
-<link rel="stylesheet"
-      href="{% static 'core_listings/css/unit_card.css' %}">
-
-<link rel="stylesheet"
-      href="{% static 'core_listings/css/empty_state.css' %}">
-
-{% endblock %}
-
-{% block content %}
-
 <div class="listings-page">
 
     <!-- Header -->
@@ -31,46 +10,81 @@
             <p>View, edit, or create your properties and units here.</p>
         </div>
 
-        <button type="button" class="add-property-btn" onclick="showPropertyForm()">+ Create Listing</button>
+        <button type="button" class="add-property-btn" onclick="showPropertyForm()">
+            <span class="btn-icon">＋</span>
+            Add Property
+        </button>
 
     </div>
 
 
     {% if properties %}
 
-        {% include "core_listings/landlords/includes/search_filter.html" %}
+        <!-- Status filter chips -->
+        <div class="listing-status-filters" aria-label="Filter properties by status">
 
+            <button type="button" class="status-filter active" data-status-filter="all">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 9h4a1 1 0 0 1 1 1v11M3 21h18M8 8h3M8 12h3M8 16h3"/>
+                </svg>
+                All
+                <span class="status-filter-count">{{ property_counts.all }}</span>
+            </button>
 
-        <!-- =================================================
-             PROPERTIES
-             ================================================= -->
+            <button type="button" class="status-filter" data-status-filter="active">
+                <span class="status-dot status-dot--active"></span>
+                Active
+                <span class="status-filter-count">{{ property_counts.active }}</span>
+            </button>
 
-        <div class="properties-list">
-
-            {% for property in properties %}
-
-                {% include "core_listings/shared/property_card.html" with property=property %}
-
-            {% endfor %}
+            <button type="button" class="status-filter" data-status-filter="unpublished">
+                <span class="status-dot status-dot--unpublished"></span>
+                Unpublished
+                <span class="status-filter-count">{{ property_counts.unpublished }}</span>
+            </button>
 
         </div>
 
 
+        <!-- Properties -->
+        <div class="properties-list">
+
+            {% for property in properties %}
+                {% include "core_listings/shared/property_card.html" with property=property %}
+            {% endfor %}
+
+            <p class="properties-filter-empty" hidden>No properties match this filter.</p>
+
+        </div>
+
     {% else %}
 
-        <!-- =================================================
-             EMPTY STATE
-             ================================================= -->
-
-        {% include "core_listings/shared/empty_state.html" with heading="No properties found" message="You haven't added any properties yet. Start by creating your first listing." %}
+        {% include "core_listings/shared/empty_state.html" with heading="No properties yet" message="You haven't added any properties yet. Start by creating your first listing." %}
 
     {% endif %}
 
 
+    <!-- Confirmation pop-up (delete / change visibility) -->
+    <dialog class="confirm-dialog" id="listing-confirm-dialog" aria-labelledby="confirm-dialog-title">
+
+        <div class="confirm-dialog-icon" data-confirm-icon aria-hidden="true"></div>
+
+        <h2 id="confirm-dialog-title" data-confirm-title></h2>
+
+        <p data-confirm-message></p>
+
+        <p class="confirm-dialog-error" data-confirm-error hidden></p>
+
+        <div class="confirm-dialog-actions">
+            <button type="button" class="dialog-btn dialog-btn--cancel" data-dialog-close>Cancel</button>
+            <button type="button" class="dialog-btn" data-confirm-ok></button>
+        </div>
+
+    </dialog>
+
+    <!-- Small "Done!" message -->
+    <div class="listing-toast" role="status" aria-live="polite" hidden></div>
+
 </div>
 
-{% endblock %}
-
-{% block extra_js %}
 <script src="{% static 'core_listings/js/listings.js' %}"></script>
-{% endblock %}

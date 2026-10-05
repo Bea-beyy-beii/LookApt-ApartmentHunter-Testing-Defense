@@ -11,6 +11,11 @@ from core.core_maps.maps.services import resolve_area, save_complex_landmarks
 from .models import Complex, ComplexPicture, Unit
 from .forms import ComplexForm
 
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+
+from .models import UnitPicture
+
 
 def _my_listings_url():
     # The listings page lives inside the landlord dashboard
@@ -22,6 +27,11 @@ def _save_property(form, landlord):
     """Save the wizard form + the landmarks picked on the map (step 2)."""
     property_obj = form.save(commit=False)
     property_obj.landlord = landlord
+
+    # Which create button was clicked: "unpublished" or "active"
+    visibility = form.data.get("visibility")
+    if visibility in Complex.ComplexStatus.values:
+        property_obj.status = visibility
 
     area_name = form.cleaned_data.get("area_name")
     if area_name or not property_obj.area_id:
@@ -174,3 +184,64 @@ def unit_edit(request, pk):
 @role_required("landlord")
 def unit_delete(request, pk):
     return _units_coming_soon(request)
+
+
+
+# ---------------------------------------------------------
+# ⋮ MENU ACTIONS (called with fetch() from listings_cards.js)
+# ---------------------------------------------------------
+
+def _wants_json(request):
+    return "application/json" in request.headers.get("Accept", "")
+
+
+def _own_property(request, pk):
+    # landlord__user=request.user: a landlord can only touch their own complexes
+    return get_object_or_404(Complex, pk=pk, landlord__user=request.user)
+
+
+@role_required("landlord")
+@require_POST
+def property_delete(request, pk):
+    property_obj = _own_property(request, pk)
+    name = property_obj.complex_name
+
+    # Remember the image files first: deleting rows does NOT delete files in storage (S3)
+    image_files = [picture.image for picture in property_obj.pictures.all()]
+    image_files += [picture.image for picture in UnitPicture.objects.filter(unit__complex=property_obj)]
+
+    # Cascades to units, pictures and saved landmarks (on_delete=CASCADE)
+    property_obj.delete()
+
+    for image in image_files:
+        try:
+            image.delete(save=False)
+        except Exception:
+            pass   # a missing file shouldn't block the delete
+
+    if _wants_json(request):
+        return JsonResponse({"deleted": True, "name": name})
+    return redirect(_my_listings_url())
+
+
+@role_required("landlord")
+@require_POST
+def property_set_visibility(request, pk):
+    property_obj = _own_property(request, pk)
+    visibility = request.POST.get("visibility")
+
+    if visibility not in Complex.ComplexStatus.values:
+        if _wants_json(request):
+            return JsonResponse({"error": "Invalid visibility."}, status=400)
+        return redirect(_my_listings_url())
+
+    property_obj.status = visibility
+    property_obj.save(update_fields=["status", "updated_at"])
+
+    if _wants_json(request):
+        return JsonResponse({
+            "status": property_obj.status,
+            "label": property_obj.get_status_display(),
+            "approval_status": property_obj.approval_status,
+        })
+    return redirect(_my_listings_url())

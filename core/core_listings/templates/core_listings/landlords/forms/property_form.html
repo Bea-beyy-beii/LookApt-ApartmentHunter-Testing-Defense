@@ -79,13 +79,26 @@
                 Next →
             </button>
 
-            <!-- Create Property -->
-            <button
-                type="submit"
-                class="btn btn-primary wizard-submit"
-                hidden>
-                {% if property %}Save Changes{% else %}Create Property{% endif %}
-            </button>
+            <!-- Create (step 4 only): two choices -->
+            <div class="wizard-submit-group" hidden>
+
+                <button type="submit"
+                        name="visibility"
+                        value="unpublished"
+                        class="btn btn-secondary wizard-submit">
+                    {% if property %}Save as Unpublished{% else %}Create as Unpublished{% endif %}
+                </button>
+
+                <button type="submit"
+                        name="visibility"
+                        value="active"
+                        class="btn btn-primary wizard-submit">
+                    {% if property %}Save &amp; Publish{% else %}Create &amp; Publish{% endif %}
+                </button>
+
+                <small class="wizard-submit-note">Public listings appear to renters once approved by an admin.</small>
+
+            </div>
 
         </div>
 

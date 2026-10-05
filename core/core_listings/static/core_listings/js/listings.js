@@ -107,44 +107,15 @@ function updateWizardButtons() {
 
     const backButton = document.querySelector('.wizard-back');
     const nextButton = document.querySelector('.wizard-next');
-    const submitButton = document.querySelector('.wizard-submit');
+    const submitGroup = document.querySelector('.wizard-submit-group');
 
-    if (!backButton || !nextButton || !submitButton) {
+    if (!backButton || !nextButton || !submitGroup) {
         return;
     }
 
-
-    // STEP 1
-    // Only Next
-    if (currentStep === 1) {
-
-        backButton.hidden = true;
-        nextButton.hidden = false;
-        submitButton.hidden = true;
-
-    }
-
-
-    // STEP 2 AND 3
-    // Back + Next
-    else if (currentStep === 2 || currentStep === 3) {
-
-        backButton.hidden = false;
-        nextButton.hidden = false;
-        submitButton.hidden = true;
-
-    }
-
-
-    // STEP 4
-    // Back + Create Property
-    else if (currentStep === 4) {
-
-        backButton.hidden = false;
-        nextButton.hidden = true;
-        submitButton.hidden = false;
-
-    }
+    backButton.hidden = currentStep === 1;
+    nextButton.hidden = currentStep === 4;
+    submitGroup.hidden = currentStep !== 4;
 }
 
 

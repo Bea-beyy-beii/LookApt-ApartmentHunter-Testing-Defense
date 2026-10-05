@@ -35,4 +35,6 @@ urlpatterns = [
     path("property/<uuid:property_pk>/units/create/", views.unit_create, name="unit_create"),
     path("unit/<uuid:pk>/edit/", views.unit_edit, name="unit_edit"),
     path("unit/<uuid:pk>/delete/", views.unit_delete, name="unit_delete"),
+    path("property/<uuid:pk>/delete/", views.property_delete, name="property_delete"),
+    path("property/<uuid:pk>/visibility/", views.property_set_visibility, name="property_set_visibility"),
 ]

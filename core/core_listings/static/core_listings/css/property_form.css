@@ -368,6 +368,25 @@
     box-shadow: 0 7px 18px rgba(245, 185, 76, 0.28);
 }
 
+.wizard-submit-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.wizard-submit-group[hidden] {
+    display: none;
+}
+
+.wizard-submit-note {
+    flex-basis: 100%;
+    color: var(--text-secondary);
+    font-size: 12px;
+    text-align: right;
+}
+
 
 /* =========================================================
    FORM FIELD HELPERS

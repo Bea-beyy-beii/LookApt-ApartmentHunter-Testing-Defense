@@ -108,3 +108,62 @@
         font-size: 14px;
     }
 }
+
+/* ---------------------------------------------------------
+   Status filter chips
+   --------------------------------------------------------- */
+
+.listing-status-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+
+    margin-bottom: 20px;
+}
+
+.status-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    height: 40px;
+    padding: 0 18px;
+
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-pill);
+    background: var(--white);
+    color: var(--navy);
+
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.status-filter svg {
+    width: 18px;
+    height: 18px;
+}
+
+.status-filter-count {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.status-filter.active {
+    border-color: var(--navy);
+    background: var(--navy);
+    color: var(--white);
+}
+
+.status-filter.active .status-filter-count {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.properties-filter-empty {
+    padding: 30px;
+    color: var(--text-secondary);
+    text-align: center;
+}
