@@ -24,6 +24,10 @@
 
     <link rel="stylesheet" href="{% static 'core_maps/maps.css' %}">
 
+    <link rel="stylesheet" href="{% static 'core/css/components/toasts.css' %}">
+    <link rel="stylesheet" href="{% static 'core/css/components/gallery.css' %}">
+    <link rel="stylesheet" href="{% static 'core/css/components/feature_chips.css' %}">
+
     {% block extra_css %}{% endblock %}
 </head>
 
@@ -116,7 +120,7 @@
             </a>
             
             {# LOG OUT #}
-            <a href="{% url 'login' %}" class="sidebar-link sidebar-logout">
+            <a href="{% url 'logout' %}" class="sidebar-link sidebar-logout">
                 <span class="sidebar-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                         <path d="M10 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h5"/>
@@ -173,8 +177,11 @@
 
 </div>
 
+{% include "core/partials/toasts.html" %}
 <script src="{% static 'core/js/renter_dashboard.js' %}"></script>
 <script src="{% static 'core_maps/maps.js' %}"></script>
+<script src="{% static 'core/js/gallery.js' %}"></script>
+<script src="{% static 'core/js/saved_listings.js' %}"></script>
 {% block extra_js %}{% endblock %}
 
 </body>

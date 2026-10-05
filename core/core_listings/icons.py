@@ -18,6 +18,7 @@ FEATURE_ICONS = {
     "has_parking_space": '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 17V7h4a3 3 0 0 1 0 6H9"/>',
     "is_gated": '<path d="M3 21V7l9-4 9 4v14M3 11h18M7 11v10M11 11v10M15 11v10M19 11v10"/>',
     "has_laundry_area": '<rect x="4" y="2" width="16" height="20" rx="2"/><circle cx="12" cy="13" r="5"/><path d="M8 6h.01M11 6h.01"/>',
+    "furnished": '<path d="M4 11V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><path d="M2 13a2 2 0 0 1 4 0v2h12v-2a2 2 0 0 1 4 0v5H2z"/><path d="M5 18v2M19 18v2"/>',
 }
 
 

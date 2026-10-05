@@ -1,0 +1,20 @@
+{# Flash messages (messages.success / messages.error) as toasts that fade out. #}
+{# Rendering them here "uses them up", so they no longer pile up on the login page. #}
+{% if messages %}
+<div class="toast-stack" aria-live="polite">
+    {% for message in messages %}
+        <div class="toast toast--{{ message.tags|default:'info' }}" role="status">
+            <span class="toast-text">{{ message }}</span>
+            <button type="button" class="toast-close" aria-label="Dismiss" onclick="this.parentElement.remove()">&times;</button>
+        </div>
+    {% endfor %}
+</div>
+<script>
+    setTimeout(() => {
+        document.querySelectorAll(".toast-stack .toast").forEach(toast => {
+            toast.classList.add("is-leaving");
+            setTimeout(() => toast.remove(), 300);
+        });
+    }, 3500);
+</script>
+{% endif %}

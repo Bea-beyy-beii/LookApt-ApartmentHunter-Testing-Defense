@@ -38,4 +38,5 @@ urlpatterns = [
     path("property/<uuid:pk>/delete/", views.property_delete, name="property_delete"),
     path("property/<uuid:pk>/visibility/", views.property_set_visibility, name="property_set_visibility"),
     path("unit/<uuid:pk>/availability/", views.unit_set_availability, name="unit_set_availability"),
+    path("property/<uuid:pk>/save/", views.toggle_saved_listing, name="toggle_saved_listing"),
 ]

@@ -80,7 +80,9 @@
                 {% csrf_token %}
 
                 {% for message in messages %}
-                    <p class="login-error">{{ message }}</p>
+                    {% if message.level == DEFAULT_MESSAGE_LEVELS.ERROR %}
+                        <p class="login-error">{{ message }}</p>
+                    {% endif %}
                 {% endfor %}
 
 

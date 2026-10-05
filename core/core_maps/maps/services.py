@@ -13,6 +13,8 @@ from .categories import category_style
 from .geo import TRAVEL_MODES, bounding_box, estimate_minutes, haversine_m, normalize_mode
 from .providers import LocalProvider, NominatimGeocoder, OverpassProvider, ProviderError
 
+from core.core_listings.services import renter_visible_complexes
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_AREA_NAME = "Davao City"
@@ -151,13 +153,8 @@ def complex_landmarks(complex_obj):
 # =========================================================
 
 def searchable_complexes():
-    """Only listings renters are allowed to see."""
-    return Complex.objects.filter(
-        status=Complex.ComplexStatus.ACTIVE,
-        approval_status=Complex.Approval.APPROVED,
-        latitude__isnull=False,
-        longitude__isnull=False,
-    )
+    """Only listings renters are allowed to see (and that have a map pin)."""
+    return renter_visible_complexes().filter(latitude__isnull=False, longitude__isnull=False)
 
 
 def complexes_near(lat, lng, radius_km, mode, filters=None):

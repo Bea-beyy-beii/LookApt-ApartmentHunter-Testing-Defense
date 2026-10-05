@@ -876,198 +876,210 @@
 
 
 /* =========================================================
-   LISTINGS
+   LISTINGS (renter cards — Home + Saved Listings)
 ========================================================= */
 
 .listing-grid {
     display: grid;
-
-    grid-template-columns:
-        repeat(4, minmax(0, 1fr));
-
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(min(290px, 100%), 1fr));
+    gap: 22px;
 }
 
 .listing-card {
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
-
-    background: rgba(255, 255, 255, 0.94);
-
+    background: var(--white);
     border: 1px solid var(--border-light);
-
-    border-radius: 17px;
-
-    box-shadow:
-        0 7px 20px rgba(30, 48, 70, 0.07);
-
-    transition:
-        transform 0.2s ease,
-        box-shadow 0.2s ease;
+    border-radius: 18px;
+    box-shadow: 0 7px 20px rgba(30, 48, 70, 0.07);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .listing-card:hover {
     transform: translateY(-3px);
-
-    box-shadow:
-        0 12px 28px rgba(30, 48, 70, 0.11);
+    box-shadow: 0 14px 30px rgba(30, 48, 70, 0.12);
 }
 
-.listing-image-wrapper {
-    height: 165px;
+/* ---------- Photo gallery ---------- */
 
+.listing-gallery {
     position: relative;
-
+    aspect-ratio: 16 / 10;
     overflow: hidden;
-
-    background: #ded8ce;
+    background: #ece6dc;
 }
 
-.listing-image {
-    width: 100%;
-    height: 100%;
-
-    object-fit: cover;
-
-    display: block;
+/* Arrows only appear while the card is hovered */
+.listing-gallery .gallery-arrow {
+    opacity: 0;
+    transition: opacity 0.2s ease, background 0.2s ease, color 0.2s ease, transform 0.15s ease;
 }
+
+.listing-card:hover .gallery-arrow:not(:disabled),
+.listing-gallery .gallery-arrow:focus-visible {
+    opacity: 1;
+}
+
+/* ---------- Availability badge (top-left) ---------- */
 
 .listing-availability {
     position: absolute;
-
-    top: 10px;
-    left: 10px;
-
-    padding: 6px 9px;
-
-    border-radius: 12px;
-
-    background: #fff8ed;
-
-    color: #e04e2d;
-
-    font-size: 10px;
+    top: 12px;
+    left: 12px;
+    z-index: 2;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: #e9f6ee;
+    color: #2f8a52;
+    font-size: 12px;
     font-weight: 700;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
+
+.listing-availability--low  { background: #fdeceb; color: #d63b2f; }
+.listing-availability--full { background: #f1f1f1; color: #6b7280; }
+
+/* ---------- Save ribbon (top-right) ---------- */
 
 .save-listing {
     position: absolute;
-
-    top: 9px;
-    right: 9px;
-
-    width: 31px;
-    height: 31px;
-
+    top: 12px;
+    right: 12px;
+    z-index: 2;
     display: grid;
     place-items: center;
-
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 0;
     border-radius: 50%;
-
-    background: rgba(255, 255, 255, 0.95);
-
+    background: rgba(255, 255, 255, 0.96);
     color: var(--navy);
-
-    box-shadow:
-        0 3px 10px rgba(0, 0, 0, 0.09);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.2s ease;
 }
+
+.save-listing:hover  { transform: scale(1.08); }
+.save-listing:active { transform: scale(0.92); }
 
 .save-listing svg {
-    width: 17px;
-    height: 17px;
-
-    stroke-width: 1.8;
+    width: 18px;
+    height: 18px;
+    fill: transparent;
+    transition: fill 0.2s ease;
 }
 
+/* Saved = filled ribbon */
+.save-listing.is-saved svg { fill: currentColor; }
+
+.save-listing:disabled { cursor: progress; }
+
+/* ---------- Info ---------- */
+
 .listing-info {
-    padding: 12px 14px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px 16px 16px;
 }
 
 .listing-heading-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-
-    gap: 8px;
+    gap: 10px;
 }
 
 .listing-heading-row h2 {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
     color: var(--navy);
-
-    font-size: 15px;
+    font-size: 18px;
+    font-weight: 700;
 }
 
 .listing-price {
     flex-shrink: 0;
-
-    padding: 7px 9px;
-
-    border-radius: 15px;
-
+    padding: 6px 12px;
+    border-radius: 999px;
     background: #fbf0de;
-
     color: var(--navy);
-
-    font-size: 11px;
+    font-size: 14px;
     font-weight: 700;
 }
 
 .listing-price small {
     color: #7d7c78;
-
-    font-size: 9px;
+    font-size: 12px;
     font-weight: 500;
 }
 
 .listing-location {
     display: flex;
     align-items: center;
-
-    gap: 5px;
-
-    margin-top: 5px;
-
+    gap: 6px;
+    min-width: 0;
     color: #657287;
+    font-size: 13px;
+}
 
-    font-size: 10px;
+.listing-location span {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 .listing-location svg {
-    width: 14px;
-    height: 14px;
-
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
     color: var(--navy);
-
     stroke-width: 1.8;
 }
 
 .listing-features {
     display: flex;
-
-    gap: 6px;
-
-    margin-top: 11px;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 6px;
 }
 
-.listing-features span {
-    flex: 1;
-    min-width: 0;
+.listing-features .feature-chip {
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+}
 
-    padding: 6px 7px;
+.listing-features .feature-chip svg {
+    width: 15px;
+    height: 15px;
+}
 
-    display: flex;
-    align-items: center;
-    justify-content: center;
+/* ---------- Empty states ---------- */
 
-    white-space: nowrap;
+.listing-empty {
+    grid-column: 1 / -1;
+    padding: 48px 20px;
+    border: 1.5px dashed var(--border-light);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.6);
+    text-align: center;
+}
 
-    border-radius: 12px;
+.listing-empty h3 {
+    color: var(--navy);
+    font-size: 17px;
+}
 
-    background: #f7f6f2;
-
-    color: #536176;
-
-    font-size: 8px;
-    font-weight: 600;
+.listing-empty p {
+    margin-top: 6px;
+    color: var(--text-secondary);
+    font-size: 14px;
 }
 
 /* =========================================================
@@ -1748,11 +1760,6 @@
         padding: 30px 28px 40px;
     }
 
-    .listing-grid {
-        grid-template-columns:
-            repeat(3, minmax(0, 1fr));
-    }
-
     .dashboard-feature {
         grid-template-columns: 1fr;
     }
@@ -1768,11 +1775,6 @@
 
     .renter-dashboard {
         padding: 25px 20px 35px;
-    }
-
-    .listing-grid {
-        grid-template-columns:
-            repeat(2, minmax(0, 1fr));
     }
 
 }
@@ -1799,10 +1801,6 @@
 
     .map-feature {
         min-height: 300px;
-    }
-
-    .listing-grid {
-        grid-template-columns: 1fr;
     }
 
     .listing-image-wrapper {

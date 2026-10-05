@@ -170,3 +170,8 @@ MAILERS = {
 AUTH_USER_MODEL = 'core.User'
 AUTHENTICATION_BACKENDS = ['core.core_accounts.backends.PhoneOrUsernameBackend']
 LOGIN_URL = 'login'
+
+# TEMPORARY (until admin approval + landlord verification are built):
+# active listings are shown to renters right away, no admin approval needed.
+# Set to True to bring the approval step back.
+LISTINGS_REQUIRE_APPROVAL = False

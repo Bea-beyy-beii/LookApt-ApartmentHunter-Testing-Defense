@@ -1,5 +1,5 @@
 from django.contrib import messages
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 from .services import AccountService
@@ -50,6 +50,11 @@ def login_view(request):
             return redirect(ROLE_HOME[user.role])
         messages.error(request, "Invalid phone/username or password.")
     return render(request, 'core_accounts/login.html')
+
+def logout_view(request):
+    # Ends the session (the sidebar "Log Out" link used to only open the login page)
+    logout(request)
+    return redirect('login')
 
 def otp_view(request):
     return render(request, 'core_accounts/otp.html')

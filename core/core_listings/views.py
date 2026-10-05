@@ -17,6 +17,10 @@ from django.views.decorators.http import require_POST
 from .models import UnitPicture, UnitVideo
 import logging
 
+from .models import SavedListing
+from .services import renter_visible_complexes
+from core.models import Renter
+
 
 def _my_listings_url():
     # The listings page lives inside the landlord dashboard
@@ -350,3 +354,21 @@ def unit_set_availability(request, pk):
             "label": unit.get_availability_display(),
         })
     return redirect(_my_listings_url())
+
+
+
+# =========================================================
+# RENTERS — save / unsave a listing (the ribbon on the card)
+# =========================================================
+
+@role_required("renter")
+@require_POST
+def toggle_saved_listing(request, pk):
+    complex_obj = get_object_or_404(renter_visible_complexes(), pk=pk)
+    renter, _ = Renter.objects.get_or_create(user=request.user)
+
+    saved, created = SavedListing.objects.get_or_create(renter=renter, complex=complex_obj)
+    if not created:
+        saved.delete()   # second click = unsave
+
+    return JsonResponse({"saved": created})

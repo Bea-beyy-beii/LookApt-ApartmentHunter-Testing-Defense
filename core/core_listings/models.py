@@ -304,3 +304,21 @@ class UnitVideo(models.Model):
 
     def __str__(self):
         return f"{self.unit} – video {self.position + 1}"
+
+
+
+# --------------------------------------------------------------------------------------------------------------- SAVED LISTINGS (renter bookmarks)
+
+class SavedListing(models.Model):
+    renter = models.ForeignKey("core.Renter", on_delete=models.CASCADE, related_name="saved_listings")
+    complex = models.ForeignKey(Complex, on_delete=models.CASCADE, related_name="saved_by")
+    saved_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-saved_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["renter", "complex"], name="unique_saved_listing_per_renter")
+        ]
+
+    def __str__(self):
+        return f"{self.renter.user} saved {self.complex}"

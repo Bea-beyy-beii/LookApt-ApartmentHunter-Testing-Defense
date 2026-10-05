@@ -265,86 +265,13 @@
         aria-label="Apartment listings"
     >
 
-        {% for image in "12345678" %}
-
-        <article
-            class="listing-card"
-            data-listing-id="{{ forloop.counter }}"
-        >
-
-            <div class="listing-image-wrapper">
-
-                <img
-                    src="{% static 'core/images/apt2.png' %}"
-                    alt="WTL Apartment"
-                    class="listing-image"
-                >
-
-                <span class="listing-availability">
-                    1 unit left!
-                </span>
-
-
-                <button
-                    class="save-listing"
-                    type="button"
-                    aria-label="Save listing"
-                    data-listing-id="{{ forloop.counter }}"
-                >
-
-                    <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                    >
-                        <path d="M6 4.8A1.8 1.8 0 0 1 7.8 3h8.4A1.8 1.8 0 0 1 18 4.8V21l-6-3.4L6 21z"/>
-                    </svg>
-
-                </button>
-
+        {% for listing in listings %}
+            {% include "core_renters/partials/listing_card.html" %}
+        {% empty %}
+            <div class="listing-empty">
+                <h3>No listings yet</h3>
+                <p>New apartments will show up here as soon as landlords publish them.</p>
             </div>
-
-
-            <div class="listing-info">
-
-                <div class="listing-heading-row">
-
-                    <h2>
-                        WTL Apartment
-                    </h2>
-
-                    <span class="listing-price">
-                        ₱10,000
-                        <small>/ month</small>
-                    </span>
-
-                </div>
-
-
-                <p class="listing-location">
-
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path d="M12 21s7-6.1 7-12A7 7 0 1 0 5 9c0 5.9 7 12 7 12Z"/>
-                        <circle cx="12" cy="9" r="2.5"/>
-                    </svg>
-
-                    Sta. Rosario, Buhangin
-
-                </p>
-
-
-                <div class="listing-features">
-
-                    <span>🐾 Pet-friendly</span>
-                    <span>❄ With AC</span>
-                    <span>🛋 Semi-furnished</span>
-
-                </div>
-
-            </div>
-
-        </article>
-
         {% endfor %}
 
     </section>
@@ -377,93 +304,19 @@
     </div>
 
 
+    <div class="listing-empty" data-saved-empty {% if saved_listings %}hidden{% endif %}>
+        <h3>No saved listings yet</h3>
+        <p>Tap the ribbon on any listing to keep it here for later.</p>
+    </div>
+
     <section
         class="listing-grid saved-listing-grid"
         aria-label="Saved apartment listings"
+        data-saved-grid
     >
-
-         {% for image in "123" %}
-
-        <article
-            class="listing-card"
-            data-listing-id="{{ forloop.counter }}"
-        >
-
-            <div class="listing-image-wrapper">
-
-                <img
-                    src="{% static 'core/images/apt2.png' %}"
-                    alt="WTL Apartment"
-                    class="listing-image"
-                >
-
-                <span class="listing-availability">
-                    1 unit left!
-                </span>
-
-
-                <button
-                    class="save-listing"
-                    type="button"
-                    aria-label="Save listing"
-                    data-listing-id="{{ forloop.counter }}"
-                >
-
-                    <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                    >
-                        <path d="M6 4.8A1.8 1.8 0 0 1 7.8 3h8.4A1.8 1.8 0 0 1 18 4.8V21l-6-3.4L6 21z"/>
-                    </svg>
-
-                </button>
-
-            </div>
-
-
-            <div class="listing-info">
-
-                <div class="listing-heading-row">
-
-                    <h2>
-                        WTL Apartment
-                    </h2>
-
-                    <span class="listing-price">
-                        ₱10,000
-                        <small>/ month</small>
-                    </span>
-
-                </div>
-
-
-                <p class="listing-location">
-
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path d="M12 21s7-6.1 7-12A7 7 0 1 0 5 9c0 5.9 7 12 7 12Z"/>
-                        <circle cx="12" cy="9" r="2.5"/>
-                    </svg>
-
-                    Sta. Rosario, Buhangin
-
-                </p>
-
-
-                <div class="listing-features">
-
-                    <span>🐾 Pet-friendly</span>
-                    <span>❄ With AC</span>
-                    <span>🛋 Semi-furnished</span>
-
-                </div>
-
-            </div>
-
-        </article>
-
+        {% for listing in saved_listings %}
+            {% include "core_renters/partials/listing_card.html" %}
         {% endfor %}
-
     </section>
 
 </section>

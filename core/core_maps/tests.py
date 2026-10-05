@@ -4,7 +4,7 @@ from unittest import mock
 
 import requests
 from django.core.cache import cache
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from core.core_listings.models import Area, Complex, ComplexLandmark, Landmark
@@ -103,6 +103,7 @@ class ServiceTests(TestCase):
         self.assertEqual(source, "live")
         self.assertEqual({l["name"] for l in landmarks}, {"Mapúa Malayan Colleges Mindanao", "Clinic A"})
 
+    @override_settings(LISTINGS_REQUIRE_APPROVAL=True)
     def test_complexes_near_filters_by_radius_and_visibility(self):
         near = self.make_complex("Near", 7.0600, 125.5970)                       # ~0.2 km
         self.make_complex("Mid", 7.0800, 125.5962)                               # ~2.4 km

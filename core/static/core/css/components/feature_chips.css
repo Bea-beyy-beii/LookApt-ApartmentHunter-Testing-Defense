@@ -1,0 +1,42 @@
+.feature-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    min-width: 0;
+    padding: 6px 14px 6px 10px;
+
+    border-radius: 10px;
+
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.feature-chip svg {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+}
+
+.feature-chip-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Complex features */
+.feature-chip--pet_friendly       { background: #fde8e8; color: #c0392b; }
+.feature-chip--has_parking_space  { background: #e6eefb; color: #2f5fb3; }
+.feature-chip--is_gated           { background: #fbf0dc; color: #9a6a1f; }
+.feature-chip--has_laundry_area   { background: #e8edfa; color: #3b4f9a; }
+
+/* Unit amenities */
+.feature-chip--air_conditioned    { background: #e5f0fb; color: #1f6fbf; }
+.feature-chip--wifi_ready         { background: #ece8fb; color: #5b45b0; }
+.feature-chip--own_bathroom       { background: #e3f4ea; color: #2f8a52; }
+.feature-chip--has_kitchen_area   { background: #fdeee0; color: #b8621b; }
+.feature-chip--has_balcony        { background: #e2f3f4; color: #178a94; }
+.feature-chip--has_window_view    { background: #eef2f7; color: #4a5a78; }
+.feature-chip--own_electric_meter { background: #fff4d6; color: #a67c00; }
+.feature-chip--has_water_heater   { background: #fde8ec; color: #c0394f; }
+.feature-chip--furnished          { background: #e9eef6; color: #203a68; }

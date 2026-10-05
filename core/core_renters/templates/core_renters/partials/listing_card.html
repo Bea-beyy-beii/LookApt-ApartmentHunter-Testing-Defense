@@ -1,0 +1,99 @@
+{% load listing_tags %}
+{% with pictures=listing.pictures.all %}
+
+<article class="listing-card" data-listing-card data-complex-id="{{ listing.pk }}">
+
+    <!-- Photos -->
+    <div class="listing-gallery" data-gallery>
+
+        {% if pictures %}
+            <div class="property-gallery-track">
+                {% for picture in pictures %}
+                    <img src="{{ picture.image.url }}"
+                         alt="{{ listing.complex_name }} photo {{ forloop.counter }}"
+                         loading="lazy">
+                {% endfor %}
+            </div>
+
+            {% if pictures|length > 1 %}
+                <button type="button" class="gallery-arrow gallery-arrow--prev" data-gallery-prev aria-label="Previous photo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <button type="button" class="gallery-arrow gallery-arrow--next" data-gallery-next aria-label="Next photo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+            {% endif %}
+
+            <span class="gallery-count">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 17-5-5-9 8"/>
+                </svg>
+                <span><span data-gallery-position>1</span>/{{ pictures|length }}</span>
+            </span>
+        {% else %}
+            <div class="property-gallery-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 17-5-5-9 8"/>
+                </svg>
+                <span>No photos yet</span>
+            </div>
+        {% endif %}
+
+        <!-- Availability badge -->
+        {% if listing.card_available == 0 %}
+            <span class="listing-availability listing-availability--full">Fully occupied</span>
+        {% elif listing.card_available == 1 %}
+            <span class="listing-availability listing-availability--low">1 unit left!</span>
+        {% else %}
+            <span class="listing-availability">{{ listing.card_available }} units available</span>
+        {% endif %}
+
+        <!-- Save (ribbon) -->
+        <button type="button"
+                class="save-listing{% if listing.is_saved %} is-saved{% endif %}"
+                data-save-listing
+                data-url="{% url 'core_listings:toggle_saved_listing' listing.pk %}"
+                aria-pressed="{% if listing.is_saved %}true{% else %}false{% endif %}"
+                aria-label="{% if listing.is_saved %}Remove from saved{% else %}Save listing{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true">
+                <path d="M6 4.8A1.8 1.8 0 0 1 7.8 3h8.4A1.8 1.8 0 0 1 18 4.8V21l-6-3.4L6 21z"/>
+            </svg>
+        </button>
+
+    </div>
+
+
+    <!-- Info -->
+    <div class="listing-info">
+
+        <div class="listing-heading-row">
+            <h2 title="{{ listing.complex_name }}">{{ listing.complex_name }}</h2>
+            <span class="listing-price">
+                ₱{{ listing.card_price|floatformat:"0g" }} <small>/ month</small>
+            </span>
+        </div>
+
+        <p class="listing-location" title="{{ listing.address }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                <path d="M12 21s7-6.1 7-12A7 7 0 1 0 5 9c0 5.9 7 12 7 12Z"/>
+                <circle cx="12" cy="9" r="2.5"/>
+            </svg>
+            <span>{{ listing.address }}</span>
+        </p>
+
+        {% if listing.card_chips %}
+            <div class="listing-features">
+                {% for chip in listing.card_chips %}
+                    <span class="feature-chip feature-chip--{{ chip.key }}">
+                        {% feature_icon chip.key %}
+                        <span class="feature-chip-text">{{ chip.label }}</span>
+                    </span>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+    </div>
+
+</article>
+
+{% endwith %}
