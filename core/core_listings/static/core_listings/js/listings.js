@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        if (!hasPinnedLocation()) {
+        if (form.querySelector('[name="latitude"]') && !hasPinnedLocation()) {
             e.preventDefault();
             goToStep(2);
         }

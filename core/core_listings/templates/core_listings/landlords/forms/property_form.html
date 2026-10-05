@@ -1,6 +1,6 @@
 {% load static %}
 
-<div class="property-wizard-form wizard-form">
+<div class="property-form-view">
 
     <!-- Breadcrumb -->
     <div class="breadcrumb">
@@ -47,7 +47,7 @@
     <form method="post"
       enctype="multipart/form-data"
       action="{% if property %}{% url 'core_listings:property_edit' property.pk %}{% else %}{% url 'core_listings:property_create' %}{% endif %}"
-      class="property-wizard-form">
+      class="property-wizard-form wizard-form">
         {% csrf_token %}
 
         {% if form.non_field_errors %}

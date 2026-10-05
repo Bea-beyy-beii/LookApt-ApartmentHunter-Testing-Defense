@@ -88,16 +88,12 @@
                 else el.value = value;
             }
 
-            if (draft.formOpen && typeof showPropertyForm === "function") {
-                showPropertyForm();   // re-open the wizard on the dashboard
-            }
-            goToStep(draft.step || 1);
-            restoreMap(draft);
-
-                        if (draft.formOpen && document.getElementById("listings-form-view")
-                && typeof showPropertyForm === "function") {
+            // Re-open the wizard on the dashboard (the unit page has no list view)
+            if (draft.formOpen && document.getElementById("listings-form-view") && typeof showPropertyForm === "function") {
                 showPropertyForm();
             }
+            goToStep(draft.step || 1);   // after showPropertyForm(), which resets to step 1
+            restoreMap(draft);
         }
 
 

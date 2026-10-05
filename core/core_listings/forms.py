@@ -85,8 +85,6 @@ class ComplexForm(forms.ModelForm):
         return [self[name] for name in self.FEATURE_FIELDS]
 
 
-    
-
     class Meta:
         model = Complex
 
@@ -103,8 +101,6 @@ class ComplexForm(forms.ModelForm):
             "min_price",
             "max_price",
             "num_of_floors",
-            "advance_months",
-            "deposit_months",
             "is_gated",
             "has_laundry_area",
         ]
@@ -158,10 +154,6 @@ class ComplexForm(forms.ModelForm):
             ),
 
             "num_of_floors": forms.NumberInput(attrs={"min": "1", "max": "100", "placeholder": "e.g. 3"}),
-
-            "advance_months": forms.NumberInput(attrs={"min": "0", "max": "12", "placeholder": "e.g. 1"}),
-           
-            "deposit_months": forms.NumberInput(attrs={"min": "0", "max": "12", "placeholder": "e.g. 2"}),
         }
 
         labels = {
@@ -200,20 +192,6 @@ class ComplexForm(forms.ModelForm):
         return cleaned
 
 
-    def _clean_months(self, name):
-        value = self.cleaned_data.get(name)
-        if value is not None and value > 12:
-            raise ValidationError("Maximum is 12 months.")
-        return value
-
-    def clean_advance_months(self):
-        return self._clean_months("advance_months")
-
-    def clean_deposit_months(self):
-        return self._clean_months("deposit_months")
-
-
-
 class UnitForm(forms.ModelForm):
 
     photos = MultipleImageField(
@@ -227,6 +205,7 @@ class UnitForm(forms.ModelForm):
             "identifier", "floor", "bedroom_type",
             "width_dimension", "length_dimension",
             "max_occupant", "furnish_level", "price",
+            "advance_months", "deposit_months",
             *Unit.AMENITY_FIELDS,
             "unit_description",
         ]
@@ -238,6 +217,8 @@ class UnitForm(forms.ModelForm):
             "max_occupant": "Max Occupants",
             "furnish_level": "Furnishing",
             "price": "Monthly Rent",
+            "advance_months": "Advance Months",
+            "deposit_months": "Deposit Months",
             "unit_description": "Additional Notes",
         }
         widgets = {
@@ -252,6 +233,10 @@ class UnitForm(forms.ModelForm):
                 "maxlength": "600",
                 "placeholder": "e.g., special features, inclusions, or reminders for renters...",
             }),
+            
+            "advance_months": forms.NumberInput(attrs={"min": "0", "max": "12", "placeholder": "e.g. 1"}),
+                       
+            "deposit_months": forms.NumberInput(attrs={"min": "0", "max": "12", "placeholder": "e.g. 2"}),
         }
 
     def __init__(self, *args, complex_obj, **kwargs):
@@ -321,3 +306,16 @@ class UnitForm(forms.ModelForm):
         photos = self.cleaned_data.get("photos") or []
         existing = self.instance.pictures.count() if self.instance.pk else 0
         return validate_photo_uploads(photos, existing, MAX_UNIT_PHOTOS)
+
+    def _clean_months(self, name):
+            value = self.cleaned_data.get(name)
+            if value is not None and value > 12:
+                raise ValidationError("Maximum is 12 months.")
+            return value
+    
+    def clean_advance_months(self):
+        return self._clean_months("advance_months")
+
+    def clean_deposit_months(self):
+        return self._clean_months("deposit_months")
+    

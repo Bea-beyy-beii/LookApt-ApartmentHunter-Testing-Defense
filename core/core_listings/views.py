@@ -163,31 +163,6 @@ def unit_detail(request, pk):
     )
 
 # ---------------------------------------------------------
-# UNITS (placeholders until the Units feature is built)
-# ---------------------------------------------------------
-
-def _units_coming_soon(request):
-    messages.info(request, "Managing units is coming soon.")
-    return redirect(_my_listings_url())
-
-
-@role_required("landlord")
-def unit_create(request, property_pk):
-    return _units_coming_soon(request)
-
-
-@role_required("landlord")
-def unit_edit(request, pk):
-    return _units_coming_soon(request)
-
-
-@role_required("landlord")
-def unit_delete(request, pk):
-    return _units_coming_soon(request)
-
-
-
-# ---------------------------------------------------------
 # ⋮ MENU ACTIONS (called with fetch() from listings_cards.js)
 # ---------------------------------------------------------
 
