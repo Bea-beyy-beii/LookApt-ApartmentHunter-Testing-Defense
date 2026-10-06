@@ -7,12 +7,35 @@
 (function () {
 
     const SKIP = new Set(["csrfmiddlewaretoken", "photos"]);
+    const PENDING = "lookapt:wizard:pending";   // draft key of the form that was just submitted
+
+    // The server adds ?saved=1 after a successful save: only now is it safe to
+    // forget the draft. (If the save failed, the draft is still there to restore.)
+    // Runs before DOMContentLoaded so photo_upload.js doesn't restore the photos.
+    const params = new URLSearchParams(location.search);
+    if (params.has("saved")) {
+        try {
+            const pendingKey = sessionStorage.getItem(PENDING);
+            if (pendingKey) sessionStorage.removeItem(pendingKey);
+            sessionStorage.removeItem(PENDING);
+        } catch (error) {
+            /* storage blocked: there is no draft to clear */
+        }
+
+        // Drop ?saved=1 so a refresh doesn't count as another save
+        params.delete("saved");
+        history.replaceState(null, "", location.pathname + (params.toString() ? "?" + params : "") + location.hash);
+    }
 
     document.addEventListener("DOMContentLoaded", () => {
         const form = document.querySelector(".wizard-form");
         if (!form) return;
 
         const key = "lookapt:wizard:" + form.getAttribute("action");
+
+        
+        // The server sent the form back with errors (listings.js already opened the step with the first error)
+        const hasErrors = form.dataset.hasErrors === "1";
 
         // The editable map in step 2 (from core_maps)
         function mapPicker() {
@@ -81,6 +104,14 @@
             }
             if (!draft) return;
 
+            if (hasErrors) {
+                // The inputs already hold what was submitted; only the map pin
+                // (and the photos, via photo_upload.js) need restoring.
+                restoreMap(draft);
+                save();
+                return;
+            }
+
             for (const [name, value] of Object.entries(draft.fields || {})) {
                 const el = form.elements[name];
                 if (!el || !el.tagName) continue;   // skip missing fields / radio groups
@@ -116,12 +147,18 @@
             };
         }
 
-        // Real submit: forget the draft. listings.js blocks invalid submits
-        // with preventDefault(), so only clear when the submit goes through.
+        // Real submit: keep the draft until the server confirms the save
+        // (?saved=1, handled at the top). If the server rejects the form or
+        // the request fails, the landlord doesn't lose what they typed.
+        // listings.js blocks invalid submits with preventDefault().
         form.addEventListener("submit", event => {
             if (event.defaultPrevented) return;
-            sessionStorage.removeItem(key);
-            document.dispatchEvent(new CustomEvent("wizard:clear"));
+            save();
+            try {
+                sessionStorage.setItem(PENDING, key);
+            } catch (error) {
+                /* storage blocked: nothing was saved, so nothing to clear later */
+            }
         });
     });
 

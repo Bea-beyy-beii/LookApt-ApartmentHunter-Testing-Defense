@@ -41,11 +41,23 @@
       enctype="multipart/form-data"
       action="{% if property %}{% url 'core_listings:property_edit' property.pk %}{% else %}{% url 'core_listings:property_create' %}{% endif %}"
       class="property-wizard-form wizard-form"
+      data-has-errors="{% if form.errors %}1{% else %}0{% endif %}"
       data-saving-messages='{% if property %}["Saving your changes…", "Checking property details…", "Updating location & landmarks…", "Uploading photos…", "Almost done…"]{% else %}["Creating your property…", "Checking property details…", "Saving location & nearby landmarks…", "Uploading photos…", "Adding it to your listings…"]{% endif %}'>
         {% csrf_token %}
 
-        {% if form.non_field_errors %}
-            <div class="form-errors">{{ form.non_field_errors }}</div>
+        {# Every error, listed above the steps, so none can hide in a step (or a hidden field) you aren't on #}
+        {% if form.errors %}
+            <div class="form-errors" role="alert">
+                <strong>Your property wasn't saved yet. Please fix the following:</strong>
+                <ul>
+                    {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+                    {% for field in form %}
+                        {% if not field.name == "longitude" or not form.latitude.errors %}
+                            {% for error in field.errors %}<li>{{ field.label }}: {{ error }}</li>{% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+            </div>
         {% endif %}
 
         <div class="wizard-content">
@@ -90,7 +102,7 @@
                     {% if property %}Save &amp; Publish{% else %}Create &amp; Publish{% endif %}
                 </button>
 
-                <small class="wizard-submit-note">Public listings appear to renters once approved by an admin.</small>
+                <small class="wizard-submit-note"></small>
 
             </div>
 

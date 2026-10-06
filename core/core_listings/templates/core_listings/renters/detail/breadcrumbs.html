@@ -1,0 +1,31 @@
+{% comment %}
+    Breadcrumbs for the renter listing pages:
+    [home icon] > Home / Find Near / Saved Listings > Complex (> Unit)
+    `origin` is the dashboard tab the renter came from.
+{% endcomment %}
+<nav class="ld-breadcrumb" aria-label="Breadcrumb">
+    <ol class="crumbs">
+
+        <li class="crumb crumb-home">
+            <a class="crumb-link" href="{% url 'core_renters:dashboard' %}?tab=home" aria-label="Dashboard home">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h5v-6h4v6h5V9.5"/>
+                </svg>
+            </a>
+        </li>
+
+        <li class="crumb">
+            <a class="crumb-link" href="{% url 'core_renters:dashboard' %}?tab={{ origin }}">{{ origin_label }}</a>
+        </li>
+
+        {% if unit %}
+            <li class="crumb">
+                <a class="crumb-link" href="{% url 'core_listings:renter_complex_detail' complex.pk %}?from={{ origin }}">{{ complex.complex_name }}</a>
+            </li>
+            <li class="crumb" aria-current="page"><span class="crumb-link">{{ unit.unit_name }}</span></li>
+        {% else %}
+            <li class="crumb" aria-current="page"><span class="crumb-link">{{ complex.complex_name }}</span></li>
+        {% endif %}
+
+    </ol>
+</nav>

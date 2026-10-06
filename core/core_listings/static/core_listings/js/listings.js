@@ -186,7 +186,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Back button after submitting: the browser may restore the page with the overlay still on
     window.addEventListener('pageshow', hideSavingOverlay);
-    });
 
     // Coming back with the browser's Back button: unlock the form again
     window.addEventListener('pageshow', () => form.classList.remove('is-saving'));
@@ -204,8 +203,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const reviewAddress = document.getElementById('review-address');
         if (reviewAddress) reviewAddress.textContent = e.target.value;
     });
+});
 
-    // ---------------------------------------------------------
+// ---------------------------------------------------------
 // "CREATING…" OVERLAY (shown while the form uploads)
 // Messages come from the form's data-saving-messages attribute.
 // ---------------------------------------------------------

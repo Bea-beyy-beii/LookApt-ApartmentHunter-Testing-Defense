@@ -1,0 +1,28 @@
+{% comment %}
+    Apply / Join Waitlist + Inquire buttons for one unit.
+    Available unit -> "Apply as Renter", occupied -> "Join Waitlist".
+    `large` = the big buttons in the right column of the unit page.
+    Not wired to a backend yet (data-coming-soon shows a note).
+{% endcomment %}
+{% load listing_tags %}
+
+<div class="ld-actions{% if large %} ld-actions--large{% endif %}">
+
+    {% if unit.is_available %}
+        <button type="button" class="ld-btn ld-btn--primary" data-coming-soon="Applications">
+            {% feature_icon "document" %}
+            Apply as Renter
+        </button>
+    {% else %}
+        <button type="button" class="ld-btn ld-btn--waitlist" data-coming-soon="The waitlist">
+            {% feature_icon "bell" %}
+            Join Waitlist
+        </button>
+    {% endif %}
+
+    <button type="button" class="ld-btn ld-btn--ghost" data-coming-soon="Inquiries">
+        {% feature_icon "chat" %}
+        Inquire with Landlord
+    </button>
+
+</div>

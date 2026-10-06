@@ -6,11 +6,12 @@ import logging
 import unicodedata
 
 from django.db import transaction
+from django.urls import reverse
 
 from core.core_listings.models import Area, Complex, ComplexLandmark, Landmark
 
 from .categories import category_style
-from .geo import TRAVEL_MODES, bounding_box, estimate_minutes, haversine_m, normalize_mode
+from .geo import RADIUS_PRESETS_KM, TRAVEL_MODES, bounding_box, estimate_minutes, haversine_m, normalize_mode
 from .providers import LocalProvider, NominatimGeocoder, OverpassProvider, ProviderError
 
 from core.core_listings.services import renter_visible_complexes
@@ -36,6 +37,33 @@ def _travel_info(distance_m, mode):
 # LANDMARKS (landlord side)
 # =========================================================
 
+def _overpass_rings(lat, lng, radius_km):
+    """OSM landmarks fetched in growing circles (1 km, 3 km, ... up to radius_km).
+
+    Overpass caps how many places it returns and does NOT return the nearest
+    first, so one big circle could drop a landmark that the small circle
+    showed. Asking for every smaller preset circle too means a landmark seen
+    at "< 1 km" is still there at 3/5/10 km. Each circle is cached, so
+    switching between radius chips doesn't ask Overpass again.
+    """
+    rings = [km for km in RADIUS_PRESETS_KM if km < radius_km] + [radius_km]
+    provider = OverpassProvider()
+    results = []
+    fetched_any = False
+
+    for km in rings:
+        try:
+            results += provider.fetch(lat, lng, km * 1000)
+            fetched_any = True
+        except ProviderError as error:
+            # A bigger circle would fail too; keep what the smaller ones found
+            logger.warning("Overpass failed for %s km, using what we have: %s", km, error)
+            break
+
+    return results, ("live" if fetched_any else "offline")
+
+
+
 def nearby_landmarks(lat, lng, radius_km, mode, per_category=3, limit=40):
     """Landmarks around a point, nearest first, at most `per_category` per category.
 
@@ -46,12 +74,8 @@ def nearby_landmarks(lat, lng, radius_km, mode, per_category=3, limit=40):
     radius_m = radius_km * 1000
 
     candidates = LocalProvider().fetch(lat, lng, radius_m)
-    source = "live"
-    try:
-        candidates += OverpassProvider().fetch(lat, lng, radius_m)
-    except ProviderError as error:
-        logger.warning("Falling back to local landmarks: %s", error)
-        source = "offline"
+    osm_results, source = _overpass_rings(lat, lng, radius_km)
+    candidates += osm_results
 
     # Keep the nearest copy of each (name, category)
     best = {}
@@ -200,6 +224,7 @@ def complexes_near(lat, lng, radius_km, mode, filters=None):
             "sex_restriction": complex_obj.get_sex_restriction_display(),
             "lease_term": complex_obj.get_lease_term_display(),
             "image": cover.image.url if cover else "",
+            "url": reverse("core_listings:renter_complex_detail", args=[complex_obj.pk]) + "?from=findNear",
             **_travel_info(distance_m, mode),
         })
 

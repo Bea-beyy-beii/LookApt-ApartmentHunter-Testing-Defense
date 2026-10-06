@@ -1,5 +1,6 @@
 # core_listings/forms.py
 import json
+from botocore import args
 from django import forms
 from .models import Complex, Unit
 import os
@@ -175,10 +176,12 @@ class ComplexForm(forms.ModelForm):
 
             "has_parking_space": forms.CheckboxInput(),
 
+
             "min_price": forms.NumberInput(
                 attrs={
                     "placeholder": "0",
                     "min": "1",
+                    "max": "999999.99",
                     "step": "0.01"
                 }
             ),
@@ -187,6 +190,7 @@ class ComplexForm(forms.ModelForm):
                 attrs={
                     "placeholder": "0",
                     "min": "1",
+                    "max": "999999.99",
                     "step": "0.01"
                 }
             ),
@@ -204,13 +208,31 @@ class ComplexForm(forms.ModelForm):
             "deposit_months": "Security Deposit (months)",
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, landlord=None, **kwargs):
         super().__init__(*args, **kwargs)
+        # Needed to check the name is unique (landlord isn't a form field)
+        self.landlord = landlord or (self.instance.landlord if self.instance.landlord_id else None)
+
         # A property must be pinned on the map
         self.fields["latitude"].required = True
         self.fields["longitude"].required = True
         self.fields["latitude"].error_messages["required"] = "Pin the property's location on the map."
         self.fields["longitude"].error_messages["required"] = "Pin the property's location on the map."
+
+
+    def clean_complex_name(self):
+        # Without this, a repeated name crashed with an IntegrityError
+        # (unique_complex_name_per_landlord) instead of showing an error
+        name = self.cleaned_data["complex_name"].strip()
+        if self.landlord:
+            duplicates = Complex.objects.filter(landlord=self.landlord, complex_name__iexact=name)
+            if self.instance.pk:
+                duplicates = duplicates.exclude(pk=self.instance.pk)
+            if duplicates.exists():
+                raise ValidationError(f"You already have a property named \"{name}\".")
+        return name
+
+
 
     def clean_landmarks_json(self):
         raw = self.cleaned_data.get("landmarks_json") or "[]"

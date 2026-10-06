@@ -622,6 +622,28 @@
     background: var(--white);
 }
 
+/* Clickable result: the name link stretches over the card */
+.lk-complex--link {
+    position: relative;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.lk-complex--link:hover {
+    border-color: #c6d0dc;
+    box-shadow: 0 8px 20px rgba(30, 48, 70, 0.08);
+}
+
+.lk-complex--link .lk-complex-name {
+    text-decoration: none;
+}
+
+.lk-complex--link .lk-complex-name::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+}
+
+
 .lk-complex-media {
     display: grid;
     place-items: center;

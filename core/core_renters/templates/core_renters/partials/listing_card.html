@@ -67,7 +67,10 @@
     <div class="listing-info">
 
         <div class="listing-heading-row">
-            <h2 title="{{ listing.complex_name }}">{{ listing.complex_name }}</h2>
+            <h2 title="{{ listing.complex_name }}">
+                <a class="listing-card-link" href="{% url 'core_listings:renter_complex_detail' listing.pk %}?from={{ origin|default:'home' }}">{{ listing.complex_name }}</a>
+            </h2>
+            
             <span class="listing-price">
                 ₱{{ listing.card_price|floatformat:"0g" }} <small>/ month</small>
             </span>

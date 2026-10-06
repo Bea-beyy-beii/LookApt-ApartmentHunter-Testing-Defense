@@ -901,6 +901,33 @@
     box-shadow: 0 14px 30px rgba(30, 48, 70, 0.12);
 }
 
+
+/* The title link covers the whole card; the ribbon and photo arrows (z-index 2) stay clickable */
+.listing-card {
+    position: relative;
+}
+
+.listing-card-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.listing-card-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+}
+
+.listing-card-link:focus-visible {
+    outline: none;
+}
+
+.listing-card:has(.listing-card-link:focus-visible) {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+}
+
 /* ---------- Photo gallery ---------- */
 
 .listing-gallery {

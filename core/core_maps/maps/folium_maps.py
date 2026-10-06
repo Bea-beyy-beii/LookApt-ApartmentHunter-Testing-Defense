@@ -135,6 +135,9 @@ def build_map(lat=None, lng=None, radius_km=None, landmarks=(), complexes=(), ed
                 f'₱{item["min_price"]:,.0f} – ₱{item["max_price"]:,.0f} / month<br>'
                 f'{item["distance_label"]} · ~{item["minutes"]} min'
             )
+            if item.get("url"):
+                # target=_top: the map is inside an iframe, open the page in the real tab
+                popup += f'<br><a href="{escape(item["url"])}" target="_top" style="font-weight:600">View listing →</a>'
             folium.Marker(
                 location=(item["lat"], item["lng"]),
                 icon=_badge_icon(COMPLEX_STYLE, size=34),

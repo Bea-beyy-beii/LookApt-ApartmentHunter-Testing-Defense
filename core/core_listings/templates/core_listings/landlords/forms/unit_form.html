@@ -30,12 +30,22 @@
           enctype="multipart/form-data"
           action="{% if unit %}{% url 'core_listings:unit_edit' unit.pk %}{% else %}{% url 'core_listings:unit_create' complex.pk %}{% endif %}"
           class="unit-wizard-form wizard-form"
+          data-has-errors="{% if form.errors %}1{% else %}0{% endif %}"
           data-saving-messages='{% if unit %}["Saving your changes…", "Checking unit details…", "Uploading photos & videos…", "Almost done…"]{% else %}["Creating your unit…", "Checking unit details…", "Verifying rent against the complex price range…", "Uploading photos & videos…", "Adding it to your listings…"]{% endif %}'>
 
         {% csrf_token %}
 
-        {% if form.non_field_errors %}
-            <div class="form-errors">{{ form.non_field_errors }}</div>
+        {# Every error, listed above the steps, so none can hide in a step you aren't on #}
+        {% if form.errors %}
+            <div class="form-errors" role="alert">
+                <strong>This unit wasn't saved yet. Please fix the following:</strong>
+                <ul>
+                    {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+                    {% for field in form %}
+                        {% for error in field.errors %}<li>{{ field.label }}: {{ error }}</li>{% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
         {% endif %}
 
         <div class="wizard-content">

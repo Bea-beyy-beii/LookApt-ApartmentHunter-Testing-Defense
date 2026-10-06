@@ -1,0 +1,235 @@
+{% extends "core_renters/base.html" %}
+{% load static listing_tags %}
+
+{% block title %}LookApt — {{ unit.unit_name }}, {{ complex.complex_name }}{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'core/css/components/breadcrumbs.css' %}">
+    <link rel="stylesheet" href="{% static 'core_listings/css/listing_detail.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="ld-page" data-origin="{{ origin }}">
+
+    {% include "core_listings/renters/detail/breadcrumbs.html" %}
+
+    <div class="ld-layout">
+
+        <!-- =====================================================
+             LEFT: photos/videos, details, tabs
+        ====================================================== -->
+        <div class="ld-main">
+
+            {% include "core_listings/renters/detail/gallery.html" with alt=unit.unit_name %}
+
+            <header class="ld-header">
+
+                <div class="ld-header-row">
+                    <div>
+                        <div class="ld-title-row">
+                            <h1 class="ld-title">{{ unit.unit_name }}</h1>
+                            <span class="ld-status ld-status--{{ unit.availability }}">{{ unit.get_availability_display }}</span>
+                        </div>
+                        <a class="ld-subtitle" href="{% url 'core_listings:renter_complex_detail' complex.pk %}?from={{ origin }}">{{ complex.complex_name }}</a>
+                    </div>
+
+                    <p class="ld-price">₱{{ unit.price|floatformat:"0g" }} <small>/ month</small></p>
+                </div>
+
+                <p class="ld-address">
+                    {% feature_icon "location" %}
+                    <span>{{ complex.address }}</span>
+                </p>
+
+                <ul class="ld-specs">
+                    <li>{% feature_icon "unit_type" %} {{ unit.get_bedroom_type_display }}</li>
+                    <li>{% feature_icon "area" %} {{ unit.unit_area|floatformat:"-1" }} sqm</li>
+                    {% if unit.floor %}<li>{% feature_icon "floor" %} Floor {{ unit.floor }}</li>{% endif %}
+                    <li>{% feature_icon "occupants" %} Up to {{ unit.max_occupant }}</li>
+                    <li>{% feature_icon "furnished" %} {{ unit.get_furnish_level_display }}</li>
+                </ul>
+
+            </header>
+
+
+            <!-- Tabs -->
+            <div class="ld-tabs ld-tabs--three" role="tablist" aria-label="Unit sections">
+                <button type="button" class="ld-tab" role="tab" data-tab="details">{% feature_icon "document" %} Unit Details</button>
+                <button type="button" class="ld-tab" role="tab" data-tab="amenities">{% feature_icon "has_kitchen_area" %} Amenities</button>
+                <button type="button" class="ld-tab" role="tab" data-tab="similar">{% feature_icon "occupants" %} Similar Units</button>
+            </div>
+
+
+            <!-- UNIT DETAILS -->
+            <div class="ld-panel ld-details-grid" role="tabpanel" data-panel="details">
+
+                <section class="ld-card">
+                    <h2 class="ld-card-title">{% feature_icon "document" %} Description</h2>
+                    {% if unit.unit_description %}
+                        <p class="ld-description">{{ unit.unit_description|linebreaksbr }}</p>
+                    {% else %}
+                        <p class="ld-muted">A {{ unit.get_bedroom_type_display|lower }} unit ({{ unit.unit_area|floatformat:"-1" }} sqm) in {{ complex.complex_name }}, {{ unit.get_furnish_level_display|lower }}, for up to {{ unit.max_occupant }} occupant{{ unit.max_occupant|pluralize }}.</p>
+                    {% endif %}
+                </section>
+
+                <section class="ld-card">
+                    <h2 class="ld-card-title">{% feature_icon "wallet" %} Payment Details</h2>
+                    <dl class="ld-payment">
+                        <div><dt>Monthly Rent</dt><dd>₱{{ unit.price|floatformat:"0g" }}</dd></div>
+                        <div class="ld-payment-heading"><dt>Estimated Move-in Payment</dt></div>
+                        {% if payment.advance_months %}
+                            <div><dt>{{ payment.advance_months }} month{{ payment.advance_months|pluralize }} advance</dt><dd>₱{{ payment.advance|floatformat:"0g" }}</dd></div>
+                        {% endif %}
+                        {% if payment.deposit_months %}
+                            <div><dt>{{ payment.deposit_months }} month{{ payment.deposit_months|pluralize }} security deposit</dt><dd>₱{{ payment.deposit|floatformat:"0g" }}</dd></div>
+                        {% endif %}
+                        {% if not payment.advance_months and not payment.deposit_months %}
+                            <div><dt>First month's rent</dt><dd>₱{{ unit.price|floatformat:"0g" }}</dd></div>
+                        {% endif %}
+                        <div class="ld-payment-total"><dt>Total upon move-in</dt><dd>₱{{ payment.total|floatformat:"0g" }}</dd></div>
+                    </dl>
+                    <p class="ld-footnote">{{ complex.get_lease_term_display }} lease. Utilities not included unless stated by the landlord.</p>
+                </section>
+
+            </div>
+
+
+            <!-- AMENITIES -->
+            <section class="ld-card ld-panel" role="tabpanel" data-panel="amenities" hidden>
+
+                <div class="ld-amenity-group ld-amenity-group--unit">
+                    <h3>{% feature_icon "unit_type" %} In-unit Amenities</h3>
+                    <ul class="ld-amenity-list">
+                        {% for amenity in unit_amenities %}
+                            <li class="ld-amenity{% if not amenity.has %} is-missing{% endif %}">
+                                {% feature_icon amenity.key %}
+                                <span>{{ amenity.label }}</span>
+                                {% if not amenity.has %}<small>Not included</small>{% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <div class="ld-amenity-group ld-amenity-group--building">
+                    <h3>{% feature_icon "units" %} Building / Complex</h3>
+                    <ul class="ld-amenity-list">
+                        {% for feature in features %}
+                            <li class="ld-amenity{% if not feature.has %} is-missing{% endif %}">
+                                {% feature_icon feature.key %}
+                                <span>{{ feature.label }}</span>
+                                {% if not feature.has %}<small>Not available</small>{% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <div class="ld-amenity-group ld-amenity-group--policy">
+                    <h3>{% feature_icon "document" %} Policies</h3>
+                    <ul class="ld-amenity-list">
+                        <li class="ld-amenity">{% feature_icon "lease" %}<span>{{ complex.get_lease_term_display }} lease</span></li>
+                        <li class="ld-amenity">{% feature_icon "occupants" %}<span>Up to {{ unit.max_occupant }} occupant{{ unit.max_occupant|pluralize }}</span></li>
+                        <li class="ld-amenity">{% feature_icon "sex_restriction" %}<span>{% if complex.sex_restriction == "any" %}Open to all{% else %}{{ complex.get_sex_restriction_display }}{% endif %}</span></li>
+                        <li class="ld-amenity">{% feature_icon "pet_friendly" %}<span>{% if complex.pet_friendly %}Pets allowed{% else %}No pets{% endif %}</span></li>
+                    </ul>
+                </div>
+
+            </section>
+
+
+            <!-- SIMILAR UNITS -->
+            <div class="ld-panel" role="tabpanel" data-panel="similar" hidden>
+
+                <section class="ld-card">
+                    <div class="ld-panel-header">
+                        <div>
+                            <h2 class="ld-card-title">{% feature_icon "units" %} More in {{ complex.complex_name }}</h2>
+                            <p class="ld-muted">Other units in this complex, most similar first.</p>
+                        </div>
+                        <a class="ld-link" href="{% url 'core_listings:renter_complex_detail' complex.pk %}?from={{ origin }}">View all units →</a>
+                    </div>
+                    {% if similar_same_complex %}
+                        <div class="ld-unit-grid">
+                            {% for unit in similar_same_complex %}
+                                {% include "core_listings/renters/detail/unit_card.html" %}
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="ld-empty">This is the only unit listed here.</p>
+                    {% endif %}
+                </section>
+
+                <section class="ld-card">
+                    <div class="ld-panel-header">
+                        <div>
+                            <h2 class="ld-card-title">{% feature_icon "unit_type" %} Similar Units in Other Complexes</h2>
+                            <p class="ld-muted">Same unit type, with rent close to ₱{{ unit.price|floatformat:"0g" }}.</p>
+                        </div>
+                        <a class="ld-link" href="{% url 'core_renters:dashboard' %}?tab=home">See more →</a>
+                    </div>
+                    {% if similar_other_complexes %}
+                        <div class="ld-unit-grid">
+                            {% for unit in similar_other_complexes %}
+                                {% include "core_listings/renters/detail/unit_card.html" with show_complex=True %}
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="ld-empty">No similar units in other complexes yet.</p>
+                    {% endif %}
+                </section>
+
+            </div>
+
+        </div>
+
+
+        <!-- =====================================================
+             RIGHT: landlord, availability + buttons
+        ====================================================== -->
+        <aside class="ld-side">
+
+            {% include "core_listings/renters/detail/landlord_card.html" %}
+
+            <section class="ld-card">
+                <h2 class="ld-card-title">{% feature_icon "lease" %} Availability &amp; Demand</h2>
+
+                {% if unit.is_available %}
+                    <div class="ld-availability ld-availability--available">
+                        <span class="ld-availability-dot"></span>
+                        <div>
+                            <strong>Available Now</strong>
+                            <p>Ready for move-in.</p>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="ld-availability ld-availability--occupied">
+                        <span class="ld-availability-dot"></span>
+                        <div>
+                            <strong>Currently Occupied</strong>
+                            <p>Join the waitlist to get notified when this unit opens up.</p>
+                        </div>
+                    </div>
+                {% endif %}
+
+                <div class="ld-demand">
+                    {% feature_icon "clock" %}
+                    <div>
+                        <strong>{{ complex.get_lease_term_display }} lease</strong>
+                        <p>{% if unit.is_available %}Apply now to reserve this unit before someone else does.{% else %}You'll get a chance to rent it once it's open.{% endif %}</p>
+                    </div>
+                </div>
+
+                {% include "core_listings/renters/detail/unit_actions.html" with large=True %}
+            </section>
+
+        </aside>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'core_listings/js/listing_detail.js' %}"></script>
+{% endblock %}

@@ -39,4 +39,6 @@ urlpatterns = [
     path("property/<uuid:pk>/visibility/", views.property_set_visibility, name="property_set_visibility"),
     path("unit/<uuid:pk>/availability/", views.unit_set_availability, name="unit_set_availability"),
     path("property/<uuid:pk>/save/", views.toggle_saved_listing, name="toggle_saved_listing"),
+    path("listing/<uuid:pk>/", views.renter_complex_detail, name="renter_complex_detail"),
+    path("listing/unit/<uuid:pk>/", views.renter_unit_detail, name="renter_unit_detail"),
 ]

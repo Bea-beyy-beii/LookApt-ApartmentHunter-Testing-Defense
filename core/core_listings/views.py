@@ -20,11 +20,14 @@ import logging
 from .models import SavedListing
 from .services import renter_visible_complexes
 from core.models import Renter
+from .detail_services import complex_detail_context, get_renter_complex, get_renter_unit, unit_detail_context
 
 
-def _my_listings_url():
-    # The listings page lives inside the landlord dashboard
-    return f"{reverse('core_landlords:dashboard')}?tab=myListings"
+def _my_listings_url(saved=False):
+    # The listings page lives inside the landlord dashboard.
+    # saved=1 tells wizard_draft.js the submit went through, so it can drop the draft.
+    url = f"{reverse('core_landlords:dashboard')}?tab=myListings"
+    return url + "&saved=1" if saved else url
 
 
 @transaction.atomic
@@ -88,12 +91,12 @@ def listings(request):
 @role_required("landlord")
 def property_create(request):
     if request.method == "POST":
-        form = ComplexForm(request.POST, request.FILES)
+        form = ComplexForm(request.POST, request.FILES, landlord=request.user.landlord)
 
         if form.is_valid():
-            _save_property(form, request.user.landlord)
-            return redirect(_my_listings_url())
-
+            saved = _save_property(form, request.user.landlord)
+            messages.success(request, f"{saved.complex_name} was created.")
+            return redirect(_my_listings_url(saved=True))
     else:
         form = ComplexForm()
 
@@ -139,7 +142,8 @@ def property_edit(request, pk):
         form = ComplexForm(request.POST, request.FILES, instance=property_obj)
         if form.is_valid():
             _save_property(form, property_obj.landlord)
-            return redirect(_my_listings_url())
+            messages.success(request, f"{property_obj.complex_name} was saved.")
+            return redirect(_my_listings_url(saved=True))
     else:
         form = ComplexForm(instance=property_obj)
 
@@ -291,7 +295,7 @@ def _unit_form_page(request, complex_obj, unit=None):
         if form.is_valid():
             saved = _save_unit(form, complex_obj)
             messages.success(request, f"Unit {saved.identifier} was saved.")
-            return redirect(_my_listings_url())
+            return redirect(_my_listings_url(saved=True))
     else:
         form = UnitForm(instance=unit, complex_obj=complex_obj)
 
@@ -372,3 +376,39 @@ def toggle_saved_listing(request, pk):
         saved.delete()   # second click = unsave
 
     return JsonResponse({"saved": created})
+
+
+
+
+
+# =========================================================
+# RENTERS — listing pages (opened from a card or the map)
+# =========================================================
+
+# Which dashboard tab the renter came from (first breadcrumb + highlighted sidebar link)
+RENTER_ORIGINS = {
+    "home": "Home",
+    "findNear": "Find Near",
+    "saved": "Saved Listings",
+}
+
+
+def _renter_origin(request):
+    origin = request.GET.get("from")
+    return origin if origin in RENTER_ORIGINS else "home"
+
+
+@role_required("renter")
+def renter_complex_detail(request, pk):
+    origin = _renter_origin(request)
+    context = complex_detail_context(get_renter_complex(pk), request.user)
+    context.update(origin=origin, origin_label=RENTER_ORIGINS[origin])
+    return render(request, "core_listings/renters/complex_detail.html", context)
+
+
+@role_required("renter")
+def renter_unit_detail(request, pk):
+    origin = _renter_origin(request)
+    context = unit_detail_context(get_renter_unit(pk), request.user)
+    context.update(origin=origin, origin_label=RENTER_ORIGINS[origin])
+    return render(request, "core_listings/renters/unit_detail.html", context)

@@ -19,7 +19,7 @@
         <!-- Map -->
         <div class="location-picker-panel">
 
-            {% location_picker kind="landlord" lat=property.latitude lng=property.longitude results="#wizard-landmarks" %}
+            {% location_picker kind="landlord" lat=form.latitude.value lng=form.longitude.value results="#wizard-landmarks" %}
 
             <div class="location-address-fields form-group">
                 <label for="{{ form.address.id_for_label }}">Address <span>*</span></label>
@@ -34,6 +34,8 @@
 
             {% if form.latitude.errors %}
                 <div class="field-error">{{ form.latitude.errors }}</div>
+            {% elif form.longitude.errors %}
+                <div class="field-error">{{ form.longitude.errors }}</div>
             {% endif %}
 
         </div>

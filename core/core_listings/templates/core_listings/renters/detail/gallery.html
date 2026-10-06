@@ -1,0 +1,95 @@
+{% comment %}
+    Photo (+ video) gallery for the renter listing pages.
+    - media: [{"kind": "image" | "video", "url": "..."}]
+    - alt:   text for the photos
+    Big photo on the left (arrows + counter), up to 4 thumbnails on the right;
+    the last thumbnail shows "+N" when there are more. Click to enlarge.
+    listing_detail.js runs it.
+{% endcomment %}
+{% load listing_tags %}
+
+<section class="ld-gallery{% if media|length < 2 %} ld-gallery--single{% endif %}" data-detail-gallery>
+
+    <div class="ld-gallery-main">
+
+        {% if media %}
+            <div class="property-gallery-track">
+                {% for item in media %}
+                    {% if item.kind == "video" %}
+                        <video src="{{ item.url }}" muted playsinline preload="metadata" data-gallery-item></video>
+                    {% else %}
+                        <img src="{{ item.url }}" alt="{{ alt }} photo {{ forloop.counter }}" {% if not forloop.first %}loading="lazy"{% endif %} data-gallery-item>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            {% if media|length > 1 %}
+                <button type="button" class="gallery-arrow gallery-arrow--prev" data-gallery-prev aria-label="Previous photo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <button type="button" class="gallery-arrow gallery-arrow--next" data-gallery-next aria-label="Next photo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+            {% endif %}
+
+            <span class="gallery-count">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 17-5-5-9 8"/>
+                </svg>
+                <span><span data-gallery-position>1</span>/{{ media|length }}</span>
+            </span>
+
+            <button type="button" class="ld-gallery-expand" data-gallery-open aria-label="View full size">
+                {% feature_icon "expand" %}
+            </button>
+        {% else %}
+            <div class="property-gallery-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 17-5-5-9 8"/>
+                </svg>
+                <span>No photos yet</span>
+            </div>
+        {% endif %}
+
+    </div>
+
+    {% if media|length > 1 %}
+        <div class="ld-gallery-thumbs">
+            {% for item in media|slice:"1:5" %}
+                <button type="button" class="ld-gallery-thumb" data-gallery-thumb="{{ forloop.counter }}" aria-label="Show photo {{ forloop.counter|add:1 }}">
+                    {% if item.kind == "video" %}
+                        <video src="{{ item.url }}#t=0.5" muted preload="metadata"></video>
+                        <span class="ld-gallery-play" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>
+                        </span>
+                    {% else %}
+                        <img src="{{ item.url }}" alt="" loading="lazy">
+                    {% endif %}
+                    {% if forloop.last and media|length > 5 %}
+                        <span class="ld-gallery-more">+{{ media|length|add:"-4" }}</span>
+                    {% endif %}
+                </button>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if media %}
+        <!-- Full-size viewer -->
+        <dialog class="ld-lightbox" data-gallery-lightbox aria-label="{{ alt }} photos">
+            <button type="button" class="ld-lightbox-close" data-lightbox-close aria-label="Close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            </button>
+            <img alt="{{ alt }}" data-lightbox-image>
+            <video controls playsinline data-lightbox-video hidden></video>
+            {% if media|length > 1 %}
+                <button type="button" class="gallery-arrow gallery-arrow--prev" data-lightbox-prev aria-label="Previous photo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <button type="button" class="gallery-arrow gallery-arrow--next" data-lightbox-next aria-label="Next photo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+            {% endif %}
+        </dialog>
+    {% endif %}
+
+</section>

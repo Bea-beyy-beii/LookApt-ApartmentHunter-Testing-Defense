@@ -470,8 +470,15 @@
                 }
 
                 const body = el("div", "lk-complex-body");
+                // The name links to the listing page and covers the whole card
+                const name = el(item.url ? "a" : "strong", "lk-complex-name", item.name);
+                if (item.url) {
+                    name.href = item.url;
+                    card.classList.add("lk-complex--link");
+                }
+
                 body.append(
-                    el("strong", "lk-complex-name", item.name),
+                    name,
                     el("span", "lk-complex-address", item.address || item.area),
                     el("span", "lk-complex-price", `₱${peso.format(item.min_price)} – ₱${peso.format(item.max_price)} / month`),
                 );

@@ -1,0 +1,39 @@
+{% comment %}
+    One unit in the complex page's "Units" tab. The whole row opens the unit page.
+{% endcomment %}
+{% load listing_tags %}
+
+<article class="ld-unit-row" data-unit-type="{{ unit.bedroom_type }}">
+
+    <div class="ld-unit-media{% if not unit.is_available %} is-occupied{% endif %}">
+        {% if unit.cover_url %}
+            <img src="{{ unit.cover_url }}" alt="{{ unit.unit_name }}" loading="lazy">
+        {% else %}
+            {% feature_icon "unit_type" %}
+        {% endif %}
+        {% if not unit.is_available %}<span class="ld-unit-media-label">Occupied</span>{% endif %}
+    </div>
+
+    <div class="ld-unit-info">
+        <div class="ld-unit-title">
+            <a class="ld-unit-name ld-stretched-link" href="{% url 'core_listings:renter_unit_detail' unit.pk %}?from={{ origin }}">{{ unit.unit_name }}</a>
+            <span class="ld-status ld-status--{{ unit.availability }}">{{ unit.get_availability_display }}</span>
+        </div>
+
+        <p class="ld-unit-meta">
+            <span>{{ unit.get_bedroom_type_display }}</span>
+            <span>{{ unit.unit_area|floatformat:"-1" }} sqm</span>
+            {% if unit.floor %}<span>Floor {{ unit.floor }}</span>{% endif %}
+        </p>
+
+        <p class="ld-unit-specs">
+            <span>{% feature_icon "occupants" %} Up to {{ unit.max_occupant }}</span>
+            <span>{% feature_icon "furnished" %} {{ unit.get_furnish_level_display }}</span>
+        </p>
+    </div>
+
+    <p class="ld-unit-price">₱{{ unit.price|floatformat:"0g" }} <small>/ month</small></p>
+
+    {% include "core_listings/renters/detail/unit_actions.html" %}
+
+</article>

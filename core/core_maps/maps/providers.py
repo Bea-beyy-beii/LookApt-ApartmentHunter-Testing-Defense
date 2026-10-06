@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 USER_AGENT = "LookApt/1.0 (apartment finder, Davao City)"
 HTTP_TIMEOUT = 12
+OVERPASS_HTTP_TIMEOUT = 30  
 CACHE_SECONDS = 60 * 60 * 24
 
 Types = Landmark.LandmarkTypes
@@ -90,7 +91,9 @@ class OverpassProvider:
         "https://overpass-api.de/api/interpreter",
         "https://overpass.kumi.systems/api/interpreter",
     ]
-    MAX_RESULTS = 400
+    # Overpass returns places in ID order, not nearest first, so a low cap
+    # silently drops close landmarks in busy areas (see services._overpass_rings)
+    MAX_RESULTS = 1500
 
     def build_query(self, lat, lng, radius_m):
         grouped = {}
@@ -104,7 +107,7 @@ class OverpassProvider:
             pattern = "|".join(sorted(values))
             lines.append(f'  nwr(around:{int(radius)},{lat:.6f},{lng:.6f})["{key}"~"^({pattern})$"]["name"];')
 
-        return "[out:json][timeout:20];\n(\n" + "\n".join(lines) + f"\n);\nout center {self.MAX_RESULTS};"
+            return "[out:json][timeout:25];\n(\n" + "\n".join(lines) + f"\n);\nout center {self.MAX_RESULTS};"
 
     def parse(self, payload):
         results = []
@@ -145,7 +148,7 @@ class OverpassProvider:
                     endpoint,
                     data={"data": query},
                     headers={"User-Agent": USER_AGENT},
-                    timeout=HTTP_TIMEOUT,
+                    timeout=OVERPASS_HTTP_TIMEOUT,
                 )
                 response.raise_for_status()
                 results = self.parse(response.json())

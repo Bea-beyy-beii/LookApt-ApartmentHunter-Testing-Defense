@@ -315,7 +315,7 @@
         data-saved-grid
     >
         {% for listing in saved_listings %}
-            {% include "core_renters/partials/listing_card.html" %}
+            {% include "core_renters/partials/listing_card.html" with origin="saved" %}
         {% endfor %}
     </section>
 
