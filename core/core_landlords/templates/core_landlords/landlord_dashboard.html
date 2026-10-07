@@ -1,32 +1,16 @@
 {% extends "core_landlords/base.html" %}
 {% load static %}
 
-
 {% block title %}
     LookApt — Dashboard
 {% endblock %}
 
-
-
 {% block extra_css %}
-
-    <link
-        rel="stylesheet"
-        href="{% static 'core_calendar/calendar.css' %}"
-    >
-
-    <link
-        rel="stylesheet"
-        href="{% static 'core_inquiries/inquiries.css' %}"
-    >
-
-    <link
-        rel="stylesheet"
-        href="{% static 'core_reports/reports.css' %}"
-    >
-
+    <link rel="stylesheet" href="{% static 'core_calendar/calendar.css' %}">
+    <link rel="stylesheet" href="{% static 'core_inquiries/inquiries.css' %}">
+    <link rel="stylesheet" href="{% static 'core_inquiries/chat.css' %}">
+    <link rel="stylesheet" href="{% static 'core_reports/reports.css' %}">
 {% endblock %}
-
 
 
 {% block content %}
@@ -163,6 +147,11 @@
 
 
 {% block extra_js %}
+
+    <script
+        src="{% static 'core_inquiries/chat.js' %}"
+        defer
+    ></script>
 
     <script
         src="{% static 'core_inquiries/inquiries.js' %}"

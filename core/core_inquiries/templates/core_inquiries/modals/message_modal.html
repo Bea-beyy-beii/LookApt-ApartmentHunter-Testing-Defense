@@ -1,0 +1,66 @@
+{% comment %}
+    "Inquire with Landlord" pop-up. listing_modals.js loads the renter's thread
+    for the clicked unit/complex (if any) and sends new messages.
+    Sent messages also appear in Inquiries → Messages for both sides.
+    One thread per renter per landlord: every Inquire button opens the same one.
+{% endcomment %}
+{% load listing_tags %}
+
+<dialog class="lm-modal lm-chat" data-message-modal
+        aria-label="Message the landlord"
+        data-thread-url="{% url 'core_inquiries:inquiry_thread' %}"
+        data-send-url="{% url 'core_inquiries:send_inquiry' %}">
+
+    <header class="lm-chat-header">
+        <button type="button" class="lm-icon-btn" data-modal-close aria-label="Back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+
+        <span class="ld-landlord-avatar lm-chat-avatar" aria-hidden="true">{{ landlord.initials }}</span>
+
+        <div class="lm-chat-person">
+            <div class="lm-chat-name">
+                <strong>{{ landlord.name }}</strong>
+                {% if landlord.is_verified %}
+                    <span class="ld-badge ld-badge--verified">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm-1.2 14.2-4-4 1.4-1.4 2.6 2.6 5.8-5.8 1.4 1.4z"/></svg>
+                        Verified Landlord
+                    </span>
+                {% endif %}
+            </div>
+            <span class="lm-chat-subject" data-chat-subject></span>
+        </div>
+
+        <button type="button" class="lm-close" data-modal-close aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+    </header>
+
+    <div class="lm-chat-body" data-chat-messages aria-live="polite">
+        <!-- filled by listing_modals.js -->
+    </div>
+
+    <template data-chat-empty>
+        <div class="lm-chat-empty">
+            <span class="lm-chat-empty-icon">{% feature_icon "chat" %}</span>
+            <strong>No conversation yet</strong>
+            <p>Send a message to inquire about this listing.<br>The landlord will get back to you as soon as possible.</p>
+        </div>
+    </template>
+
+    <form class="lm-composer" data-chat-form>
+        <p class="lm-field-error" data-chat-error hidden></p>
+        <div class="chat-chip" data-attach-preview hidden></div>
+
+        <button type="button" class="chat-attach" data-attach-button aria-label="Attach a photo, video or PDF (up to 5 MB)" title="Attach a photo, video or PDF (up to 5 MB)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 11-8.6 8.6a5 5 0 0 1-7-7l8.5-8.6a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.3-2.4l7.9-7.9"/></svg>
+        </button>
+        <input type="file" data-attach-input hidden accept="image/jpeg,image/png,video/mp4,video/webm,video/quicktime,application/pdf">
+
+        <textarea name="body" rows="1" maxlength="2000" placeholder="Send your inquiry here…" aria-label="Your message"></textarea>
+        <button type="submit" class="lm-send" aria-label="Send message">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+        </button>
+    </form>
+
+</dialog>

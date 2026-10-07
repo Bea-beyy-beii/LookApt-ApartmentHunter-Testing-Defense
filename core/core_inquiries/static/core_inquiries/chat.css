@@ -1,0 +1,263 @@
+/* =========================================================
+   CHAT (shared by the Inquire pop-up and the Inquiries tab)
+   Bubbles, "About Unit 401" topics, seen, files, paperclip.
+========================================================= */
+
+
+/* ---------- Bubbles ---------- */
+
+.chat-message {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-width: 78%;
+}
+
+.chat-message.received { align-self: flex-start; }
+.chat-message.sent     { align-self: flex-end; align-items: flex-end; }
+
+.chat-bubble {
+    padding: 10px 14px;
+
+    border-radius: 16px;
+    background: #f0f3f7;
+
+    color: #263a5c;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.chat-message.received .chat-bubble { border-bottom-left-radius: 5px; }
+
+.chat-message.sent .chat-bubble {
+    border-bottom-right-radius: 5px;
+    background: var(--navy, #203a68);
+    color: #fff;
+}
+
+.chat-text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.chat-bubble.has-attachment {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 6px;
+}
+
+.chat-bubble.has-attachment .chat-text {
+    padding: 0 8px 4px;
+}
+
+
+/* ---------- Time + seen ---------- */
+
+.chat-meta {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    color: #8b96a5;
+    font-size: 10px;
+}
+
+.chat-tick {
+    display: inline-flex;
+    color: #8b96a5;
+}
+
+.chat-tick svg {
+    width: 15px;
+    height: 15px;
+}
+
+.chat-tick.is-seen {
+    color: #2f8a52;
+}
+
+.chat-seen {
+    color: #2f8a52;
+    font-weight: 600;
+}
+
+
+/* ---------- "About Unit 401 · Sunrise Residences" ---------- */
+
+.chat-topic {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    margin: 6px 0 2px;
+
+    color: var(--text-secondary, #69758a);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.chat-topic::before,
+.chat-topic::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border-light, #d8e0e5);
+}
+
+.chat-topic span {
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: #fdf1dc;
+    color: #8a5a10;
+    white-space: nowrap;
+}
+
+
+/* ---------- Files in bubbles ---------- */
+
+.chat-attachment--image img,
+.chat-attachment--video {
+    display: block;
+    width: 100%;
+    max-width: 260px;
+    max-height: 260px;
+
+    border-radius: 12px;
+    background: #000;
+
+    object-fit: cover;
+}
+
+.chat-attachment--image img {
+    background: #ece6dc;
+}
+
+.chat-attachment--file {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    min-width: 200px;
+    padding: 10px 12px;
+
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.92);
+
+    color: var(--navy, #203a68);
+    text-decoration: none;
+}
+
+.chat-attachment--file:hover {
+    background: #fff;
+}
+
+.chat-attachment--file svg {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    color: #c94b4b;
+}
+
+.chat-attachment--file span {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.chat-attachment--file strong {
+    overflow: hidden;
+    font-size: 13px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.chat-attachment--file small {
+    color: var(--text-secondary, #69758a);
+    font-size: 11px;
+}
+
+
+/* ---------- Composer: paperclip + chosen file ---------- */
+
+.chat-attach {
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+
+    width: 42px;
+    height: 42px;
+    padding: 0;
+
+    border: 0;
+    border-radius: 12px;
+    background: #eef1f6;
+    color: var(--navy, #203a68);
+
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.chat-attach:hover {
+    background: #e2e8f1;
+}
+
+.chat-attach svg {
+    width: 19px;
+    height: 19px;
+}
+
+.chat-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    width: 100%;
+    padding: 6px 8px 6px 12px;
+
+    border-radius: 10px;
+    background: #eef4fc;
+
+    color: var(--navy, #203a68);
+    font-size: 12px;
+}
+
+.chat-chip[hidden] {
+    display: none;
+}
+
+.chat-chip-name {
+    flex: 1;
+    overflow: hidden;
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.chat-chip small {
+    color: var(--text-secondary, #69758a);
+}
+
+.chat-chip-remove {
+    display: grid;
+    place-items: center;
+
+    width: 24px;
+    height: 24px;
+    padding: 0;
+
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+
+    color: var(--text-secondary, #69758a);
+    font-size: 18px;
+    line-height: 1;
+
+    cursor: pointer;
+}
+
+.chat-chip-remove:hover {
+    background: rgba(32, 58, 104, 0.08);
+    color: var(--navy, #203a68);
+}

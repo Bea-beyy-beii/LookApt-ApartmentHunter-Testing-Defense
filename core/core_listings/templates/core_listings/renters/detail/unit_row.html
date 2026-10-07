@@ -34,6 +34,7 @@
 
     <p class="ld-unit-price">₱{{ unit.price|floatformat:"0g" }} <small>/ month</small></p>
 
-    {% include "core_listings/renters/detail/unit_actions.html" %}
+    {# No per-unit Inquire here: the complex's one Inquire button (right column) handles all questions #}
+    {% include "core_listings/renters/detail/unit_actions.html" with hide_inquiry=True %}
 
 </article>

@@ -1,14 +1,16 @@
 <div class="inquiry-page-header">
     <h1>Inquiries</h1>
-    <p>Messages with Landlords and Review Inquiry Statuses</p>
+    <p>{% if is_landlord_inbox %}Messages from renters and the applications they sent you{% else %}Messages with Landlords and Review Inquiry Statuses{% endif %}</p>
 </div>
 
 <div class="inquiry-layout">
   <section class="inquiry-main">
     <div class="inquiry-tabs">
-      <button type="button" class="inquiry-tab active" data-tab="messages">Messages</button>
+      <button type="button" class="inquiry-tab active" data-tab="messages">
+        Messages {% if unread_messages_count %}<span class="badge">{{ unread_messages_count }}</span>{% endif %}
+      </button>
       <button type="button" class="inquiry-tab" data-tab="requests">
-        Requests <span class="badge">{{ requests|length }}</span>
+        Requests {% if pending_requests_count %}<span class="badge">{{ pending_requests_count }}</span>{% endif %}
       </button>
     </div>
 

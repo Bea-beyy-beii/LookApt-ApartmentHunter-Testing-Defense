@@ -6,6 +6,8 @@
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'core/css/components/breadcrumbs.css' %}">
     <link rel="stylesheet" href="{% static 'core_listings/css/listing_detail.css' %}">
+    <link rel="stylesheet" href="{% static 'core_inquiries/chat.css' %}">
+    <link rel="stylesheet" href="{% static 'core_inquiries/listing_modals.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -198,7 +200,7 @@
                         <span class="ld-availability-dot"></span>
                         <div>
                             <strong>Available Now</strong>
-                            <p>Ready for move-in.</p>
+                            <p>ready for move-in</p>
                         </div>
                     </div>
                 {% else %}
@@ -206,18 +208,33 @@
                         <span class="ld-availability-dot"></span>
                         <div>
                             <strong>Currently Occupied</strong>
-                            <p>Join the waitlist to get notified when this unit opens up.</p>
+                            <p>free by {{ unit.earliest_move_in|date:"M j, Y" }}{% if not unit.lease_end %} (est.){% endif %}</p>
                         </div>
                     </div>
                 {% endif %}
 
-                <div class="ld-demand">
-                    {% feature_icon "clock" %}
-                    <div>
-                        <strong>{{ complex.get_lease_term_display }} lease</strong>
-                        <p>{% if unit.is_available %}Apply now to reserve this unit before someone else does.{% else %}You'll get a chance to rent it once it's open.{% endif %}</p>
+                {% if unit.demand %}
+                    <div class="ld-demand">
+                        {% feature_icon "occupants" %}
+                        <div>
+                            {% if unit.is_available %}
+                                <strong>{{ unit.demand }} interested</strong>
+                                <p>apply now to reserve it</p>
+                            {% else %}
+                                <strong>{{ unit.demand }} on the waitlist</strong>
+                                <p>join to get notified</p>
+                            {% endif %}
+                        </div>
                     </div>
-                </div>
+                {% else %}
+                    <div class="ld-demand">
+                        {% feature_icon "clock" %}
+                        <div>
+                            <strong>{% if unit.is_available %}No applicants yet{% else %}Waitlist is empty{% endif %}</strong>
+                            <p>be the first</p>
+                        </div>
+                    </div>
+                {% endif %}
 
                 {% include "core_listings/renters/detail/unit_actions.html" with large=True %}
             </section>
@@ -228,8 +245,13 @@
 
 </div>
 
+{% include "core_inquiries/modals/application_modal.html" %}
+{% include "core_inquiries/modals/message_modal.html" %}
+
 {% endblock %}
 
 {% block extra_js %}
     <script src="{% static 'core_listings/js/listing_detail.js' %}"></script>
+    <script src="{% static 'core_inquiries/chat.js' %}"></script>
+    <script src="{% static 'core_inquiries/listing_modals.js' %}"></script>
 {% endblock %}

@@ -69,6 +69,10 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+# DEBUG only: print each request's time + database time in the runserver console
+if DEBUG:
+    MIDDLEWARE.append("core.dev_timing.RequestTimingMiddleware")
+
 ROOT_URLCONF = 'LookApt.urls'
 
 TEMPLATES = [
@@ -145,7 +149,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Manila'   # Philippines (UTC+8)
 
 USE_I18N = True
 

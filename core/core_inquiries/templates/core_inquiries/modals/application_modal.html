@@ -1,0 +1,139 @@
+{% comment %}
+    "Apply as Renter" / "Join Waitlist" pop-up, shared by every unit on the page.
+    listing_modals.js fills it from the clicked button's data-* attributes
+    (unit, max occupants, earliest move-in...) and switches between the two modes:
+      apply    -> move-in date (today or later) + optional site visit
+      waitlist -> move-in date from the current lease end + turnover days, no site visit
+{% endcomment %}
+{% load listing_tags %}
+
+<dialog class="lm-modal" data-application-modal aria-labelledby="lm-application-title">
+    <form class="lm-form" data-application-form novalidate>
+
+        <header class="lm-header">
+            <span class="lm-header-icon" data-mode-icon>{% feature_icon "document" %}</span>
+            <div>
+                <h2 id="lm-application-title" data-mode-title>Renter Application Form</h2>
+                <p data-mode-intro></p>
+            </div>
+            <button type="button" class="lm-close" data-modal-close aria-label="Close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            </button>
+        </header>
+
+        <div class="lm-body">
+
+            <p class="lm-alert" data-form-error role="alert" hidden></p>
+
+            <!-- Tenants -->
+            <section class="lm-section">
+                <div class="lm-section-head">
+                    <span class="lm-section-icon">{% feature_icon "occupants" %}</span>
+                    <div>
+                        <h3>Name of Tenant/s</h3>
+                        <p>Add the names of all occupants who will be staying in this unit.</p>
+                    </div>
+                    <p class="lm-counter">
+                        Maximum occupants: <strong data-max-label>1</strong><br>
+                        <span data-count-label>1 of 1 added</span>
+                    </p>
+                </div>
+
+                <ol class="lm-tenants" data-tenant-list>
+                    <li class="lm-tenant">
+                        <span class="lm-tenant-number">1</span>
+                        <div class="lm-input lm-input--readonly">
+                            <input type="text" value="{{ request.user.display_name }}" readonly aria-label="Tenant 1 (you)">
+                            <span class="lm-you">You</span>
+                        </div>
+                    </li>
+                </ol>
+
+                <template data-tenant-template>
+                    <li class="lm-tenant">
+                        <span class="lm-tenant-number"></span>
+                        <div class="lm-input">
+                            <input type="text" name="occupant" placeholder="Enter full name" maxlength="100" autocomplete="off">
+                        </div>
+                        <button type="button" class="lm-icon-btn" data-remove-tenant aria-label="Remove tenant">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+                        </button>
+                    </li>
+                </template>
+
+                <button type="button" class="lm-add" data-add-tenant>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                    Add another tenant
+                </button>
+                <p class="lm-field-error" data-error-for="occupants" hidden></p>
+            </section>
+
+            <!-- Move-in date -->
+            <section class="lm-section">
+                <div class="lm-section-head">
+                    <span class="lm-section-icon">{% feature_icon "lease" %}</span>
+                    <div>
+                        <h3>Preferred Move-In Date <span class="lm-chip" data-apply-only>Can be tentative</span></h3>
+                        <p>Select your preferred move-in date.</p>
+                    </div>
+                </div>
+
+                <div class="lm-info" data-waitlist-only hidden>
+                    {% feature_icon "info" %}
+                    <div>
+                        <strong>Earliest move-in date: <span data-earliest-label></span></strong>
+                        <p data-earliest-note></p>
+                    </div>
+                </div>
+
+                <label class="lm-date">
+                    {% feature_icon "lease" %}
+                    <input type="date" name="move_in_date" required aria-label="Preferred move-in date">
+                </label>
+                <p class="lm-field-error" data-error-for="move_in_date" hidden></p>
+            </section>
+
+            <!-- Site visit (available units only) -->
+            <section class="lm-section" data-apply-only>
+                <div class="lm-section-head">
+                    <span class="lm-section-icon">{% feature_icon "location" %}</span>
+                    <div>
+                        <h3>Request for Site Visit</h3>
+                        <p>Would you like to schedule a site visit for this unit?</p>
+                    </div>
+                </div>
+
+                <div class="lm-radios" role="radiogroup" aria-label="Schedule a site visit">
+                    <label class="lm-radio"><input type="radio" name="wants_visit" value="no" checked> No</label>
+                    <label class="lm-radio"><input type="radio" name="wants_visit" value="yes"> Yes</label>
+                </div>
+
+                <div class="lm-visit" data-visit-fields hidden>
+                    <span>Preferred Site Visit Date</span>
+                    <label class="lm-date">
+                        {% feature_icon "lease" %}
+                        <input type="date" name="site_visit_date" aria-label="Preferred site visit date">
+                    </label>
+                </div>
+                <p class="lm-field-error" data-error-for="site_visit_date" hidden></p>
+            </section>
+
+            <!-- Waitlist note -->
+            <section class="lm-note" data-waitlist-only hidden>
+                {% feature_icon "info" %}
+                <div>
+                    <strong>Please Note</strong>
+                    <p>Joining the waitlist does not guarantee future tenancy. The landlord will review your request and contact you once the unit has been vacated. Priority goes to the first renter to close the deal with the landlord, not to the order of waitlist applications.</p>
+                </div>
+            </section>
+
+        </div>
+
+        <footer class="lm-footer">
+            <button type="button" class="ld-btn ld-btn--ghost" data-modal-close>Cancel</button>
+            <button type="button" class="ld-btn lm-btn-draft" data-save-draft>Save Draft</button>
+            <button type="submit" class="ld-btn lm-btn-submit" data-submit>Submit Application</button>
+        </footer>
+
+    </form>
+</dialog>

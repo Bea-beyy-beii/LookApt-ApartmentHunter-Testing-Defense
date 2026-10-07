@@ -303,7 +303,7 @@
     grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr);
     gap: 12px;
 
-    height: clamp(260px, 34vw, 420px);
+    height: clamp(210px, 24vw, 320px);
 }
 
 .ld-gallery--single {
@@ -436,7 +436,7 @@
     }
 
     .ld-gallery-main {
-        aspect-ratio: 4 / 3;
+        aspect-ratio: 16 / 10;
     }
 
     .ld-gallery-thumbs,
@@ -448,20 +448,24 @@
 
 /* Full-size viewer */
 .ld-lightbox {
+    margin: auto;   /* reset.css zeroes margins; dialogs need auto to stay centered */
     width: min(1100px, 94vw);
     max-width: none;
     max-height: 92vh;
     padding: 0;
 
-    border: 0;
+    border: 1px solid var(--border-light);
     border-radius: 18px;
     background: #0f1726;
+    box-shadow: 0 24px 60px rgba(60, 45, 25, 0.18);
 
     overflow: hidden;
 }
 
+/* Same cream, blurred backdrop as the other pop-ups */
 .ld-lightbox::backdrop {
-    background: rgba(10, 16, 28, 0.78);
+    background: rgba(255, 250, 240, 0.82);
+    backdrop-filter: blur(3px);
 }
 
 .ld-lightbox img,
@@ -470,6 +474,13 @@
     width: 100%;
     max-height: 92vh;
     object-fit: contain;
+}
+
+
+/* display:block above would beat the hidden attribute: the video player's
+   controls showed up under every photo */
+.ld-lightbox [hidden] {
+    display: none;
 }
 
 .ld-lightbox-close {
@@ -1272,33 +1283,49 @@
     font-weight: 600;
 }
 
-/* ---------- Availability & demand ---------- */
 
-.ld-availability {
+/* ---------- Availability & demand (compact: one line each) ---------- */
+
+.ld-availability,
+.ld-demand {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 10px;
 
-    padding: 14px 16px;
+    padding: 9px 12px;
 
-    border-radius: var(--radius-md);
+    border-radius: 12px;
 }
 
-.ld-availability strong {
-    display: block;
-    font-size: 18px;
+.ld-availability > div,
+.ld-demand > div {
+    min-width: 0;
+    line-height: 1.35;
+}
+
+/* "Available now · Ready for move-in" on one line */
+.ld-availability strong,
+.ld-demand strong {
+    font-size: 14px;
     font-weight: 700;
 }
 
-.ld-availability p {
+.ld-availability p,
+.ld-demand p {
+    display: inline;
     color: var(--text-secondary);
-    font-size: 13px;
+    font-size: 12.5px;
+}
+
+.ld-availability p::before,
+.ld-demand p::before {
+    content: " · ";
 }
 
 .ld-availability-dot {
     flex-shrink: 0;
-    width: 22px;
-    height: 22px;
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
 }
 
@@ -1306,41 +1333,34 @@
 .ld-availability--available strong { color: #2f8a52; }
 .ld-availability--available .ld-availability-dot {
     background: #2f9e5c;
-    box-shadow: 0 0 0 5px rgba(47, 158, 92, 0.18);
+    box-shadow: 0 0 0 4px rgba(47, 158, 92, 0.18);
 }
 
 .ld-availability--occupied { background: #fdf0d6; }
 .ld-availability--occupied strong { color: #c46a12; }
 .ld-availability--occupied .ld-availability-dot {
     background: #f0a33a;
-    box-shadow: 0 0 0 5px rgba(240, 163, 58, 0.2);
+    box-shadow: 0 0 0 4px rgba(240, 163, 58, 0.2);
 }
 
 .ld-demand {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-
-    padding: 14px 16px;
-
-    border-radius: var(--radius-md);
     background: #eef4fc;
 }
 
 .ld-demand > svg {
     flex-shrink: 0;
-    width: 26px;
-    height: 26px;
+    width: 18px;
+    height: 18px;
     color: var(--navy);
 }
 
 .ld-demand strong {
     color: var(--navy);
-    font-size: 15px;
 }
 
-.ld-demand p {
-    color: var(--text-secondary);
+/* Smaller buttons inside this panel */
+.ld-card .ld-actions--large .ld-btn {
+    min-height: 42px;
     font-size: 13px;
 }
 

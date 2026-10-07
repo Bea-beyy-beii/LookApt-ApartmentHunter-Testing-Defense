@@ -1,5 +1,6 @@
 {# core_inquiries/partials/messages.html #}
-<div class="messages-view" id="messages-view">
+{# Threads are started by renters ("Inquire with Landlord"); landlords can only reply. #}
+<div class="messages-view" id="messages-view" data-inbox-url="{% url 'core_inquiries:inbox' %}">
 
     {% if conversations %}
         <div class="thread-list" id="thread-list">
@@ -8,18 +9,13 @@
                 <button
                     type="button"
                     class="message-thread{% if conversation.unread_count %} unread{% endif %}"
-                    data-conversation-id="{{ conversation.id }}"
+                    data-conversation-id="{{ conversation.pk }}"
+                    data-url="{% url 'core_inquiries:conversation_detail' conversation.pk %}"
+                    data-reply-url="{% url 'core_inquiries:conversation_reply' conversation.pk %}"
                     data-action="open-conversation"
                 >
                     <span class="thread-avatar">
-                        {% if conversation.other_user.profile_picture %}
-                            <img src="{{ conversation.other_user.profile_picture.url }}"
-                                 alt="{{ conversation.other_user.display_name }}">
-                        {% else %}
-                            <span class="thread-avatar-fallback">
-                                {{ conversation.other_user.display_name|default:"U"|slice:":1"|upper }}
-                            </span>
-                        {% endif %}
+                        <span class="thread-avatar-fallback">{{ conversation.other_initials|default:"U" }}</span>
                     </span>
 
                     <span class="thread-details">
@@ -36,12 +32,14 @@
                             {% endif %}
                         </span>
 
+                        <span class="thread-subject">{{ conversation.subject }}</span>
+
                         <span class="thread-preview">
                             {% if conversation.latest_message %}
-                                {% if conversation.latest_message.sender_id == request.user.id %}
+                                {% if conversation.latest_message.sender_id == request.user.pk %}
                                     <span class="preview-prefix">You: </span>
                                 {% endif %}
-                                {{ conversation.latest_message.content|truncatechars:75 }}
+                                {{ conversation.latest_message.preview|truncatechars:75 }}
                             {% else %}
                                 No messages yet.
                             {% endif %}
@@ -66,14 +64,18 @@
                 </svg>
             </div>
             <h3>No messages yet</h3>
-            <p>Messages from landlords about your inquiries will appear here.</p>
+            {% if is_landlord_inbox %}
+                <p>When a renter asks about one of your listings, the conversation will appear here.</p>
+            {% else %}
+                <p>Tap "Inquire with Landlord" on any listing to start a conversation.</p>
+            {% endif %}
         </div>
     {% endif %}
 
 </div>
 
 
-{# Conversation view. inquiries.js can populate this after a thread is clicked. #}
+{# Conversation view: inquiries.js loads the thread when one is clicked. #}
 
 <div class="conversation-view" id="conversation-view" hidden>
 
@@ -99,16 +101,6 @@
             </div>
         </div>
 
-        <button type="button"
-                class="conversation-more"
-                aria-label="Conversation options">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <circle cx="5" cy="12" r="1"/>
-                <circle cx="12" cy="12" r="1"/>
-                <circle cx="19" cy="12" r="1"/>
-            </svg>
-        </button>
-
     </header>
 
     <div class="conversation-messages"
@@ -119,11 +111,24 @@
         </div>
     </div>
 
+    <p class="conversation-locked" data-conversation-locked hidden>
+        You can reply once this renter sends you a message.
+    </p>
+
     <form class="message-composer"
           data-message-form
           method="post"
           action="">
         {% csrf_token %}
+
+        <p class="message-error" data-message-error hidden></p>
+        <div class="chat-chip" data-attach-preview hidden></div>
+
+        <button type="button" class="chat-attach" data-attach-button disabled
+                aria-label="Attach a photo, video or PDF (up to 5 MB)" title="Attach a photo, video or PDF (up to 5 MB)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 11-8.6 8.6a5 5 0 0 1-7-7l8.5-8.6a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.3-2.4l7.9-7.9"/></svg>
+        </button>
+        <input type="file" data-attach-input hidden accept="image/jpeg,image/png,video/mp4,video/webm,video/quicktime,application/pdf">
 
         <input type="text"
                name="message"
@@ -131,7 +136,6 @@
                placeholder="Type a message..."
                autocomplete="off"
                maxlength="2000"
-               required
                disabled
                data-message-input>
 

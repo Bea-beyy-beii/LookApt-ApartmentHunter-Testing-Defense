@@ -6,6 +6,8 @@
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'core/css/components/breadcrumbs.css' %}">
     <link rel="stylesheet" href="{% static 'core_listings/css/listing_detail.css' %}">
+    <link rel="stylesheet" href="{% static 'core_inquiries/chat.css' %}">
+    <link rel="stylesheet" href="{% static 'core_inquiries/listing_modals.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -222,8 +224,8 @@
                     <div class="ld-availability ld-availability--available">
                         <span class="ld-availability-dot"></span>
                         <div>
-                            <strong>{{ available_count }} unit{{ available_count|pluralize }} available now</strong>
-                            <p>{% if lowest_price %}From ₱{{ lowest_price|floatformat:"0g" }} / month. {% endif %}Ready for move-in.</p>
+                            <strong>{{ available_count }} available now</strong>
+                            <p>{% if lowest_price %}from ₱{{ lowest_price|floatformat:"0g" }}/mo{% else %}ready for move-in{% endif %}</p>
                         </div>
                     </div>
                 {% else %}
@@ -231,17 +233,25 @@
                         <span class="ld-availability-dot"></span>
                         <div>
                             <strong>Fully occupied</strong>
-                            <p>Join a unit's waitlist to get notified when it opens up.</p>
+                            <p>join a unit's waitlist</p>
                         </div>
                     </div>
                 {% endif %}
 
-                {% if occupied_count and available_count %}
+                {% if demand %}
+                    <div class="ld-demand">
+                        {% feature_icon "occupants" %}
+                        <div>
+                            <strong>{{ demand }} active application{{ demand|pluralize }}</strong>
+                            <p>apply early</p>
+                        </div>
+                    </div>
+                {% elif occupied_count and available_count %}
                     <div class="ld-demand">
                         {% feature_icon "occupants" %}
                         <div>
                             <strong>{{ occupied_count }} of {{ units|length }} units occupied</strong>
-                            <p>Units here are in demand. Inquire early to secure one.</p>
+                            <p>in demand</p>
                         </div>
                     </div>
                 {% endif %}
@@ -251,7 +261,10 @@
                         {% feature_icon "units" %}
                         {% if available_count %}View Available Units{% else %}View Units{% endif %}
                     </button>
-                    <button type="button" class="ld-btn ld-btn--ghost" data-coming-soon="Inquiries">
+                    <button type="button" class="ld-btn ld-btn--ghost"
+                            data-open-inquiry
+                            data-complex="{{ complex.pk }}"
+                            data-subject="{{ complex.complex_name }}">
                         {% feature_icon "chat" %}
                         Inquire with Landlord
                     </button>
@@ -264,8 +277,13 @@
 
 </div>
 
+{% include "core_inquiries/modals/application_modal.html" %}
+{% include "core_inquiries/modals/message_modal.html" %}
+
 {% endblock %}
 
 {% block extra_js %}
     <script src="{% static 'core_listings/js/listing_detail.js' %}"></script>
+    <script src="{% static 'core_inquiries/chat.js' %}"></script>
+    <script src="{% static 'core_inquiries/listing_modals.js' %}"></script>
 {% endblock %}

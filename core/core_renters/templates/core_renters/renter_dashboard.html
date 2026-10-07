@@ -898,14 +898,17 @@
     {% include "core_reports/renters/reports.html" %}
 </section>
 
+{% endblock %}
+
+{# Outside {% block content %}: nested there, Django printed them twice (scripts ran twice) #}
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'core_inquiries/inquiries.css' %}">
+    <link rel="stylesheet" href="{% static 'core_inquiries/chat.css' %}">
     <link rel="stylesheet" href="{% static 'core_reports/reports.css' %}">
 {% endblock %}
 
 {% block extra_js %}
+    <script src="{% static 'core_inquiries/chat.js' %}" defer></script>
     <script src="{% static 'core_inquiries/inquiries.js' %}" defer></script>
     <script src="{% static 'core_reports/reports.js' %}" defer></script>
-{% endblock %}
-
 {% endblock %}

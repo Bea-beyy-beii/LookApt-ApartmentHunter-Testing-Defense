@@ -1,28 +1,52 @@
 {% comment %}
     Apply / Join Waitlist + Inquire buttons for one unit.
     Available unit -> "Apply as Renter", occupied -> "Join Waitlist".
+    Already applied -> a disabled "Application Sent" / "On the Waitlist".
     `large` = the big buttons in the right column of the unit page.
-    Not wired to a backend yet (data-coming-soon shows a note).
+    `hide_inquiry` = no Inquire button (complex page rows: the complex's own button handles it).
+    The pop-ups live in core_inquiries/modals/ (listing_modals.js opens them).
 {% endcomment %}
 {% load listing_tags %}
 
 <div class="ld-actions{% if large %} ld-actions--large{% endif %}">
 
-    {% if unit.is_available %}
-        <button type="button" class="ld-btn ld-btn--primary" data-coming-soon="Applications">
-            {% feature_icon "document" %}
-            Apply as Renter
+    {% if unit.has_pending %}
+        <button type="button" class="ld-btn ld-btn--done" disabled>
+            {% feature_icon "check" %}
+            {% if unit.is_available %}Application Sent{% else %}On the Waitlist{% endif %}
         </button>
     {% else %}
-        <button type="button" class="ld-btn ld-btn--waitlist" data-coming-soon="The waitlist">
-            {% feature_icon "bell" %}
-            Join Waitlist
+        <button type="button"
+                class="ld-btn {% if unit.is_available %}ld-btn--primary{% else %}ld-btn--waitlist{% endif %}"
+                data-open-application
+                data-kind="{% if unit.is_available %}apply{% else %}waitlist{% endif %}"
+                data-unit="{{ unit.pk }}"
+                data-unit-name="{{ unit.unit_name }}"
+                data-complex-name="{{ unit.complex.complex_name }}"
+                data-max-occupants="{{ unit.max_occupant }}"
+                data-earliest="{{ unit.earliest_move_in|date:'Y-m-d' }}"
+                data-earliest-label="{{ unit.earliest_move_in|date:'M j, Y' }}"
+                data-lease-known="{% if unit.lease_end %}1{% else %}0{% endif %}"
+                data-turnover-days="{{ unit.complex.turnover_days }}"
+                data-url="{% url 'core_inquiries:submit_application' unit.pk %}">
+            {% if unit.is_available %}
+                {% feature_icon "document" %}
+                Apply as Renter
+            {% else %}
+                {% feature_icon "bell" %}
+                Join Waitlist
+            {% endif %}
         </button>
     {% endif %}
 
-    <button type="button" class="ld-btn ld-btn--ghost" data-coming-soon="Inquiries">
+    {% if not hide_inquiry %}
+    <button type="button" class="ld-btn ld-btn--ghost"
+            data-open-inquiry
+            data-unit="{{ unit.pk }}"
+            data-subject="{{ unit.unit_name }} · {{ unit.complex.complex_name }}">
         {% feature_icon "chat" %}
         Inquire with Landlord
     </button>
+    {% endif %}
 
 </div>

@@ -2,11 +2,14 @@
 # Data for the renter's listing pages:
 #   - complex page (photos, units, amenities, location, landlord)
 #   - unit page    (photos/videos, payment, amenities, similar units)
+from collections import Counter
 from decimal import Decimal
 
 from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 
+from core.core_inquiries.models import Application
+from core.core_inquiries.services import current_lease_end, earliest_move_in
 from core.core_maps.maps.services import complex_landmarks
 
 from .models import BedroomType, Complex, SavedListing, Unit
@@ -42,6 +45,20 @@ def _decorate_unit(unit):
     unit.cover_url = cover.image.url if cover else ""
     unit.is_available = unit.availability == Unit.Availability.AVAILABLE
     return unit
+
+
+def _attach_inquiry_info(units, user):
+    """What the Apply / Waitlist buttons and the demand box need, per unit."""
+    pending = Application.objects.filter(unit__in=units, status=Application.Status.PENDING)
+    demand = Counter(pending.values_list("unit_id", flat=True))
+    mine = set(pending.filter(renter__user=user).values_list("unit_id", flat=True))
+
+    for unit in units:
+        unit.demand = demand[unit.pk]               # renters interested / on the waitlist
+        unit.has_pending = unit.pk in mine          # this renter already applied
+        unit.earliest_move_in = earliest_move_in(unit)
+        unit.lease_end = current_lease_end(unit)    # None when the landlord hasn't set it
+    return units
 
 
 def _features(complex_obj):
@@ -83,6 +100,7 @@ def get_renter_complex(pk):
 
 def complex_detail_context(complex_obj, user):
     units = [_decorate_unit(unit) for unit in complex_obj.units.all()]
+    _attach_inquiry_info(units, user)
     available = [unit for unit in units if unit.is_available]
 
     # Unit types in the usual order: Studio, 1BR, 2BR, 3+
@@ -110,6 +128,7 @@ def complex_detail_context(complex_obj, user):
         "unit_types": unit_types,
         "available_count": len(available),
         "occupied_count": len(units) - len(available),
+        "demand": sum(unit.demand for unit in units),
         "lowest_price": min(prices) if prices else None,
         "features": _features(complex_obj),
         "unit_amenities": unit_amenities,
@@ -180,6 +199,7 @@ def _similar_units(unit):
 
 def unit_detail_context(unit, user):
     _decorate_unit(unit)
+    _attach_inquiry_info([unit], user)
     complex_obj = unit.complex
     same_complex, other_complexes = _similar_units(unit)
 

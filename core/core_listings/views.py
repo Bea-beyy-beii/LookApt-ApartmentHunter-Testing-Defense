@@ -13,6 +13,7 @@ from .forms import ComplexForm, UnitForm
 
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import ensure_csrf_cookie
 
 from .models import UnitPicture, UnitVideo
 import logging
@@ -399,6 +400,7 @@ def _renter_origin(request):
 
 
 @role_required("renter")
+@ensure_csrf_cookie   # the pop-ups post with fetch(), which needs the CSRF cookie
 def renter_complex_detail(request, pk):
     origin = _renter_origin(request)
     context = complex_detail_context(get_renter_complex(pk), request.user)
@@ -407,6 +409,7 @@ def renter_complex_detail(request, pk):
 
 
 @role_required("renter")
+@ensure_csrf_cookie   # the pop-ups post with fetch(), which needs the CSRF cookie
 def renter_unit_detail(request, pk):
     origin = _renter_origin(request)
     context = unit_detail_context(get_renter_unit(pk), request.user)

@@ -201,20 +201,7 @@
 .message-send:disabled{opacity:.45;cursor:not-allowed}
 .message-send svg{width:18px;height:18px}
 
-/* Dynamic chat bubbles */
-.chat-message{display:flex;max-width:78%;flex-direction:column;gap:4px}
-.chat-message.received{align-self:flex-start}
-.chat-message.sent{align-self:flex-end;align-items:flex-end}
-.chat-bubble{
-    padding:10px 14px;border-radius:16px;
-    background:#f0f3f7;color:#263a5c;font-size:13px;line-height:1.5;
-}
-.chat-message.received .chat-bubble{border-bottom-left-radius:5px}
-.chat-message.sent .chat-bubble{
-    border-bottom-right-radius:5px;
-    background:var(--navy,#203a68);color:#fff;
-}
-.chat-time{color:#8b96a5;font-size:10px}
+/* Chat bubbles: see chat.css (shared with the Inquire pop-up) */
 
 /* Requests */
 .request-list{display:flex;padding:18px;flex-direction:column;gap:14px}
@@ -375,3 +362,36 @@
     .notification-heading{align-items:flex-start;flex-direction:column;gap:2px}
     .calendar-card{padding:14px}
 }
+
+/* ---------- Real data additions ---------- */
+
+.thread-subject{
+    display:block;
+    overflow:hidden;
+    color:var(--navy,#203a68);
+    font-size:12px;font-weight:600;
+    white-space:nowrap;text-overflow:ellipsis;
+}
+.conversation-locked{
+    margin:0;padding:10px 22px;
+    border-top:1px solid var(--border-light,#d8e0e5);
+    background:#fdf1dc;
+    color:#8a5a10;font-size:13px;
+}
+.conversation-locked[hidden]{display:none}
+
+.request-facts{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:8px 16px;
+    margin:12px 0 0;
+}
+.request-facts dt{color:var(--text-secondary,#69758a);font-size:12px}
+.request-facts dd{margin:0;color:var(--navy,#203a68);font-size:13px;font-weight:600}
+.status-withdrawn{background:#f1f1f1;color:#6b7280}
+.request-note-muted{background:#f4f5f7}
+
+.message-composer{flex-wrap:wrap}
+.message-error{width:100%;margin:0;color:var(--error,#c94b4b);font-size:12px;font-weight:600}
+.message-error[hidden]{display:none}
+.chat-attach:disabled{opacity:.45;cursor:not-allowed}

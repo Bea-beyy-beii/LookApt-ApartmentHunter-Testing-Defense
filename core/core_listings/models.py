@@ -73,6 +73,10 @@ class Complex(models.Model):
     sex_restriction = models.CharField(max_length=12, choices=SexRestriction.choices, default=SexRestriction.NO_RESTRICTION)
     lease_term = models.CharField(max_length=10, choices=LeaseTerm.choices, default=LeaseTerm.MONTHLY)
 
+    # Days the landlord needs between tenants (cleaning, repairs...).
+    # Waitlist move-in = current lease end + this.
+    turnover_days = models.PositiveSmallIntegerField(default=7, validators=[MaxValueValidator(90)])
+
     num_of_floors = models.PositiveSmallIntegerField(
         default=1, validators=[MinValueValidator(1), MaxValueValidator(100)]
     )
@@ -185,6 +189,10 @@ class Unit(models.Model):
     advance_months = models.PositiveSmallIntegerField(default=0)
 
     availability = models.CharField(max_length=15, choices=Availability.choices, default=Availability.AVAILABLE)
+
+    # When the current tenant's lease started (occupied units). Used for the
+    # waitlist's earliest move-in date: start + lease term + turnover days.
+    occupied_since = models.DateField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
