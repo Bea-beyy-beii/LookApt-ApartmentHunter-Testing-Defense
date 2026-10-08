@@ -17,267 +17,58 @@
     data-section="home"
 >
 
-    <!-- MAP + SCHEDULE -->
 
-    <section class="dashboard-feature">
+    <!-- FIND NEAR (compact banner) -->
 
-        <!-- MAP -->
+    <section class="near-banner">
 
-        <div class="map-feature">
+        <span class="near-banner-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 21s7-6.1 7-12A7 7 0 1 0 5 9c0 5.9 7 12 7 12Z"/>
+                <circle cx="12" cy="9" r="2.5" fill="white"/>
+            </svg>
+        </span>
 
-            <div class="map-background">
-                <div class="map-road road-one"></div>
-                <div class="map-road road-two"></div>
-                <div class="map-road road-three"></div>
-                <div class="map-river"></div>
-            </div>
-
-
-            <div class="map-content">
-
-                <h1 class="map-title">
-
-                    <span class="map-title-icon">
-
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 21s7-6.1 7-12A7 7 0 1 0 5 9c0 5.9 7 12 7 12Z"/>
-                            <circle cx="12" cy="9" r="2.5" fill="white"/>
-                        </svg>
-
-                    </span>
-
-                    Explore <strong>by Map</strong>
-
-                </h1>
-
-
-                <p class="map-subtitle">
-                    Find a place near what matters.
-                </p>
-
-
-                <button class="location-selector tab-link" type="button" data-tab="findNear" title="Find apartments near a place">
-
-                    <span>
-
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                            <path d="M12 21s7-6.1 7-12A7 7 0 1 0 5 9c0 5.9 7 12 7 12Z"/>
-                            <circle cx="12" cy="9" r="2.5"/>
-                        </svg>
-
-                        Davao City
-
-                    </span>
-
-
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path d="m7 9 5 5 5-5"/>
-                    </svg>
-
-                </button>
-
-            </div>
-
-
-            <!-- Decorative pins -->
-
-            <div class="map-pin map-pin-main">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M4 11 12 4l8 7v8H4z"/>
-                    <path d="M9 19v-5h6v5"/>
-                </svg>
-            </div>
-
-            <div class="map-pin map-pin-one">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M4 11 12 4l8 7v8H4z"/>
-                </svg>
-            </div>
-
-            <div class="map-pin map-pin-two">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M4 11 12 4l8 7v8H4z"/>
-                </svg>
-            </div>
-
-            <div class="map-pin map-pin-three">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M4 11 12 4l8 7v8H4z"/>
-                </svg>
-            </div>
-
-
-            <!-- Landmark markers -->
-
-            <div class="landmark-marker landmark-one">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M5 20h14M7 20v-8h10v8M9 12V8h6v4M8 8h8"/>
-                </svg>
-            </div>
-
-            <div class="landmark-marker landmark-two">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M4 20h16M6 20V9l6-5 6 5v11M9 20v-5h6v5"/>
-                </svg>
-            </div>
-
-
-            <!-- Categories -->
-
-            <div class="map-categories">
-
-                <button class="map-category active" type="button">
-                    Home
-                </button>
-
-                <button class="map-category" type="button">
-                    School
-                </button>
-
-                <button class="map-category" type="button">
-                    Work
-                </button>
-
-                <button class="map-category" type="button">
-                    Mall
-                </button>
-
-                <button class="map-category" type="button">
-                    Hospital
-                </button>
-
-            </div>
-
+        <div class="near-banner-text">
+            <h1>Find a place near what matters.</h1>
+            <p>Search apartments close to your school, work, or favorite spots.</p>
         </div>
 
+        <a href="?tab=findNear" class="near-banner-btn tab-link" data-tab="findNear">
+            Explore Near You
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
 
-        <!-- UPCOMING -->
-
-        <aside class="upcoming-panel">
-
-            <div class="upcoming-header">
-
-                <h2>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <rect x="4" y="5" width="16" height="16" rx="2"/>
-                        <path d="M8 3v4M16 3v4M4 10h16M8 14h3M8 17h2"/>
-                    </svg>
-
-                    Upcoming
-                </h2>
-
-                <a href="#">
-                    View calendar →
-                </a>
-
-            </div>
+    </section>
 
 
-            <article class="appointment-card">
+    <!-- HOME LISTINGS + SCHEDULE -->
 
-                <div class="appointment-date">
-                    <span>SEP</span>
-                    <strong>18</strong>
-                    <small>Thu</small>
+    <div class="home-layout">
+
+        <section
+            class="listing-grid"
+            aria-label="Apartment listings"
+        >
+
+            {% for listing in listings %}
+                {% include "core_renters/partials/listing_card.html" %}
+            {% empty %}
+                <div class="listing-empty">
+                    <h3>No listings yet</h3>
+                    <p>New apartments will show up here as soon as landlords publish them.</p>
                 </div>
+            {% endfor %}
 
+        </section>
 
-                <img
-                    src="{% static 'core/images/apt1.png' %}"
-                    alt="LookApt Residences"
-                    class="appointment-image"
-                >
-
-
-                <div class="appointment-details">
-
-                    <h3>
-                        Site Visit
-                    </h3>
-
-                    <p class="appointment-time">
-                        1:30 PM – 2:30 PM
-                    </p>
-
-                    <p class="appointment-location">
-
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                            <path d="M12 21s7-6.1 7-12A7 7 0 1 0 5 9c0 5.9 7 12 7 12Z"/>
-                            <circle cx="12" cy="9" r="2.5"/>
-                        </svg>
-
-                        The Meridian Residences
-
-                    </p>
-
-                    <span class="appointment-status">
-                        Confirmed
-                    </span>
-
-                </div>
-
-            </article>
-
-
-            <a href="#" class="schedule-summary">
-
-                <span class="schedule-summary-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <rect x="4" y="5" width="16" height="16" rx="2"/>
-                        <path d="M8 3v4M16 3v4M4 10h16M12 13v4M12 13l2 1"/>
-                    </svg>
-                </span>
-
-
-                <span>
-
-                    <strong>
-                        Stay on track
-                    </strong>
-
-                    <small>
-                        View your upcoming visits and rental dates — all in one place.
-                    </small>
-
-                </span>
-
-
-                <svg
-                    class="summary-arrow"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                >
-                    <path d="m9 18 6-6-6-6"/>
-                </svg>
-
-            </a>
-
+        <aside class="home-side">
+            {% include "core_calendar/partials/calendar_widget.html" %}
         </aside>
 
-    </section>
-
-
-    <!-- HOME LISTINGS -->
-
-    <section
-        class="listing-grid"
-        aria-label="Apartment listings"
-    >
-
-        {% for listing in listings %}
-            {% include "core_renters/partials/listing_card.html" %}
-        {% empty %}
-            <div class="listing-empty">
-                <h3>No listings yet</h3>
-                <p>New apartments will show up here as soon as landlords publish them.</p>
-            </div>
-        {% endfor %}
-
-    </section>
+    </div>
 
 </section>
-
 
 
 <!-- =====================================================
@@ -905,10 +696,12 @@
     <link rel="stylesheet" href="{% static 'core_inquiries/inquiries.css' %}">
     <link rel="stylesheet" href="{% static 'core_inquiries/chat.css' %}">
     <link rel="stylesheet" href="{% static 'core_reports/reports.css' %}">
+    <link rel="stylesheet" href="{% static 'core_calendar/calendar_ui.css' %}">
 {% endblock %}
 
 {% block extra_js %}
     <script src="{% static 'core_inquiries/chat.js' %}" defer></script>
     <script src="{% static 'core_inquiries/inquiries.js' %}" defer></script>
     <script src="{% static 'core_reports/reports.js' %}" defer></script>
+    <script src="{% static 'core_calendar/calendar.js' %}" defer></script>
 {% endblock %}

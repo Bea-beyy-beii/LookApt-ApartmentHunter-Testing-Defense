@@ -1848,3 +1848,104 @@
     }
 
 }
+
+
+/* =========================================================
+   HOME: compact "Find near" banner + listings with the
+   "Your Schedule" widget on the side (calendar_ui.css)
+========================================================= */
+
+.near-banner {
+    position: relative;
+
+    display: flex;
+    align-items: center;
+    gap: 16px;
+
+    overflow: hidden;
+
+    margin-bottom: 22px;
+    padding: 16px 22px;
+
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    background:
+        repeating-linear-gradient(90deg, transparent 0 66px, rgba(185, 193, 180, 0.35) 67px 69px),
+        repeating-linear-gradient(0deg, transparent 0 52px, rgba(185, 193, 180, 0.33) 53px 55px),
+        #e7ecdf;
+    box-shadow: var(--shadow-soft);
+}
+
+.near-banner-icon {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+
+    width: 46px;
+    height: 46px;
+
+    border-radius: 14px;
+    background: var(--white);
+    color: var(--gold);
+    box-shadow: 0 4px 12px rgba(50, 70, 60, 0.08);
+}
+
+.near-banner-icon svg { width: 26px; height: 26px; }
+
+.near-banner-text { flex: 1; min-width: 0; }
+
+.near-banner-text h1 {
+    margin: 0;
+
+    color: var(--navy);
+    font-size: 20px;
+    letter-spacing: -0.4px;
+}
+
+.near-banner-text p {
+    margin: 2px 0 0;
+
+    color: #53657b;
+    font-size: 13.5px;
+}
+
+.near-banner-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+
+    padding: 11px 18px;
+
+    border-radius: var(--radius-pill);
+    background: var(--navy);
+    color: var(--white);
+
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.near-banner-btn:hover { background: var(--navy-dark); transform: translateY(-1px); }
+.near-banner-btn svg { width: 17px; height: 17px; }
+
+.home-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 22px;
+    align-items: start;
+}
+
+.home-side { position: sticky; top: 20px; }
+
+@media (max-width: 1100px) {
+    .home-layout { grid-template-columns: 1fr; }
+    .home-side { position: static; order: -1; max-width: 560px; }
+}
+
+@media (max-width: 640px) {
+    .near-banner { flex-wrap: wrap; padding: 14px 16px; }
+    .near-banner-btn { width: 100%; justify-content: center; }
+}

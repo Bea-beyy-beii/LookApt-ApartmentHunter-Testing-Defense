@@ -9,6 +9,9 @@
     <link rel="stylesheet" href="{% static 'core_calendar/calendar.css' %}">
     <link rel="stylesheet" href="{% static 'core_inquiries/inquiries.css' %}">
     <link rel="stylesheet" href="{% static 'core_inquiries/chat.css' %}">
+    <link rel="stylesheet" href="{% static 'core_inquiries/listing_modals.css' %}">
+    <link rel="stylesheet" href="{% static 'core_rentals/rentals.css' %}">
+    <link rel="stylesheet" href="{% static 'core_calendar/calendar_ui.css' %}">
     <link rel="stylesheet" href="{% static 'core_reports/reports.css' %}">
 {% endblock %}
 
@@ -39,7 +42,7 @@
 
         <div class="panel-small">
 
-            {% include "core_calendar/partials/upcoming_widget.html" %}
+            {% include "core_calendar/partials/calendar_widget.html" with view_link=True %}
 
         </div>
 
@@ -96,17 +99,24 @@
     hidden
 >
 
-    <div class="section-heading">
+    {% include "core_rentals/manage_rentals.html" %}
 
-        <h1>
-            Manage Rentals
-        </h1>
+</section>
 
-        <p>
-            View tenant and rental details.
-        </p>
 
-    </div>
+
+<!-- =====================================================
+     CALENDAR
+====================================================== -->
+
+<section
+    id="calendar-section"
+    class="dashboard-tab"
+    data-section="calendar"
+    hidden
+>
+
+    {% include "core_calendar/landlord_calendar.html" %}
 
 </section>
 
@@ -162,5 +172,8 @@
         src="{% static 'core_reports/reports.js' %}"
         defer
     ></script>
+
+    <script src="{% static 'core_rentals/rentals.js' %}" defer></script>
+    <script src="{% static 'core_calendar/calendar.js' %}" defer></script>
 
 {% endblock %}

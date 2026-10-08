@@ -26,6 +26,7 @@ urlpatterns = [
     path("renters/", include("core.core_renters.urls")),
     path("landlords/", include("core.core_landlords.urls")),
     path("", include("core.core_inquiries.urls")),
+    path("rentals/", include("core.core_rentals.urls")),
     path("", include("core.core_listings.urls")),
     path("", include("core.core_calendar.urls")),
     path("", include("core.core_reports.urls")),

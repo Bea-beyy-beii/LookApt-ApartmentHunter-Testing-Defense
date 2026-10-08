@@ -1,0 +1,157 @@
+{% comment %}
+    One unit in Manage Rentals. `unit.tenancy` is its active tenancy (or None).
+    data-* attributes drive the tabs and the search (rentals.js).
+{% endcomment %}
+{% load listing_tags %}
+{% with t=unit.tenancy %}
+
+<div class="rt-row" role="row"
+     data-rental-row
+     data-state="{{ unit.state }}"
+     data-ending="{% if unit.ending_soon %}1{% else %}0{% endif %}"
+     data-search="{{ unit.unit_name }} {{ unit.complex.complex_name }} {% if t %}{{ t.tenant_name }} {{ t.occupants|join:' ' }}{% endif %}">
+
+    <!-- Unit -->
+    <div class="rt-cell rt-unit" role="cell">
+        <span class="rt-thumb">
+            {% if unit.cover_url %}<img src="{{ unit.cover_url }}" alt="" loading="lazy">{% else %}{% feature_icon "unit_type" %}{% endif %}
+        </span>
+        <strong>{{ unit.unit_name }}</strong>
+    </div>
+
+    <!-- Tenant -->
+    <div class="rt-cell rt-tenant" role="cell">
+        {% if t %}
+            <span class="rt-avatar{% if not t.is_app_user %} rt-avatar--guest{% endif %}" aria-hidden="true">{{ t.initials }}</span>
+            <span class="rt-stack">
+                <strong>{{ t.tenant_name }}</strong>
+                <small>{{ t.occupant_count }} tenant{{ t.occupant_count|pluralize }}{% if not t.is_app_user %} · not on LookApt{% endif %}</small>
+            </span>
+        {% elif unit.state == "occupied" %}
+            <span class="rt-avatar rt-avatar--empty" aria-hidden="true">?</span>
+            <span class="rt-stack"><strong>Not recorded</strong><small>Assign the current tenant</small></span>
+        {% else %}
+            <span class="rt-avatar rt-avatar--empty" aria-hidden="true">—</span>
+            <span class="rt-stack"><strong class="rt-muted">—</strong><small>No tenant yet</small></span>
+        {% endif %}
+    </div>
+
+    <!-- Contract period -->
+    <div class="rt-cell rt-period" role="cell">
+        {% if t %}
+            {% feature_icon "lease" %}
+            <span class="rt-stack">
+                <span>{{ t.term_start|date:"M j, Y" }}</span>
+                <small>– {{ t.term_end|date:"M j, Y" }}</small>
+                {% if t.ending_soon %}
+                    <em class="rt-ending">Ends in {{ t.days_left }} day{{ t.days_left|pluralize }}</em>
+                {% elif t.renewed %}
+                    <em class="rt-renewed" title="Renewed lease · first started {{ t.start_date|date:'M j, Y' }}">Renewed</em>
+                {% endif %}
+            </span>
+        {% else %}
+            <span class="rt-muted">—</span>
+        {% endif %}
+    </div>
+
+    <!-- Rent -->
+    <div class="rt-cell rt-rent" role="cell">
+        <strong>₱{% if t %}{{ t.monthly_rent|floatformat:"0g" }}{% else %}{{ unit.price|floatformat:"0g" }}{% endif %}</strong>
+        <small>/ month</small>
+    </div>
+
+    <!-- Payment status -->
+    <div class="rt-cell" role="cell">
+        {% if t %}
+            <span class="rt-status rt-status--{{ t.pay.key }}">
+                {% if t.pay.key == "paid" %}{% feature_icon "check" %}{% elif t.pay.key == "due_soon" %}{% feature_icon "clock" %}{% else %}{% feature_icon "info" %}{% endif %}
+                <span class="rt-stack"><strong>{{ t.pay.label }}</strong><small>{{ t.pay.detail }}</small></span>
+            </span>
+        {% elif unit.state == "occupied" %}
+            <span class="rt-status rt-status--unknown">{% feature_icon "info" %}<span class="rt-stack"><strong>No record</strong><small>Assign tenant</small></span></span>
+        {% else %}
+            <span class="rt-status rt-status--vacant">{% feature_icon "unit_type" %}<span class="rt-stack"><strong>Vacant</strong><small>Ready for tenant</small></span></span>
+        {% endif %}
+    </div>
+
+    <!-- Actions -->
+    <div class="rt-cell rt-actions" role="cell">
+        {% if t and t.is_app_user %}
+            <button type="button" class="rt-icon-btn" title="Message {{ t.tenant_name }}" aria-label="Message {{ t.tenant_name }}"
+                    data-open-tenant-chat
+                    data-renter="{{ t.renter_id }}"
+                    data-name="{{ t.tenant_name }}"
+                    data-initials="{{ t.initials }}"
+                    data-subject="{{ unit.unit_name }} · {{ unit.complex.complex_name }}">
+                {% feature_icon "chat" %}
+            </button>
+        {% else %}
+            <button type="button" class="rt-icon-btn" disabled
+                    title="{% if t %}This tenant isn't on LookApt{% else %}No tenant to message{% endif %}"
+                    aria-label="Message (unavailable)">
+                {% feature_icon "chat" %}
+            </button>
+        {% endif %}
+
+        {% if t %}
+            <button type="button" class="rt-btn rt-btn--ghost"
+                    data-open-pay
+                    data-url="{% url 'core_rentals:mark_paid' t.pk %}"
+                    data-unit-name="{{ unit.unit_name }}"
+                    data-tenant="{{ t.tenant_name }}"
+                    data-rent="{{ t.monthly_rent|floatformat:'0g' }}"
+                    data-months="{{ t.payable_json }}"
+                    {% if not t.payable %}disabled title="The lease has no more months to pay"{% endif %}>
+                Mark as Paid
+            </button>
+
+            <div class="rt-menu-wrap">
+                <button type="button" class="rt-icon-btn" data-menu-toggle aria-haspopup="true" aria-expanded="false" aria-label="More actions">
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+                </button>
+                <div class="rt-menu" role="menu" hidden>
+                    <button type="button" role="menuitem" data-coming-soon="Viewing contracts">{% feature_icon "document" %} View Contract</button>
+
+                    <button type="button" role="menuitem"
+                            data-open-renew
+                            data-url="{% url 'core_rentals:renew_tenancy' t.pk %}"
+                            data-unit-name="{{ unit.unit_name }}" data-tenant="{{ t.tenant_name }}"
+                            data-current-end="{{ t.term_end|date:'M j, Y' }}"
+                            data-new-end="{{ t.renew_to|date:'M j, Y' }}"
+                            data-lease="{{ unit.complex.get_lease_term_display }}">
+                        {% feature_icon "lease" %} Renew Lease Contract
+                    </button>
+                    
+                    <button type="button" role="menuitem"
+                            data-open-end data-status="completed"
+                            data-url="{% url 'core_rentals:end_tenancy' t.pk %}"
+                            data-unit-name="{{ unit.unit_name }}" data-tenant="{{ t.tenant_name }}">
+                        {% feature_icon "check" %} Mark Contract as Complete
+                    </button>
+                    <button type="button" role="menuitem" class="rt-menu-danger"
+                            data-open-end data-status="terminated"
+                            data-url="{% url 'core_rentals:end_tenancy' t.pk %}"
+                            data-unit-name="{{ unit.unit_name }}" data-tenant="{{ t.tenant_name }}">
+                        {% feature_icon "info" %} Terminate Contract
+                    </button>
+                </div>
+            </div>
+        {% else %}
+            <button type="button" class="rt-btn rt-btn--primary"
+                    data-open-assign
+                    data-url="{% url 'core_rentals:assign_tenant' unit.pk %}"
+                    data-unit-name="{{ unit.unit_name }}"
+                    data-complex-name="{{ unit.complex.complex_name }}"
+                    data-rent="{{ unit.price|floatformat:'0g' }}"
+                    data-max-occupants="{{ unit.max_occupant }}"
+                    data-lease="{{ unit.complex.get_lease_term_display }}"
+                    data-candidates="{{ unit.candidates_json }}">
+                Assign a Renter
+            </button>
+            <span class="rt-menu-spacer" aria-hidden="true"></span>
+        {% endif %}
+    </div>
+
+</div>
+
+{% endwith %}

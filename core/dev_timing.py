@@ -6,6 +6,7 @@
 # remote database (distance/region), not the app code.
 import time
 
+from django.conf import settings
 from django.db import connection
 
 SKIP_PREFIXES = ("/static/", "/media/", "/favicon")
@@ -16,7 +17,8 @@ class RequestTimingMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        if request.path.startswith(SKIP_PREFIXES):
+        # settings.DEBUG is checked per request: tests switch it off at runtime
+        if not settings.DEBUG or request.path.startswith(SKIP_PREFIXES):
             return self.get_response(request)
 
         start = time.perf_counter()

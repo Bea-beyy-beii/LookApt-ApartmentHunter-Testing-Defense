@@ -261,14 +261,55 @@ def user_conversations(user):
     return Conversation.objects.filter(Q(renter__user=user) | Q(landlord__user=user))
 
 
+def landlord_can_contact(landlord_user, renter):
+    """A landlord may write first only to renters with a real link to them:
+    a current/past tenant, or someone who applied to one of their units."""
+    from core.core_rentals.models import Tenancy   # imported here: core_rentals imports this module
+    mine = Q(unit__complex__landlord__user=landlord_user)
+    return (
+        Tenancy.objects.filter(mine, renter=renter).exists()
+        or Application.objects.filter(mine, renter=renter).exists()
+    )
+
+
 def can_send(user, conversation):
     """Renters can always reply in their own thread.
-    Landlords can only reply once the renter has written first."""
+    Landlords can reply once the renter has written first, or when the
+    renter is/was their tenant or applied to one of their units."""
     if conversation.renter.user_id == user.pk:
         return True
     if conversation.landlord.user_id == user.pk:
-        return conversation.messages.filter(sender=conversation.renter.user).exists()
+        return (
+            conversation.messages.filter(sender=conversation.renter.user).exists()
+            or landlord_can_contact(user, conversation.renter)
+        )
     return False
+
+
+def landlord_conversation(landlord_user, renter):
+    return Conversation.objects.filter(landlord__user=landlord_user, renter=renter).first()
+
+
+@transaction.atomic
+def start_landlord_message(user, renter, body, attachment=None):
+    """Landlord writes to a tenant/applicant from Manage Rentals (creates the thread if needed)."""
+    if not landlord_can_contact(user, renter):
+        raise PermissionDenied("You can only message renters who rent from you, applied to your units, or messaged you first.")
+    kind = clean_attachment(attachment) if attachment else ""
+    body = _clean_body(body, bool(attachment))
+
+    conversation = landlord_conversation(user, renter)
+    if conversation is None:
+        # What the thread is about: their latest rental, else their latest application
+        from core.core_rentals.models import Tenancy
+        link = (
+            Tenancy.objects.filter(renter=renter, unit__complex__landlord__user=user).select_related("unit__complex").first()
+            or Application.objects.filter(renter=renter, unit__complex__landlord__user=user).select_related("unit__complex").first()
+        )
+        conversation = Conversation.objects.create(
+            renter=renter, landlord=user.landlord, complex=link.unit.complex, unit=link.unit,
+        )
+    return _add_message(conversation, user, body, attachment, kind)
 
 
 @transaction.atomic

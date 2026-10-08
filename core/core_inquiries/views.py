@@ -15,6 +15,7 @@ from core.core_listings.services import renter_visible_complexes
 
 from . import services
 from .models import Application
+from core.models import Renter
 
 
 def _payload(request):
@@ -172,3 +173,45 @@ def conversation_reply(request, pk):
 def inbox(request):
     """Thread list for the Inquiries tab's live refresh."""
     return JsonResponse(services.inbox_json(request.user))
+
+
+
+# =========================================================
+# LANDLORD → TENANT (Manage Rentals "Message" button)
+# =========================================================
+
+@role_required("landlord")
+@require_GET
+def renter_thread(request):
+    """The landlord's thread with a renter (if any), and whether they may write."""
+    renter = get_object_or_404(Renter.objects.select_related("user"), pk=request.GET.get("renter"))
+    conversation = services.landlord_conversation(request.user, renter)
+    allowed = services.landlord_can_contact(request.user, renter) or bool(conversation and services.can_send(request.user, conversation))
+    if conversation is None:
+        return JsonResponse({"conversation": None, "can_send": allowed})
+    services.mark_read(request.user, conversation)
+    return JsonResponse({"conversation": services.conversation_json(request.user, conversation), "can_send": allowed})
+
+
+@role_required("landlord")
+@require_POST
+def send_to_renter(request):
+    params, body, attachment = _message_input(request)
+    renter = get_object_or_404(Renter, pk=params.get("renter"))
+    try:
+        conversation = services.landlord_conversation(request.user, renter)
+        if conversation is not None:
+            message = services.reply(request.user, conversation, body, attachment)
+        else:
+            message = services.start_landlord_message(request.user, renter, body, attachment)
+    except PermissionDenied as error:
+        return JsonResponse({"errors": {"__all__": str(error)}}, status=403)
+    except ValidationError as error:
+        return _errors(error)
+
+    conversation = message.conversation
+    return JsonResponse({
+        "conversation_id": str(conversation.pk),
+        "detail_url": reverse("core_inquiries:conversation_detail", args=[conversation.pk]),
+        "message": services.message_json(request.user, message),
+    }, status=201)

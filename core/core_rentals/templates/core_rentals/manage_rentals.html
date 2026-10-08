@@ -1,0 +1,121 @@
+{% comment %}
+    Manage Rentals tab (landlord dashboard).
+    Tabs: All Units / Occupied / Vacant / Ending Soon / Archive, plus search.
+    Data: core_rentals.services.get_rentals_context(). Behaviour: rentals.js.
+{% endcomment %}
+{% load listing_tags %}
+
+<div class="rentals-page" data-rentals>
+
+    <!-- Header -->
+    <div class="listings-header">
+        <div class="listings-heading">
+            <h1>Manage Rentals</h1>
+            <p>Oversee your units, tenants, and rental status.</p>
+        </div>
+    </div>
+
+    <!-- Tabs + search -->
+    <div class="rt-toolbar">
+        <div class="listing-status-filters" role="tablist" aria-label="Filter units">
+            <button type="button" class="status-filter active" data-rental-tab="all">All Units <span class="status-filter-count">{{ rental_counts.all }}</span></button>
+            <button type="button" class="status-filter" data-rental-tab="occupied"><span class="status-dot rt-dot--occupied"></span>Occupied <span class="status-filter-count">{{ rental_counts.occupied }}</span></button>
+            <button type="button" class="status-filter" data-rental-tab="vacant"><span class="status-dot rt-dot--vacant"></span>Vacant <span class="status-filter-count">{{ rental_counts.vacant }}</span></button>
+            <button type="button" class="status-filter" data-rental-tab="ending"><span class="status-dot rt-dot--ending"></span>Ending Soon <span class="status-filter-count">{{ rental_counts.ending_soon }}</span></button>
+            <button type="button" class="status-filter" data-rental-tab="archive">{% feature_icon "clock" %} Archive <span class="status-filter-count">{{ rental_counts.archive }}</span></button>
+        </div>
+
+        <label class="rt-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+            <input type="search" placeholder="Search unit, tenant, or building…" aria-label="Search unit, tenant, or building" data-rental-search>
+        </label>
+    </div>
+
+    <!-- Current units, grouped by complex -->
+    <div data-rental-current>
+        {% for group in rental_groups %}
+            <section class="rt-complex" data-rental-complex>
+
+                <header class="rt-complex-header">
+                    <span class="rt-complex-cover">
+                        {% if group.cover_url %}<img src="{{ group.cover_url }}" alt="" loading="lazy">{% else %}{% feature_icon "units" %}{% endif %}
+                    </span>
+
+                    <div class="rt-complex-name">
+                        <h2>{{ group.complex.complex_name }}</h2>
+                        <p>{% feature_icon "location" %} {{ group.complex.address }}</p>
+                    </div>
+
+                    <dl class="rt-complex-stats">
+                        <div><dt>Total Units</dt><dd>{{ group.stats.total }}</dd></div>
+                        <div class="rt-stat--occupied"><dt>Occupied</dt><dd>{{ group.stats.occupied }}</dd></div>
+                        <div class="rt-stat--vacant"><dt>Vacant</dt><dd>{{ group.stats.vacant }}</dd></div>
+                        <div class="rt-stat--ending"><dt>Ending Soon</dt><dd>{{ group.stats.ending_soon }}</dd></div>
+                    </dl>
+
+                    <button type="button" class="rt-icon-btn rt-collapse" data-collapse aria-expanded="true" aria-label="Collapse {{ group.complex.complex_name }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>
+                    </button>
+                </header>
+
+                <div class="rt-table" role="table" aria-label="{{ group.complex.complex_name }} units">
+                    <div class="rt-row rt-row--head" role="row">
+                        <span role="columnheader">Unit</span>
+                        <span role="columnheader">Tenant</span>
+                        <span role="columnheader">Contract Period</span>
+                        <span role="columnheader">Monthly Rent</span>
+                        <span role="columnheader">Payment Status</span>
+                        <span role="columnheader">Actions</span>
+                    </div>
+                    {% for unit in group.units %}
+                        {% include "core_rentals/partials/unit_row.html" %}
+                    {% empty %}
+                        <p class="rt-empty-row">No published units in this complex yet.</p>
+                    {% endfor %}
+                    <p class="rt-empty-row" data-filter-empty hidden>No units match.</p>
+                </div>
+            </section>
+        {% empty %}
+            <div class="rt-empty">
+                {% feature_icon "units" %}
+                <h3>No rentals yet</h3>
+                <p>Add a property and publish its units in My Listings. They'll show up here.</p>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Archive: completed / terminated contracts -->
+    <section class="rt-complex" data-rental-archive hidden>
+        <header class="rt-complex-header rt-complex-header--archive">
+            <div class="rt-complex-name">
+                <h2>Archive</h2>
+                <p>Completed and terminated contracts.</p>
+            </div>
+        </header>
+        <div class="rt-table" role="table" aria-label="Archived contracts">
+            <div class="rt-row rt-row--head" role="row">
+                <span role="columnheader">Unit</span>
+                <span role="columnheader">Tenant</span>
+                <span role="columnheader">Contract Period</span>
+                <span role="columnheader">Monthly Rent</span>
+                <span role="columnheader">Status</span>
+                <span role="columnheader"></span>
+            </div>
+            {% for t in rental_archive %}
+                {% include "core_rentals/partials/archive_row.html" %}
+            {% empty %}
+                <p class="rt-empty-row">Completed and terminated contracts will appear here.</p>
+            {% endfor %}
+            <p class="rt-empty-row" data-filter-empty hidden>No contracts match.</p>
+        </div>
+    </section>
+
+    <div class="rt-empty" data-no-results hidden>
+        {% feature_icon "info" %}
+        <h3>Nothing found</h3>
+        <p>Try another unit, tenant, or building name.</p>
+    </div>
+
+</div>
+
+{% include "core_rentals/partials/modals.html" %}

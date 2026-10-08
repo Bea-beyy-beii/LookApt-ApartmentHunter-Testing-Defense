@@ -15,26 +15,27 @@ from pathlib import Path
 import environ 
 import os 
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-env = environ.Env() 
-environ.Env.read_env(os.path.join(BASE_DIR, '.env')) 
+env = environ.Env(
+    DEBUG=(bool, False),                   
+    ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1"]),
+    CSRF_TRUSTED_ORIGINS=(list, []),        
+    DB_CONN_MAX_AGE=(int, 0),               # 0 = close after each request (right for Supabase's transaction pooler)
+    DB_TRANSACTION_POOLER=(bool, True),     # True when DB_PORT is 6543
+    SECURE_SSL_REDIRECT=(bool, True),       # production only: send http:// to https://
+)
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+SECRET_KEY = env("SECRET_KEY")
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
+DEBUG = env("DEBUG")
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure--t2sen+gyg+=mhl(e4on%_7y(vg(z!j8h1yp@j-wh*7dxu9s^z'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env("ALLOWED_HOSTS")
+CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS")
 
 
 # Application definition
@@ -57,10 +58,12 @@ INSTALLED_APPS = [
     "core.core_verification",
     "core.core_admin",
     "core.core_maps",
+    "core.core_rentals",
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',   # serve static files in production (CSS, JS, images) without needing Nginx or Apache
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -96,17 +99,21 @@ WSGI_APPLICATION = 'LookApt.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-DATABASES = { 
-    'default': { 
-        'ENGINE': 'django.db.backends.postgresql', 
-        'NAME': env('DB_NAME'), 
-        'USER': env('DB_USER'), 
-        'PASSWORD': env('DB_PASSWORD'), 
-        'HOST': env('DB_HOST'), 
-        'PORT': env('DB_PORT'),
-        'CONN_MAX_AGE': 60,           # reuse the connection for 60s
-        'CONN_HEALTH_CHECKS': True,   # but check it's still alive first
-    } 
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': env('DB_NAME'),
+        'USER': env('DB_USER'),
+        'PASSWORD': env('DB_PASSWORD'),
+        'HOST': env('DB_HOST'),
+        'PORT': env('DB_PORT'),   # 6543 = Supabase transaction pooler, 5432 = session pooler
+
+        'CONN_MAX_AGE': env('DB_CONN_MAX_AGE'),
+        'CONN_HEALTH_CHECKS': True,
+
+        # The transaction pooler can't keep server-side cursors between queries
+        'DISABLE_SERVER_SIDE_CURSORS': env('DB_TRANSACTION_POOLER'),
+    }
 }
 
 AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID")
@@ -116,9 +123,14 @@ AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME")
 
 AWS_S3_FILE_OVERWRITE = False
 
+# Browsers may keep uploaded photos for a day instead of re-downloading them
+AWS_S3_OBJECT_PARAMETERS = {"CacheControl": "max-age=86400"}
+
 STORAGES = {
     "default": {"BACKEND": "storages.backends.s3.S3Storage"},
-    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    # Compressed files with a fingerprint in the name (calendar.3f2a1c.css), so
+    # browsers can cache them for a year and still get updates after a deploy
+    "staticfiles": {"BACKEND": "core.storage.StaticStorage"},   # see core/storage.py
 }
 
 # GOOGLE MAPS API KEY
@@ -149,7 +161,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'Asia/Manila'   # Philippines (UTC+8)
+TIME_ZONE = 'Asia/Manila'   # Philippines (UTC+8); was UTC, so times showed 8 hours early
 
 USE_I18N = True
 
@@ -160,6 +172,32 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'   # `collectstatic` copies everything here when deploying
+
+
+# Sessions
+# Stored in a signed (tamper-proof) cookie instead of the database: one less database round trip on every request. Only the login is stored in the session.
+SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
+SESSION_COOKIE_HTTPONLY = True
+
+
+# Production security (only when DEBUG is off)
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')   # the host terminates HTTPS
+    SECURE_SSL_REDIRECT = env('SECURE_SSL_REDIRECT')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 60 * 60 * 24        # raise to a year once everything works on HTTPS
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+
+
+# Errors show up in the host's log viewer
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {'console': {'class': 'logging.StreamHandler'}},
+    'root': {'handlers': ['console'], 'level': 'WARNING'},
+}
 
 
 # Email

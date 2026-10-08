@@ -1,0 +1,87 @@
+{% comment %}
+    Calendar tab (landlord dashboard).
+    Month / List views, filters, next 7 days, and "Post on Bulletin".
+    Items come from core_calendar.services.calendar_items via calendar.js.
+{% endcomment %}
+{% load listing_tags %}
+
+<div class="cal-page" data-cal-page data-events-url="{% url 'calendar:events_api' %}">
+
+    <div class="listings-header">
+        <div class="listings-heading">
+            <h1>Calendar</h1>
+            <p>View and manage your scheduled events, announcements, and important dates.</p>
+        </div>
+        <button type="button" class="rt-btn rt-btn--primary cal-post-btn" data-open-bulletin>
+            {% feature_icon "megaphone" %} Post on Bulletin
+        </button>
+    </div>
+
+    <div class="cal-layout">
+
+        <!-- Month / List -->
+        <section class="cal-card cal-main">
+            <div class="cal-toolbar">
+                <button type="button" class="cal-nav cal-nav--boxed" data-cal-prev aria-label="Previous month">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <button type="button" class="cal-nav cal-nav--boxed" data-cal-next aria-label="Next month">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+                <h2 data-cal-title></h2>
+                <button type="button" class="cal-today" data-cal-today>Today</button>
+
+                <div class="cal-view-toggle" role="tablist" aria-label="Calendar view">
+                    <button type="button" class="active" data-cal-view="month">Month</button>
+                    <button type="button" data-cal-view="list">List</button>
+                </div>
+            </div>
+
+            <div class="cal-month" data-cal-month>
+                <div class="cal-weekdays">
+                    <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                </div>
+                <div class="cal-grid" data-cal-grid></div>
+            </div>
+
+            <div class="cal-list" data-cal-list hidden></div>
+        </section>
+
+        <!-- Filters + next 7 days -->
+        <aside class="cal-side">
+            <section class="cal-card cal-filters">
+                <h3>{% feature_icon "filter" %} Filters</h3>
+                <label class="cal-filter cal-cat--announcement"><input type="checkbox" data-cal-filter="announcement" checked><span class="cal-dot-icon">{% feature_icon "megaphone" %}</span> Announcements</label>
+                <label class="cal-filter cal-cat--site_visit"><input type="checkbox" data-cal-filter="site_visit" checked><span class="cal-dot-icon">{% feature_icon "calendar_check" %}</span> Site Visits</label>
+                <label class="cal-filter cal-cat--maintenance"><input type="checkbox" data-cal-filter="maintenance" checked><span class="cal-dot-icon">{% feature_icon "wrench" %}</span> Maintenance / Inspections</label>
+                <label class="cal-filter cal-cat--rent"><input type="checkbox" data-cal-filter="rent" checked><span class="cal-dot-icon">{% feature_icon "coin" %}</span> Rental Due Dates</label>
+                <label class="cal-filter cal-cat--contract"><input type="checkbox" data-cal-filter="contract" checked><span class="cal-dot-icon">{% feature_icon "document" %}</span> Contract Events</label>
+            </section>
+
+            <section class="cal-card">
+                <h3>{% feature_icon "clock" %} Upcoming Events <small>(Next 7 Days)</small></h3>
+                <ul class="cal-upcoming" data-cal-upcoming></ul>
+            </section>
+        </aside>
+
+    </div>
+</div>
+
+{% include "core_calendar/partials/bulletin_modal.html" %}
+
+<!-- One day's items (click a day / "+N more" / an item) -->
+<dialog class="lm-modal rt-modal--small cal-day-modal" data-cal-day-modal aria-labelledby="cal-day-title">
+    <header class="lm-header">
+        <span class="lm-header-icon">{% feature_icon "lease" %}</span>
+        <div>
+            <h2 id="cal-day-title" data-day-modal-title></h2>
+            <p data-day-modal-sub></p>
+        </div>
+        <button type="button" class="lm-close" data-modal-close aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+    </header>
+    <div class="lm-body">
+        <ul class="cal-items cal-items--detailed" data-day-modal-list></ul>
+    </div>
+</dialog>

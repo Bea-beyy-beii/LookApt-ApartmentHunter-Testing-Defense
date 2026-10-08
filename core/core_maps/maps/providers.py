@@ -107,7 +107,7 @@ class OverpassProvider:
             pattern = "|".join(sorted(values))
             lines.append(f'  nwr(around:{int(radius)},{lat:.6f},{lng:.6f})["{key}"~"^({pattern})$"]["name"];')
 
-            return "[out:json][timeout:25];\n(\n" + "\n".join(lines) + f"\n);\nout center {self.MAX_RESULTS};"
+        return "[out:json][timeout:25];\n(\n" + "\n".join(lines) + f"\n);\nout center {self.MAX_RESULTS};"
 
     def parse(self, payload):
         results = []

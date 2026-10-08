@@ -1,0 +1,218 @@
+{% comment %}
+    Manage Rentals pop-ups (filled by rentals.js from the clicked button's data-*).
+    Layout classes (lm-*) come from core_inquiries/listing_modals.css, chat from chat.css.
+{% endcomment %}
+{% load listing_tags %}
+
+<!-- =====================================================
+     ASSIGN A RENTER
+====================================================== -->
+<dialog class="lm-modal rt-modal" data-assign-modal aria-labelledby="rt-assign-title">
+    <form class="lm-form" data-assign-form novalidate>
+        <header class="lm-header">
+            <span class="lm-header-icon">{% feature_icon "person" %}</span>
+            <div>
+                <h2 id="rt-assign-title">Assign a Renter</h2>
+                <p>Choose who will rent <strong data-assign-unit></strong> at <strong data-assign-complex></strong>.</p>
+            </div>
+            <button type="button" class="lm-close" data-modal-close aria-label="Close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            </button>
+        </header>
+
+        <div class="lm-body">
+            <p class="lm-alert" data-form-error role="alert" hidden></p>
+
+            <section class="lm-section">
+                <div class="lm-radios rt-choice" role="radiogroup" aria-label="Who is the renter">
+                    <label class="lm-radio"><input type="radio" name="source" value="applicant" checked> LookApt applicant</label>
+                    <label class="lm-radio"><input type="radio" name="source" value="guest"> Someone not on LookApt</label>
+                </div>
+
+                <!-- From applications / waitlist -->
+                <div data-source="applicant">
+                    <label class="rt-label" for="rt-applicant">Renters who applied or joined the waitlist</label>
+                    <select id="rt-applicant" class="rt-select" name="application"></select>
+                    <p class="rt-hint" data-applicant-hint></p>
+                </div>
+
+                <!-- Not on the app -->
+                <div data-source="guest" hidden>
+                    <div class="lm-info">
+                        {% feature_icon "info" %}
+                        <div>
+                            <strong>This renter isn't on LookApt</strong>
+                            <p>You can still track their rent here, but they won't see this rental in the app and you can't message them through LookApt.</p>
+                        </div>
+                    </div>
+                    <label class="rt-label" for="rt-guest-name">Tenant's full name</label>
+                    <div class="lm-input"><input id="rt-guest-name" type="text" name="tenant_name" maxlength="150" placeholder="e.g. Juan Dela Cruz" autocomplete="off"></div>
+                    <label class="rt-label" for="rt-guest-count">Number of tenants</label>
+                    <div class="lm-input rt-number"><input id="rt-guest-count" type="number" name="occupant_count" min="1" value="1"></div>
+                </div>
+                <p class="lm-field-error" data-error-for="application" hidden></p>
+                <p class="lm-field-error" data-error-for="tenant_name" hidden></p>
+                <p class="lm-field-error" data-error-for="occupant_count" hidden></p>
+            </section>
+
+            <section class="lm-section">
+                <div class="lm-section-head">
+                    <span class="lm-section-icon">{% feature_icon "lease" %}</span>
+                    <div>
+                        <h3>Rental Start Date</h3>
+                        <p>Rent is due on this day every month. <span data-assign-lease></span> · ₱<span data-assign-rent></span> / month</p>
+                    </div>
+                </div>
+                <label class="lm-date">{% feature_icon "lease" %}<input type="date" name="start_date" required aria-label="Rental start date"></label>
+                <p class="lm-field-error" data-error-for="start_date" hidden></p>
+            </section>
+        </div>
+
+        <footer class="lm-footer rt-modal-footer">
+            <button type="button" class="rt-btn rt-btn--ghost" data-modal-close>Cancel</button>
+            <button type="submit" class="rt-btn rt-btn--primary" data-submit>Assign Renter</button>
+        </footer>
+    </form>
+</dialog>
+
+
+<!-- =====================================================
+     MARK AS PAID
+====================================================== -->
+<dialog class="lm-modal rt-modal rt-modal--small" data-pay-modal aria-labelledby="rt-pay-title">
+    <form class="lm-form" data-pay-form novalidate>
+        <header class="lm-header">
+            <span class="lm-header-icon">{% feature_icon "wallet" %}</span>
+            <div>
+                <h2 id="rt-pay-title">Mark as Paid</h2>
+                <p><strong data-pay-unit></strong> · <span data-pay-tenant></span> · ₱<span data-pay-rent></span> / month</p>
+            </div>
+            <button type="button" class="lm-close" data-modal-close aria-label="Close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            </button>
+        </header>
+
+        <div class="lm-body">
+            <p class="lm-alert" data-form-error role="alert" hidden></p>
+            <p class="rt-hint">Pick the month(s) this payment covers.</p>
+            <ul class="rt-months" data-pay-months></ul>
+        </div>
+
+        <footer class="lm-footer rt-modal-footer">
+            <button type="button" class="rt-btn rt-btn--ghost" data-modal-close>Cancel</button>
+            <button type="submit" class="rt-btn rt-btn--primary" data-submit>Mark as Paid</button>
+        </footer>
+    </form>
+</dialog>
+
+
+<!-- =====================================================
+     COMPLETE / TERMINATE (confirmation)
+====================================================== -->
+<dialog class="lm-modal rt-modal rt-modal--small" data-end-modal aria-labelledby="rt-end-title">
+    <form class="lm-form" data-end-form novalidate>
+        <header class="lm-header">
+            <span class="lm-header-icon" data-end-icon>{% feature_icon "check" %}</span>
+            <div>
+                <h2 id="rt-end-title" data-end-title>Mark Contract as Complete?</h2>
+                <p data-end-text></p>
+            </div>
+            <button type="button" class="lm-close" data-modal-close aria-label="Close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            </button>
+        </header>
+        <div class="lm-body">
+            <p class="lm-alert" data-form-error role="alert" hidden></p>
+            <div class="lm-note">
+                {% feature_icon "info" %}
+                <div>
+                    <strong>What happens next</strong>
+                    <p>The unit becomes <b>vacant</b> and this record moves to the <b>Archive</b> tab. Payment history is kept.</p>
+                </div>
+            </div>
+        </div>
+        <footer class="lm-footer rt-modal-footer">
+            <button type="button" class="rt-btn rt-btn--ghost" data-modal-close>Cancel</button>
+            <button type="submit" class="rt-btn rt-btn--primary" data-submit>Confirm</button>
+        </footer>
+    </form>
+</dialog>
+
+
+<!-- =====================================================
+     RENEW LEASE CONTRACT (confirmation)
+====================================================== -->
+<dialog class="lm-modal rt-modal rt-modal--small" data-renew-modal aria-labelledby="rt-renew-title">
+    <form class="lm-form" data-renew-form novalidate>
+        <header class="lm-header">
+            <span class="lm-header-icon">{% feature_icon "lease" %}</span>
+            <div>
+                <h2 id="rt-renew-title">Renew Lease Contract?</h2>
+                <p><strong data-renew-unit></strong> · <span data-renew-tenant></span></p>
+            </div>
+            <button type="button" class="lm-close" data-modal-close aria-label="Close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            </button>
+        </header>
+        <div class="lm-body">
+            <p class="lm-alert" data-form-error role="alert" hidden></p>
+            <div class="lm-note">
+                {% feature_icon "info" %}
+                <div>
+                    <strong>One more lease term (<span data-renew-lease></span>)</strong>
+                    <p>The contract currently ends on <b data-renew-current></b>. It will end on <b data-renew-new></b> instead. Rent stays the same.</p>
+                </div>
+            </div>
+        </div>
+        <footer class="lm-footer rt-modal-footer">
+            <button type="button" class="rt-btn rt-btn--ghost" data-modal-close>Cancel</button>
+            <button type="submit" class="rt-btn rt-btn--primary" data-submit>Renew Contract</button>
+        </footer>
+    </form>
+</dialog>
+
+
+<!-- =====================================================
+     MESSAGE A TENANT
+====================================================== -->
+<dialog class="lm-modal lm-chat" data-tenant-chat aria-label="Message tenant"
+        data-thread-url="{% url 'core_inquiries:renter_thread' %}"
+        data-send-url="{% url 'core_inquiries:send_to_renter' %}">
+
+    <header class="lm-chat-header">
+        <button type="button" class="lm-icon-btn" data-modal-close aria-label="Back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <span class="ld-landlord-avatar lm-chat-avatar rt-chat-avatar" aria-hidden="true" data-chat-initials></span>
+        <div class="lm-chat-person">
+            <div class="lm-chat-name"><strong data-chat-name></strong></div>
+            <span class="lm-chat-subject" data-chat-subject></span>
+        </div>
+        <button type="button" class="lm-close" data-modal-close aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+    </header>
+
+    <div class="lm-chat-body" data-chat-messages aria-live="polite"></div>
+
+    <template data-chat-empty>
+        <div class="lm-chat-empty">
+            <span class="lm-chat-empty-icon">{% feature_icon "chat" %}</span>
+            <strong>No messages yet</strong>
+            <p>Send your tenant a message. It also appears in Inquiries → Messages.</p>
+        </div>
+    </template>
+
+    <form class="lm-composer" data-chat-form>
+        <p class="lm-field-error" data-chat-error hidden></p>
+        <div class="chat-chip" data-attach-preview hidden></div>
+        <button type="button" class="chat-attach" data-attach-button aria-label="Attach a photo, video or PDF (up to 5 MB)" title="Attach a photo, video or PDF (up to 5 MB)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 11-8.6 8.6a5 5 0 0 1-7-7l8.5-8.6a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.3-2.4l7.9-7.9"/></svg>
+        </button>
+        <input type="file" data-attach-input hidden accept="image/jpeg,image/png,video/mp4,video/webm,video/quicktime,application/pdf">
+        <textarea name="body" rows="1" maxlength="2000" placeholder="Write a message…" aria-label="Your message"></textarea>
+        <button type="submit" class="lm-send" aria-label="Send message">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+        </button>
+    </form>
+</dialog>

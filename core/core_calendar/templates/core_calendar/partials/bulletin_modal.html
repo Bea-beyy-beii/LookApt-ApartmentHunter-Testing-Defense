@@ -1,0 +1,116 @@
+{% comment %}
+    "Post on Bulletin" pop-up (Calendar tab). Sends the announcement to the
+    tenants of the chosen complexes (Messages) and, with a date, puts it on the
+    calendars. calendar.js posts it to core_calendar.views.post_bulletin.
+{% endcomment %}
+{% load listing_tags %}
+
+<dialog class="lm-modal rt-modal" data-bulletin-modal aria-labelledby="rt-bulletin-title">
+    <form class="lm-form" data-bulletin-form novalidate data-url="{% url 'calendar:post_bulletin' %}">
+        <header class="lm-header rt-bulletin-header">
+            <span class="lm-header-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+            </span>
+            <div>
+                <h2 id="rt-bulletin-title">Post on Bulletin</h2>
+                <p>Send an announcement to your renters through the Messages tab. You can also schedule an event on a date and time.</p>
+            </div>
+            <button type="button" class="lm-close" data-modal-close aria-label="Close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            </button>
+        </header>
+
+        <div class="lm-body">
+            <p class="lm-alert" data-form-error role="alert" hidden></p>
+
+            <!-- Send to -->
+            <section class="lm-section">
+                <h3>Send to</h3>
+                <div class="rt-option-cards">
+                    <label class="rt-option-card">
+                        <input type="radio" name="audience" value="all" checked>
+                        <span><strong>All Complexes</strong><small>Send to all renters in all your complexes.</small></span>
+                    </label>
+                    <label class="rt-option-card">
+                        <input type="radio" name="audience" value="some">
+                        <span><strong>Choose Complexes</strong><small>Select specific complexes to send to.</small></span>
+                    </label>
+                </div>
+
+                <div class="rt-complex-picker" data-complex-picker hidden>
+                    {% for group in bulletin_complexes %}
+                        <label class="rt-complex-option">
+                            <input type="checkbox" name="complexes" value="{{ group.complex.pk }}">
+                            <span class="rt-complex-option-cover">
+                                {% if group.cover_url %}<img src="{{ group.cover_url }}" alt="" loading="lazy">{% else %}{% feature_icon "units" %}{% endif %}
+                            </span>
+                            <span class="rt-stack">
+                                <strong>{{ group.complex.complex_name }}</strong>
+                                <small>{{ group.complex.address }}</small>
+                            </span>
+                        </label>
+                    {% empty %}
+                        <p class="rt-hint">You don't have any complexes yet.</p>
+                    {% endfor %}
+                </div>
+                <p class="lm-field-error" data-error-for="complexes" hidden></p>
+            </section>
+
+            <!-- Message -->
+            <section class="lm-section">
+                <h3>Message</h3>
+                <p class="rt-hint">Write your announcement. Keep it clear and concise.</p>
+                <div class="rt-textarea">
+                    <textarea name="message" rows="3" maxlength="500" placeholder="e.g. We will be conducting quarterly aircon maintenance at Sunrise Residences." data-count-target="message"></textarea>
+                    <small data-count-for="message">0/500</small>
+                </div>
+                <p class="lm-field-error" data-error-for="message" hidden></p>
+            </section>
+
+            <!-- Schedule (optional) -->
+            <section class="lm-section">
+                <h3>Schedule <span class="rt-optional">(Optional)</span></h3>
+                <p class="rt-hint">Add a date to put it on your calendar and your tenants' calendars (e.g. aircon maintenance). Leave it empty for a message-only announcement.</p>
+                <label class="cal-switch">
+                    <input type="checkbox" name="whole_week" role="switch">
+                    <span class="cal-switch-track" aria-hidden="true"></span>
+                    <span><strong>Whole week</strong><small>The event runs Sunday to Saturday of the chosen date's week (no times).</small></span>
+                </label>
+
+                <div class="rt-schedule">
+                    <label><span class="rt-label">Event Date</span><span class="lm-date">{% feature_icon "lease" %}<input type="date" name="event_date"></span></label>
+                    <label data-time-field><span class="rt-label">Start Time</span><span class="lm-date">{% feature_icon "clock" %}<input type="time" name="start_time"></span></label>
+                    <label data-time-field><span class="rt-label">End Time <span class="rt-optional">(Optional)</span></span><span class="lm-date">{% feature_icon "clock" %}<input type="time" name="end_time"></span></label>
+                    <label class="rt-schedule-title">
+                        <span class="rt-label">Event Title <span class="rt-optional">(Optional)</span></span>
+                        <span class="lm-input"><input type="text" name="event_title" maxlength="100" placeholder="e.g. Quarterly Aircon Maintenance" data-count-target="event_title"><small class="rt-count" data-count-for="event_title">0/100</small></span>
+                    </label>
+                    <label class="rt-schedule-title">
+                        <span class="rt-label">Event Type <span class="cal-required">*</span></span>
+                        <span class="cal-select" data-type-select>
+                            <span class="cal-select-icon cal-cat--announcement" data-type-icon="announcement">{% feature_icon "megaphone" %}</span>
+                            <span class="cal-select-icon cal-cat--maintenance" data-type-icon="maintenance" hidden>{% feature_icon "wrench" %}</span>
+                            <span class="cal-select-icon cal-cat--announcement" data-type-icon="meeting" hidden>{% feature_icon "occupants" %}</span>
+                            <span class="cal-select-icon cal-cat--announcement" data-type-icon="other" hidden>{% feature_icon "info" %}</span>
+                            <select name="event_type" aria-label="Event type">
+                                <option value="announcement">Announcement</option>
+                                <option value="maintenance">Maintenance / Inspection</option>
+                                <option value="meeting">Meeting</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </span>
+                    </label>
+                </div>
+                <div class="lm-info rt-info-blue">
+                    {% feature_icon "info" %}
+                    <div><p>The bulletin is sent to your current tenants (on LookApt) in the selected complexes through the Messages tab. With a date, it also appears on your calendar and theirs.</p></div>
+                </div>
+            </section>
+        </div>
+
+        <footer class="lm-footer rt-modal-footer">
+            <button type="button" class="rt-btn rt-btn--ghost" data-modal-close>Cancel</button>
+            <button type="submit" class="rt-btn rt-btn--primary" data-submit>Publish Announcement</button>
+        </footer>
+    </form>
+</dialog>

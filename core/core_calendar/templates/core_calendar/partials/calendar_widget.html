@@ -1,0 +1,49 @@
+{% comment %}
+    "Your Schedule" widget (renter + landlord home pages).
+    Calendar View: a small month with coloured dots; click a day to see its items.
+    Events View: what's coming up in the next 30 days.
+    `view_link=True` (landlords) adds "View calendar →" to the Calendar tab.
+    Read-only: renters can't add anything here. calendar.js fills it.
+{% endcomment %}
+{% load listing_tags %}
+
+<section class="cal-widget" data-cal-widget data-events-url="{% url 'calendar:events_api' %}">
+
+    <header class="cal-widget-header">
+        <span class="cal-widget-icon">{% feature_icon "calendar_check" %}</span>
+        <div>
+            <h2>Your Schedule</h2>
+            <p>Keep track of your important dates.</p>
+        </div>
+        {% if view_link %}
+            <a href="?tab=calendar" class="cal-link tab-link" data-tab="calendar">View calendar →</a>
+        {% endif %}
+    </header>
+
+    <div class="cal-widget-tabs" role="tablist">
+        <button type="button" class="active" role="tab" data-widget-view="calendar">{% feature_icon "lease" %} Calendar View</button>
+        <button type="button" role="tab" data-widget-view="events">{% feature_icon "list" %} Events View</button>
+    </div>
+
+    <div data-widget-panel="calendar">
+        <div class="cal-mini-head">
+            <button type="button" class="cal-nav" data-cal-prev aria-label="Previous month">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <strong data-cal-title></strong>
+            <button type="button" class="cal-nav" data-cal-next aria-label="Next month">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+        </div>
+        <div class="cal-mini-grid" data-cal-grid></div>
+        <div class="cal-mini-day">
+            <p class="cal-mini-day-title" data-day-title></p>
+            <ul class="cal-items" data-day-list></ul>
+        </div>
+    </div>
+
+    <div data-widget-panel="events" hidden>
+        <ul class="cal-items cal-agenda" data-agenda></ul>
+    </div>
+
+</section>
