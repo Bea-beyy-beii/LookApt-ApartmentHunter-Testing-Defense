@@ -150,15 +150,19 @@ def deliver(email, code, purpose=Purpose.SIGNUP, name=''):
         f"\n\nBest,\nLookApt"
     )
 
-
-    linked_logo = settings.EMAIL_LOGO_URL                # Option B: a link, nothing attached
+    # The logo is a link only if EMAIL_LOGO_URL is a full public http(s) URL
+    # (mail apps can't open /media/... or localhost); otherwise it's embedded.
+    linked_logo = settings.EMAIL_LOGO_URL.strip()
+    if not linked_logo.startswith(('http://', 'https://')) or '://localhost' in linked_logo or '://127.0.0.1' in linked_logo:
+        linked_logo = ''
+    logo = None if linked_logo else _logo_bytes()
     html = render_to_string('core_accounts/emails/otp_code.html', {
         'greeting': greeting, 'intro': intro, 'code': code, 'minutes': minutes,
-        'logo_src': linked_logo or 'cid:lookapt-logo@lookapt',
+        'logo_src': linked_logo or ('cid:lookapt-logo@lookapt' if logo else ''),
     })
 
     message = EmailWithInlineLogo("Your LookApt verification code", text, settings.DEFAULT_FROM_EMAIL, [email],
-                                  logo=None if linked_logo else _logo_bytes())
+                                  logo=logo)
     message.attach_alternative(html, 'text/html')
     message.send()
 

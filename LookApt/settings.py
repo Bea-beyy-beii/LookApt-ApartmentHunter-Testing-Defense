@@ -229,7 +229,9 @@ else:
 
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='LookApt <no-reply@lookapt.com>')
 
-EMAIL_LOGO_URL = env('EMAIL_LOGO_URL', default='')   #embeds the logo in emails (instead of linking to it) if set to a PNG file in S3 or /media
+# Logo in the OTP email: empty = embedded in the email (works everywhere).
+# Set to a full public https:// URL of a PNG to link to it instead.
+EMAIL_LOGO_URL = env('EMAIL_LOGO_URL', default='')
 
 
 AUTH_USER_MODEL = 'core.User'
