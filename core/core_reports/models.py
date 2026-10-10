@@ -35,10 +35,12 @@ ALL_CATEGORIES = list(dict(RENTER_CATEGORIES + LANDLORD_CATEGORIES).items())
 
 class Report(models.Model):
     class Status(models.TextChoices):
-        WAITING = "waiting", "Waiting for Review"
-        REVIEWING = "reviewing", "Undergoing Review"
+        WAITING = "waiting", "Pending"
+        REVIEWING = "reviewing", "Under Review"
         RESOLVED = "resolved", "Resolved"
-        DISMISSED = "dismissed", "Dismissed"
+        DISMISSED = "dismissed", "Closed"
+
+    OPEN_STATUSES = (Status.WAITING, Status.REVIEWING)
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
@@ -77,4 +79,13 @@ class ReportEvidence(models.Model):
         Report, on_delete=models.CASCADE, related_name="evidence"
     )
     file = models.FileField(upload_to="report_evidence/%Y/%m/")
+    name = models.CharField(max_length=255, blank=True)   # the file's original name
+    kind = models.CharField(max_length=10, blank=True)    # image / video / document
+    size = models.PositiveIntegerField(default=0)
     uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["uploaded_at"]
+
+    def __str__(self):
+        return self.name or self.file.name

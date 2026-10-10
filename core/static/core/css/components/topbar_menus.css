@@ -1,6 +1,6 @@
-/* Top bar: notification bell + profile dropdown (landlord pages) */
+/* Top bar: dark mode switch + notification bell + profile dropdown (landlord + renter pages) */
 
-.landlord-dashboard .dashboard-topbar { position: relative; z-index: 20; }
+:is(.landlord-dashboard, .renter-dashboard) .dashboard-topbar { position: relative; z-index: 20; }
 
 /* Every dashboard tab except My Listings: no breadcrumbs, and the bell /
    profile float in the top-right corner so the tab's header (or Home's
@@ -90,6 +90,17 @@ body[data-tab]:not([data-tab=""]):not([data-tab="myListings"]) .landlord-dashboa
 .topbar-notif small { color: #8a95a5; font-size: 11px; }
 .topbar-notif strong { display: flex; align-items: center; gap: 7px; }
 
+.topbar-notif-new {
+    margin-left: auto;
+    padding: 1px 7px;
+    border-radius: var(--radius-pill);
+    background: var(--error);
+    color: #fff;
+    font-size: 10px;
+    font-style: normal;
+    font-weight: 700;
+}
+
 /* Colour per kind: green = new message, yellow = new / changed request, red = cancelled */
 .topbar-notif-dot { flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%; background: #a9afb6; }
 .topbar-notif--green  .topbar-notif-dot { background: #2f8a52; }
@@ -139,17 +150,90 @@ body[data-tab]:not([data-tab=""]):not([data-tab="myListings"]) .landlord-dashboa
 
 .topbar-profile strong { color: var(--navy); font-size: 14px; }
 .topbar-profile small { color: var(--text-secondary); font-size: 12px; overflow-wrap: anywhere; }
-.topbar-profile span { color: #2f8a52; font-size: 11.5px; font-weight: 600; }
 
-.topbar-menu-item {
-    display: block;
-    padding: 8px 10px;
-    border-radius: 8px;
-    color: var(--text-primary);
-    font-size: 13.5px;
-    text-decoration: none;
+/* "Renter  ✓ Verified" chips under the name */
+.topbar-profile-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+
+.topbar-role,
+.topbar-verified {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: var(--radius-pill);
+    font-size: 11px;
+    font-weight: 700;
 }
 
+.topbar-role { background: #e8eef8; color: var(--navy); }
+.topbar-verified { background: #f1f2f4; color: var(--text-secondary); }
+.topbar-verified.is-verified { background: #e7f5ec; color: #2f8a52; }
+.topbar-verified svg { width: 12px; height: 12px; }
+
+.topbar-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 13.5px;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.topbar-menu-item svg { width: 17px; height: 17px; flex-shrink: 0; color: var(--text-secondary); stroke-width: 1.8; }
+.topbar-menu-item--danger { margin-top: 4px; border-top: 1px solid #edf0f3; border-radius: 0 0 8px 8px; }
+.topbar-menu-item--danger svg { color: currentColor; }
+
 .topbar-menu-item:hover { background: #f6f8fc; color: var(--navy); }
-.topbar-menu-item--danger { color: var(--error); }
+.topbar-menu-item--danger,
+.topbar-menu-item--danger:hover { color: var(--error); }
 .topbar-menu-item--danger:hover { background: #fdeceb; color: var(--error); }
+
+/* ---------------------------------------------------------------
+   Dark mode switch (left of the bell). aria-checked="true" = dark.
+---------------------------------------------------------------- */
+
+.theme-switch {
+    position: relative;
+    flex-shrink: 0;
+    width: 58px;
+    height: 30px;
+    margin-right: 6px;
+    padding: 0;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-pill);
+    background: #e8eef8;
+    cursor: pointer;
+    transition: background 0.25s ease, border-color 0.25s ease;
+}
+
+.theme-switch-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 24px;
+    height: 24px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--gold);
+    color: var(--navy);
+    box-shadow: 0 2px 6px rgba(32, 58, 104, 0.25);
+    transition: transform 0.25s ease, background 0.25s ease;
+}
+
+.theme-switch-thumb svg { width: 15px; height: 15px; }
+.theme-switch .theme-icon-moon,
+.theme-switch[aria-checked="true"] .theme-icon-sun { display: none; }
+.theme-switch[aria-checked="true"] .theme-icon-moon { display: block; }
+
+.theme-switch[aria-checked="true"] { background: #1a2740; border-color: #2c3c5a; }
+.theme-switch[aria-checked="true"] .theme-switch-thumb { transform: translateX(28px); background: #f3e3c3; color: #172f58; }
+.theme-switch:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }

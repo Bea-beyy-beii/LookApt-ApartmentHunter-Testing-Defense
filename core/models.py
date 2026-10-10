@@ -41,6 +41,11 @@ class User(AbstractUser):
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, blank=False)
     is_verified = models.BooleanField(default=False)
 
+    # Preferences / state for the top bar
+    THEME_CHOICES = [('light', 'Light'), ('dark', 'Dark')]
+    theme = models.CharField(max_length=5, choices=THEME_CHOICES, default='light')   # dark mode switch
+    notifications_seen_at = models.DateTimeField(null=True, blank=True)              # last time the bell was opened
+
 # ----------------------------------------------------------- TRIGGER FOR USERNAMES
 # ------------------------------- USERNAME FORMAT: firstname.lastname
 

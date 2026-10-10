@@ -1,6 +1,7 @@
-{% load static %}
+{% load static topbar_tags %}
 <!DOCTYPE html>
-<html lang="en">
+{# Dark mode switch: the saved theme is rendered here, so the page never flashes light #}
+<html lang="en" data-theme="{{ request.user.theme|default:'light' }}">
 
 <head>
     <meta charset="UTF-8">
@@ -43,6 +44,10 @@
     <link rel="stylesheet" href="{% static 'core/css/components/topbar_menus.css' %}">
 
     {% block extra_css %}{% endblock %}
+
+    {# Dark mode (html[data-theme="dark"]); loaded last so it wins #}
+    <link rel="stylesheet" href="{% static 'core/css/theme/dark_auto.css' %}">
+    <link rel="stylesheet" href="{% static 'core/css/theme/dark.css' %}">
 </head>
 
 {# data-tab = the open dashboard tab (renter_dashboard.js keeps it up to date); empty on other pages #}
@@ -181,60 +186,7 @@
                 </ol>
             </nav>
 
-            <div class="topbar-right">
-
-                {# NOTIFICATIONS (latest updates; full list in Inquiries) #}
-                <div class="topbar-menu-wrap">
-                    <button type="button" class="notification-button" data-topbar-toggle aria-haspopup="true" aria-expanded="false"
-                            aria-label="Notifications{% if unread_notifications_count %} ({{ unread_notifications_count }} new){% endif %}">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                            <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>
-                        </svg>
-                        {% if unread_notifications_count %}<span class="notification-dot"></span>{% endif %}
-                    </button>
-                    <div class="topbar-menu topbar-menu--notifs" hidden>
-                        <p class="topbar-menu-title">Notifications</p>
-                        <p class="topbar-legend" aria-hidden="true">
-                            <span class="topbar-notif--green"><i class="topbar-notif-dot"></i>Messages</span>
-                            <span class="topbar-notif--yellow"><i class="topbar-notif-dot"></i>Requests &amp; changes</span>
-                            <span class="topbar-notif--red"><i class="topbar-notif-dot"></i>Cancelled</span>
-                        </p>
-                        {% if notifications is not None %}
-                            {% for n in notifications|slice:":5" %}
-                                <a class="topbar-notif topbar-notif--{{ n.tone|default:'neutral' }}{% if not n.is_read %} is-unread{% endif %}" href="{% url 'core_landlords:dashboard' %}?tab=inquiries">
-                                    <strong><i class="topbar-notif-dot" aria-hidden="true"></i>{{ n.title }}</strong>
-                                    <span>{{ n.message }}</span>
-                                    {% if n.created_at %}<small>{{ n.created_at|timesince }} ago</small>{% endif %}
-                                </a>
-                            {% empty %}
-                                <p class="topbar-menu-empty">You're all caught up.</p>
-                            {% endfor %}
-                        {% endif %}
-                        <a class="topbar-menu-link" href="{% url 'core_landlords:dashboard' %}?tab=inquiries">Open Inquiries →</a>
-                    </div>
-                </div>
-
-                {# PROFILE DROPDOWN #}
-                <div class="topbar-menu-wrap">
-                    <button type="button" class="profile-overview profile-toggle" data-topbar-toggle aria-haspopup="true" aria-expanded="false">
-                        <img src="{% static 'core/images/looka.png' %}" alt="" class="profile-picture">
-                        <span class="profile-display-name">{{ request.user.display_name }}</span>
-                        <svg class="profile-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-                    </button>
-                    <div class="topbar-menu topbar-menu--profile" hidden>
-                        <div class="topbar-profile">
-                            <strong>{{ request.user.display_name }}</strong>
-                            <small>{{ request.user.email|default:request.user.phone_number }}</small>
-                            <span>Landlord{% if request.user.is_verified %} · Verified{% endif %}</span>
-                        </div>
-                        <a class="topbar-menu-item" href="{% url 'core_landlords:dashboard' %}?tab=myListings">My Listings</a>
-                        <a class="topbar-menu-item" href="{% url 'core_landlords:dashboard' %}?tab=rentals">Manage Rentals</a>
-                        <a class="topbar-menu-item" href="{% url 'core_landlords:dashboard' %}?tab=reports">Reports Filed</a>
-                        <a class="topbar-menu-item topbar-menu-item--danger" href="{% url 'logout' %}">Log Out</a>
-                    </div>
-                </div>
-
-            </div>
+            {% topbar_right %}
 
         </header>
 

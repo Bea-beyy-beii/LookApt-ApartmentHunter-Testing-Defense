@@ -1,934 +1,289 @@
-/* =========================================================
-   REPORT MODAL
-   ========================================================= */
+// =========================================================
+// REPORTS FILED (renter + landlord dashboards)
+// - Report Guidelines: ✕ / "Hide Report Guidelines" (remembered in this browser)
+// - status tabs, search, newest/oldest, click a report to see its details
+// - "File a Report" pop-up: pick who, reason ("Others" -> text field),
+//   details, evidence (drag & drop). The server re-checks everything.
+// =========================================================
 
-let currentReportStep = 1;
+(function () {
 
-const MAX_STEPS = 3;
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+    const GUIDE_KEY = "lookapt:reports:hide-guidelines";
+    const TOAST_KEY = "lookapt:reports:toast";
 
-const ALLOWED_FILE_TYPES = [
-    "image/png",
-    "image/jpeg",
-    "application/pdf"
-];
-
-
-/* =========================================================
-   OPEN MODAL
-   ========================================================= */
-
-function openReportModal() {
-
-    const modal = document.getElementById("reportModal");
-
-    if (!modal) {
-        return;
+    function csrfToken() {
+        const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+        return match ? decodeURIComponent(match[1]) : "";
     }
 
-    modal.classList.add("active");
-
-    modal.setAttribute("aria-hidden", "false");
-
-    document.body.style.overflow = "hidden";
-
-    currentReportStep = 1;
-
-    updateReportStep();
-}
-
-
-/* =========================================================
-   CLOSE MODAL
-   ========================================================= */
-
-function closeReportModal() {
-
-    const modal = document.getElementById("reportModal");
-
-    if (!modal) {
-        return;
+    function toast(message, kind = "success") {
+        let stack = document.querySelector(".toast-stack");
+        if (!stack) {
+            stack = document.createElement("div");
+            stack.className = "toast-stack";
+            stack.setAttribute("aria-live", "polite");
+            document.body.append(stack);
+        }
+        const item = document.createElement("div");
+        item.className = `toast toast--${kind}`;
+        item.setAttribute("role", "status");
+        item.innerHTML = '<span class="toast-text"></span>';
+        item.firstChild.textContent = message;
+        stack.append(item);
+        setTimeout(() => { item.classList.add("is-leaving"); setTimeout(() => item.remove(), 300); }, 3500);
     }
 
-    modal.classList.remove("active");
-
-    modal.setAttribute("aria-hidden", "true");
-
-    document.body.style.overflow = "";
-
-    resetReportForm();
-}
+    const sizeLabel = bytes => (bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
 
 
-/* =========================================================
-   RESET FORM
-   ========================================================= */
+    // =====================================================
+    // GUIDELINES
+    // =====================================================
 
-function resetReportForm() {
+    function initGuidelines(page) {
+        const box = page.querySelector("[data-guidelines]");
+        const link = page.querySelector("[data-guide-toggle]");
 
-    const form = document.getElementById("reportForm");
-
-    if (form) {
-        form.reset();
-    }
-
-    currentReportStep = 1;
-
-    updateReportStep();
-
-    updateCharacterCount();
-
-    hideOtherCategory();
-
-    const uploadedFiles = document.getElementById("uploadedFiles");
-
-    if (uploadedFiles) {
-        uploadedFiles.innerHTML = "";
-    }
-
-    selectedFiles = [];
-}
-
-
-/* =========================================================
-   ESCAPE KEY
-   ========================================================= */
-
-document.addEventListener("keydown", function (event) {
-
-    if (event.key === "Escape") {
-
-        const modal = document.getElementById("reportModal");
-
-        if (modal && modal.classList.contains("active")) {
-            closeReportModal();
+        function set(hidden) {
+            box.hidden = hidden;
+            link.textContent = hidden ? "See Report Guidelines" : "Hide Report Guidelines";
+            link.setAttribute("aria-expanded", String(!hidden));
+            try { localStorage.setItem(GUIDE_KEY, hidden ? "1" : "0"); } catch (error) { /* ignore */ }
         }
 
-    }
-
-});
-
-
-/* =========================================================
-   STEP NAVIGATION
-   ========================================================= */
-
-function nextReportStep() {
-
-    if (!validateCurrentStep()) {
-        return;
-    }
-
-    if (currentReportStep < MAX_STEPS) {
-
-        currentReportStep++;
-
-        updateReportStep();
-
-        if (currentReportStep === 3) {
-            fillReviewStep();
-        }
-
-    }
-
-}
-
-
-function previousReportStep() {
-
-    if (currentReportStep > 1) {
-
-        currentReportStep--;
-
-        updateReportStep();
-
-    }
-
-}
-
-
-/* =========================================================
-   UPDATE STEP UI
-   ========================================================= */
-
-function updateReportStep() {
-
-    const steps = document.querySelectorAll(
-        ".report-step"
-    );
-
-    const indicators = document.querySelectorAll(
-        ".step-indicator"
-    );
-
-    steps.forEach(function (step) {
-
-        const stepNumber = Number(
-            step.dataset.stepContent
-        );
-
-        step.classList.toggle(
-            "active",
-            stepNumber === currentReportStep
-        );
-
-    });
-
-
-    indicators.forEach(function (indicator) {
-
-        const stepNumber = Number(
-            indicator.dataset.step
-        );
-
-        indicator.classList.toggle(
-            "active",
-            stepNumber === currentReportStep
-        );
-
-        indicator.classList.toggle(
-            "completed",
-            stepNumber < currentReportStep
-        );
-
-    });
-
-
-    /* Back button */
-
-    const backButton = document.getElementById(
-        "backStepBtn"
-    );
-
-    if (backButton) {
-
-        backButton.style.display =
-            currentReportStep === 1
-                ? "none"
-                : "block";
-
+        let hidden = false;
+        try { hidden = localStorage.getItem(GUIDE_KEY) === "1"; } catch (error) { /* ignore */ }
+        set(hidden);
+        link.addEventListener("click", () => set(!box.hidden));
+        page.querySelector("[data-guide-close]").addEventListener("click", () => set(true));
     }
 
 
-    /* Next button */
-
-    const nextButton = document.getElementById(
-        "nextStepBtn"
-    );
-
-    if (nextButton) {
-
-        nextButton.style.display =
-            currentReportStep === MAX_STEPS
-                ? "none"
-                : "block";
-
-    }
-
-
-    /* Submit button */
-
-    const submitButton = document.getElementById(
-        "submitReportBtn"
-    );
-
-    if (submitButton) {
-
-        submitButton.style.display =
-            currentReportStep === MAX_STEPS
-                ? "block"
-                : "none";
-
-    }
-
-}
-
-
-/* =========================================================
-   VALIDATION
-   ========================================================= */
-
-function validateCurrentStep() {
-
-    if (currentReportStep === 1) {
-        return validateStepOne();
-    }
-
-    if (currentReportStep === 2) {
-        return validateStepTwo();
-    }
-
-    return true;
-}
-
-
-/* =========================================================
-   STEP 1 VALIDATION
-   ========================================================= */
-
-function validateStepOne() {
-
-    const category = document.getElementById(
-        "reportCategory"
-    );
-
-    const reportedUser = document.getElementById(
-        "reportedUser"
-    );
-
-    const description = document.getElementById(
-        "reportDescription"
-    );
-
-    if (!category || !reportedUser || !description) {
-        return true;
-    }
-
-
-    /* Category */
-
-    if (!category.value) {
-
-        showValidationMessage(
-            category,
-            "Please select a report category."
-        );
-
-        return false;
-    }
-
-
-    /* Others */
-
-    if (category.value === "Others") {
-
-        const otherCategory = document.getElementById(
-            "otherCategory"
-        );
-
-        if (
-            otherCategory &&
-            !otherCategory.value.trim()
-        ) {
-
-            showValidationMessage(
-                otherCategory,
-                "Please specify your report reason."
-            );
-
-            return false;
-        }
-
-    }
-
-
-    /* Reported user */
-
-    if (!reportedUser.value) {
-
-        showValidationMessage(
-            reportedUser,
-            "Please select the person you are reporting."
-        );
-
-        return false;
-    }
-
-
-    /* Description */
-
-    if (!description.value.trim()) {
-
-        showValidationMessage(
-            description,
-            "Please provide details about your report."
-        );
-
-        return false;
-    }
-
-
-    return true;
-}
-
-
-/* =========================================================
-   STEP 2 VALIDATION
-   ========================================================= */
-
-function validateStepTwo() {
-
-    /*
-        Evidence is currently optional.
-
-        If you want evidence to be REQUIRED later,
-        change this function.
-    */
-
-    return true;
-}
-
-
-/* =========================================================
-   VALIDATION MESSAGE
-   ========================================================= */
-
-function showValidationMessage(
-    element,
-    message
-) {
-
-    alert(message);
-
-    element.focus();
-}
-
-
-/* =========================================================
-   CHARACTER COUNTER
-   ========================================================= */
-
-function updateCharacterCount() {
-
-    const textarea = document.getElementById(
-        "reportDescription"
-    );
-
-    const counter = document.getElementById(
-        "characterCount"
-    );
-
-    if (!textarea || !counter) {
-        return;
-    }
-
-    const length = textarea.value.length;
-
-    counter.textContent = `${length}/500`;
-
-}
-
-
-/* =========================================================
-   CHARACTER COUNTER EVENT
-   ========================================================= */
-
-document.addEventListener(
-    "input",
-    function (event) {
-
-        if (
-            event.target.id ===
-            "reportDescription"
-        ) {
-
-            updateCharacterCount();
-
-        }
-
-    }
-);
-
-
-/* =========================================================
-   OTHERS FIELD
-   ========================================================= */
-
-function showOtherCategory() {
-
-    const group = document.getElementById(
-        "otherCategoryGroup"
-    );
-
-    const input = document.getElementById(
-        "otherCategory"
-    );
-
-    if (group) {
-        group.hidden = false;
-    }
-
-    if (input) {
-        input.required = true;
-    }
-
-}
-
-
-function hideOtherCategory() {
-
-    const group = document.getElementById(
-        "otherCategoryGroup"
-    );
-
-    const input = document.getElementById(
-        "otherCategory"
-    );
-
-    if (group) {
-        group.hidden = true;
-    }
-
-    if (input) {
-        input.required = false;
-        input.value = "";
-    }
-
-}
-
-
-/* Listen for category changes */
-
-document.addEventListener(
-    "change",
-    function (event) {
-
-        if (
-            event.target.id !==
-            "reportCategory"
-        ) {
-            return;
-        }
-
-        if (event.target.value === "Others") {
-            showOtherCategory();
-        } else {
-            hideOtherCategory();
-        }
-
-    }
-);
-
-
-/* =========================================================
-   FILE UPLOAD
-   ========================================================= */
-
-let selectedFiles = [];
-
-
-const evidenceInput = document.getElementById(
-    "evidenceInput"
-);
-
-const evidenceDropZone = document.getElementById(
-    "evidenceDropZone"
-);
-
-
-if (evidenceInput) {
-
-    evidenceInput.addEventListener(
-        "change",
-        function (event) {
-
-            handleFiles(
-                Array.from(event.target.files)
-            );
-
-        }
-    );
-
-}
-
-
-/* =========================================================
-   DRAG & DROP
-   ========================================================= */
-
-if (evidenceDropZone) {
-
-    evidenceDropZone.addEventListener(
-        "dragover",
-        function (event) {
-
-            event.preventDefault();
-
-            evidenceDropZone.classList.add(
-                "dragover"
-            );
-
-        }
-    );
-
-
-    evidenceDropZone.addEventListener(
-        "dragleave",
-        function () {
-
-            evidenceDropZone.classList.remove(
-                "dragover"
-            );
-
-        }
-    );
-
-
-    evidenceDropZone.addEventListener(
-        "drop",
-        function (event) {
-
-            event.preventDefault();
-
-            evidenceDropZone.classList.remove(
-                "dragover"
-            );
-
-            handleFiles(
-                Array.from(event.dataTransfer.files)
-            );
-
-        }
-    );
-
-}
-
-
-/* =========================================================
-   HANDLE FILES
-   ========================================================= */
-
-function handleFiles(files) {
-
-    files.forEach(function (file) {
-
-        /* File type */
-
-        if (
-            !ALLOWED_FILE_TYPES.includes(
-                file.type
-            )
-        ) {
-
-            alert(
-                `${file.name} is not a supported file type.`
-            );
-
-            return;
-        }
-
-
-        /* File size */
-
-        if (
-            file.size > MAX_FILE_SIZE
-        ) {
-
-            alert(
-                `${file.name} is larger than 10 MB.`
-            );
-
-            return;
-        }
-
-
-        /* Duplicate */
-
-        const alreadyExists =
-            selectedFiles.some(function (existingFile) {
-
-                return (
-                    existingFile.name === file.name &&
-                    existingFile.size === file.size
-                );
-
+    // =====================================================
+    // LIST: status tabs, search, sort, expand
+    // =====================================================
+
+    function initList(page) {
+        const list = page.querySelector("[data-report-list]");
+        const tabs = [...page.querySelectorAll("[data-report-tab]")];
+        const search = page.querySelector("[data-report-search]");
+        const sort = page.querySelector("[data-report-sort]");
+        const none = page.querySelector("[data-report-none]");
+        let status = "all";
+
+        function apply() {
+            if (!list) return;
+            const query = search.value.trim().toLowerCase();
+            const items = [...list.querySelectorAll("[data-report]")];
+            items.sort((a, b) => (sort.value === "oldest" ? 1 : -1) * (Number(a.dataset.date) - Number(b.dataset.date)));
+            list.append(...items);
+            let shown = 0;
+            items.forEach(item => {
+                const show = (status === "all" || item.dataset.status === status) &&
+                    (!query || item.dataset.search.toLowerCase().includes(query));
+                item.hidden = !show;
+                if (show) shown++;
             });
-
-
-        if (alreadyExists) {
-            return;
+            none.hidden = shown > 0;
         }
 
+        tabs.forEach(tab => tab.addEventListener("click", () => {
+            status = tab.dataset.reportTab;
+            tabs.forEach(t => t.classList.toggle("active", t === tab));
+            apply();
+        }));
+        search.addEventListener("input", apply);
+        sort.addEventListener("change", apply);
 
-        selectedFiles.push(file);
+        list?.addEventListener("click", event => {
+            const head = event.target.closest("[data-report-toggle]");
+            if (!head) return;
+            const body = head.nextElementSibling;
+            body.hidden = !body.hidden;
+            head.setAttribute("aria-expanded", String(!body.hidden));
+            head.closest("[data-report]").classList.toggle("is-open", !body.hidden);
+        });
+    }
 
+
+    // =====================================================
+    // FILE A REPORT
+    // =====================================================
+
+    function initModal() {
+        const dialog = document.querySelector("[data-report-modal]");
+        if (!dialog) return;
+        const form = dialog.querySelector("[data-report-form]");
+        const formError = dialog.querySelector("[data-form-error]");
+        const submit = dialog.querySelector("[data-submit]");
+        const people = [...dialog.querySelectorAll("[data-person]")];
+        const personSearch = dialog.querySelector("[data-person-search]");
+        const personNone = dialog.querySelector("[data-person-none]");
+        const other = dialog.querySelector("[data-other]");
+        const counter = dialog.querySelector("[data-desc-count]");
+        const drop = dialog.querySelector("[data-drop]");
+        const input = dialog.querySelector("[data-evidence-input]");
+        const fileList = dialog.querySelector("[data-file-list]");
+        const maxFiles = Number(form.dataset.maxFiles) || 5;
+        const maxBytes = (Number(form.dataset.maxMb) || 10) * 1048576;
+        let files = [];
+
+        function clearErrors() {
+            formError.hidden = true;
+            dialog.querySelectorAll("[data-error-for]").forEach(p => { p.hidden = true; });
+        }
+
+        function showErrors(errors) {
+            clearErrors();
+            for (const [field, message] of Object.entries(errors)) {
+                const target = dialog.querySelector(`[data-error-for="${field}"]`) || formError;
+                target.textContent = message;
+                target.hidden = false;
+            }
+            dialog.querySelector(".lm-alert:not([hidden]), .lm-field-error:not([hidden])")
+                ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+
+        function renderFiles() {
+            fileList.replaceChildren(...files.map((file, i) => {
+                const li = document.createElement("li");
+                li.className = "rp-file-row";
+                const name = document.createElement("span");
+                name.textContent = file.name;
+                const size = document.createElement("small");
+                size.textContent = sizeLabel(file.size);
+                const remove = document.createElement("button");
+                remove.type = "button";
+                remove.className = "rp-file-remove";
+                remove.setAttribute("aria-label", `Remove ${file.name}`);
+                remove.textContent = "×";
+                remove.addEventListener("click", () => { files.splice(i, 1); renderFiles(); });
+                li.append(name, size, remove);
+                return li;
+            }));
+        }
+
+        function addFiles(list) {
+            const errors = [];
+            for (const file of list) {
+                if (files.length >= maxFiles) { errors.push(`You can attach up to ${maxFiles} files.`); break; }
+                if (file.size > maxBytes) { errors.push(`${file.name} is larger than ${form.dataset.maxMb} MB.`); continue; }
+                files.push(file);
+            }
+            renderFiles();
+            if (errors.length) showErrors({ evidence: errors.join(" ") });
+        }
+
+        function reset() {
+            form.reset();
+            files = [];
+            renderFiles();
+            clearErrors();
+            other.hidden = true;
+            counter.textContent = "0/500";
+            people.forEach(p => { p.hidden = false; });
+            personNone.hidden = true;
+        }
+
+        document.addEventListener("click", event => {
+            if (!event.target.closest("[data-open-report]")) return;
+            reset();
+            dialog.showModal();
+            dialog.querySelector(".lm-body").scrollTop = 0;
+        });
+        dialog.addEventListener("click", event => { if (event.target === dialog) dialog.close(); });
+        dialog.querySelectorAll("[data-modal-close]").forEach(b => b.addEventListener("click", () => dialog.close()));
+
+        personSearch.addEventListener("input", () => {
+            const query = personSearch.value.trim().toLowerCase();
+            let shown = 0;
+            people.forEach(p => {
+                const show = !query || p.dataset.search.includes(query) || p.querySelector(":checked");
+                p.hidden = !show;
+                if (show) shown++;
+            });
+            personNone.hidden = shown > 0 || !people.length;
+        });
+
+        form.addEventListener("change", event => {
+            const fieldError = dialog.querySelector(`[data-error-for="${event.target.name}"]`);
+            if (fieldError) fieldError.hidden = true;
+            if (event.target.name === "category") {
+                other.hidden = event.target.value !== "others";
+                if (!other.hidden) form.elements.other_category_text.focus();
+            }
+        });
+        form.elements.description.addEventListener("input", () => {
+            counter.textContent = `${form.elements.description.value.length}/500`;
+        });
+
+        // Evidence: click or drag & drop
+        input.addEventListener("change", () => { addFiles(input.files); input.value = ""; });
+        ["dragenter", "dragover"].forEach(type => drop.addEventListener(type, event => {
+            event.preventDefault();
+            drop.classList.add("is-dragging");
+        }));
+        ["dragleave", "drop"].forEach(type => drop.addEventListener(type, event => {
+            event.preventDefault();
+            drop.classList.remove("is-dragging");
+        }));
+        drop.addEventListener("drop", event => addFiles(event.dataTransfer.files));
+
+        form.addEventListener("submit", async event => {
+            event.preventDefault();
+            const who = form.querySelector("input[name=reported_user]:checked");
+            const errors = {};
+            if (!who) errors.reported_user = "Pick who you want to report.";
+            if (!form.elements.category.value) errors.category = "Pick a reason for reporting.";
+            if (form.elements.category.value === "others" && !form.elements.other_category_text.value.trim()) {
+                errors.other_category_text = "Tell us the reason in a few words.";
+            }
+            if (!form.elements.description.value.trim()) errors.description = "Describe what happened.";
+            if (Object.keys(errors).length) return showErrors(errors);
+
+            const data = new FormData();
+            data.append("reported_user", who.value);
+            data.append("category", form.elements.category.value);
+            data.append("other_category_text", form.elements.other_category_text.value.trim());
+            data.append("description", form.elements.description.value.trim());
+            files.forEach(file => data.append("evidence", file));
+
+            submit.disabled = true;
+            submit.textContent = "Submitting…";
+            try {
+                const response = await fetch(form.dataset.url, {
+                    method: "POST", body: data, credentials: "same-origin",
+                    headers: { "X-CSRFToken": csrfToken(), "Accept": "application/json" },
+                });
+                const body = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    return showErrors(body.errors || { __all__: "Something went wrong. Please try again." });
+                }
+                try { sessionStorage.setItem(TOAST_KEY, body.message); } catch (error) { /* ignore */ }
+                location.reload();
+            } catch (error) {
+                showErrors({ __all__: "Couldn't reach the server. Check your connection and try again." });
+            } finally {
+                submit.disabled = false;
+                submit.textContent = "Submit Report";
+            }
+        });
+    }
+
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const page = document.querySelector("[data-reports]");
+        if (!page) return;
+        initGuidelines(page);
+        initList(page);
+        initModal();
+        try {
+            const message = sessionStorage.getItem(TOAST_KEY);
+            if (message) {
+                sessionStorage.removeItem(TOAST_KEY);
+                toast(message);
+            }
+        } catch (error) { /* ignore */ }
     });
 
-
-    renderUploadedFiles();
-
-    updateFileInput();
-
-}
-
-
-/* =========================================================
-   DISPLAY UPLOADED FILES
-   ========================================================= */
-
-function renderUploadedFiles() {
-
-    const container = document.getElementById(
-        "uploadedFiles"
-    );
-
-    if (!container) {
-        return;
-    }
-
-    container.innerHTML = "";
-
-
-    selectedFiles.forEach(
-        function (file, index) {
-
-            const fileElement =
-                document.createElement("div");
-
-            fileElement.className =
-                "uploaded-file";
-
-
-            fileElement.innerHTML = `
-
-                <div class="uploaded-file-info">
-
-                    <i class="fa-regular fa-file"></i>
-
-                    <span class="uploaded-file-name">
-                        ${escapeHTML(file.name)}
-                    </span>
-
-                </div>
-
-                <button
-                    type="button"
-                    class="remove-file-btn"
-                    onclick="removeUploadedFile(${index})"
-                    aria-label="Remove file"
-                >
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-
-            `;
-
-
-            container.appendChild(fileElement);
-
-        }
-    );
-
-}
-
-
-/* =========================================================
-   REMOVE FILE
-   ========================================================= */
-
-function removeUploadedFile(index) {
-
-    selectedFiles.splice(
-        index,
-        1
-    );
-
-    renderUploadedFiles();
-
-    updateFileInput();
-
-}
-
-
-/* =========================================================
-   UPDATE INPUT
-   ========================================================= */
-
-function updateFileInput() {
-
-    if (!evidenceInput) {
-        return;
-    }
-
-    /*
-        DataTransfer lets us rebuild the
-        actual <input type="file"> contents.
-    */
-
-    const dataTransfer =
-        new DataTransfer();
-
-
-    selectedFiles.forEach(
-        function (file) {
-
-            dataTransfer.items.add(file);
-
-        }
-    );
-
-
-    evidenceInput.files =
-        dataTransfer.files;
-
-}
-
-
-/* =========================================================
-   REVIEW STEP
-   ========================================================= */
-
-function fillReviewStep() {
-
-    const category = document.getElementById(
-        "reportCategory"
-    );
-
-    const reportedUser = document.getElementById(
-        "reportedUser"
-    );
-
-    const description = document.getElementById(
-        "reportDescription"
-    );
-
-    const reviewCategory = document.getElementById(
-        "reviewCategory"
-    );
-
-    const reviewReportedUser =
-        document.getElementById(
-            "reviewReportedUser"
-        );
-
-    const reviewDescription =
-        document.getElementById(
-            "reviewDescription"
-        );
-
-    const reviewEvidence =
-        document.getElementById(
-            "reviewEvidence"
-        );
-
-
-    /* Category */
-
-    if (category && reviewCategory) {
-
-        let categoryText =
-            category.options[
-                category.selectedIndex
-            ].text;
-
-        /*
-            If Others was selected,
-            display the user's custom reason.
-        */
-
-        if (category.value === "Others") {
-
-            const otherCategory =
-                document.getElementById(
-                    "otherCategory"
-                );
-
-            if (
-                otherCategory &&
-                otherCategory.value.trim()
-            ) {
-
-                categoryText =
-                    otherCategory.value.trim();
-
-            }
-
-        }
-
-        reviewCategory.textContent =
-            categoryText;
-
-    }
-
-
-    /* Reported User */
-
-    if (
-        reportedUser &&
-        reviewReportedUser
-    ) {
-
-        const selectedOption =
-            reportedUser.options[
-                reportedUser.selectedIndex
-            ];
-
-        reviewReportedUser.textContent =
-            selectedOption
-                ? selectedOption.text
-                : "—";
-
-    }
-
-
-    /* Description */
-
-    if (
-        description &&
-        reviewDescription
-    ) {
-
-        reviewDescription.textContent =
-            description.value.trim()
-                ? description.value.trim()
-                : "—";
-
-    }
-
-
-    /* Evidence */
-
-    if (reviewEvidence) {
-
-        if (selectedFiles.length === 0) {
-
-            reviewEvidence.textContent =
-                "No files attached";
-
-        } else {
-
-            reviewEvidence.textContent =
-                `${selectedFiles.length} file${
-                    selectedFiles.length > 1
-                        ? "s"
-                        : ""
-                } attached`;
-
-        }
-
-    }
-
-}
-
-
-/* =========================================================
-   HTML ESCAPE
-   ========================================================= */
-
-function escapeHTML(value) {
-
-    const div =
-        document.createElement("div");
-
-    div.textContent = value;
-
-    return div.innerHTML;
-
-}
-
-
-/* =========================================================
-   INITIALIZE
-   ========================================================= */
-
-document.addEventListener(
-    "DOMContentLoaded",
-    function () {
-
-        updateReportStep();
-
-        updateCharacterCount();
-
-        hideOtherCategory();
-
-    }
-);
+})();

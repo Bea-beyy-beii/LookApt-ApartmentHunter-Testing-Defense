@@ -1,0 +1,130 @@
+{% comment %}
+    Reports Filed (renter + landlord dashboards, same page; only the wording
+    and who can be reported differ). Data: core_reports.services.get_reports_context().
+    Behaviour: reports.js (guidelines toggle, filters, search, sort, pop-up).
+{% endcomment %}
+{% load listing_tags %}
+
+<div class="rp" data-reports>
+
+    <div class="reports-page-header">
+        <div class="reports-title">
+            <h1>Reports Filed</h1>
+            <p>View the status of reports you have filed or create a new report.</p>
+            <button type="button" class="rp-guide-link" data-guide-toggle aria-controls="rp-guidelines">Hide Report Guidelines</button>
+        </div>
+        <button type="button" class="rp-btn rp-btn--primary" data-open-report>
+            {% feature_icon "plus" %} File a Report
+        </button>
+    </div>
+
+    <!-- Guidelines (the ✕ or the link hides it; remembered in this browser) -->
+    <section class="rp-guidelines" id="rp-guidelines" data-guidelines>
+        <button type="button" class="rp-guide-close" data-guide-close aria-label="Hide report guidelines">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+        <header class="rp-guide-head">
+            <span class="rp-guide-icon">{% feature_icon "shield" %}</span>
+            <div>
+                <h2>Report Guidelines</h2>
+                <p>Help us keep LookApt safe and fair for everyone.</p>
+            </div>
+        </header>
+        <ul class="rp-guide-list">
+            <li>{% feature_icon "document" %}<span>Provide truthful and accurate information.</span></li>
+            <li>{% feature_icon "chat" %}<span>Choose the report reason that best describes your concern.</span></li>
+            <li>{% feature_icon "occupants" %}<span>Select the correct {{ report_target }} involved.</span></li>
+            <li>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg>
+                <span>Attach relevant proof when available.</span>
+            </li>
+            <li>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg>
+                <span>Avoid duplicate reports or false information.</span>
+            </li>
+        </ul>
+    </section>
+
+    <!-- Status filters + search + sort -->
+    <div class="rp-toolbar">
+        <div class="rp-tabs" role="tablist" aria-label="Filter reports by status">
+            <button type="button" class="status-filter active" data-report-tab="all">All Reports <span class="rp-count">{{ reports|length }}</span></button>
+            {% for tab in report_tabs %}
+                <button type="button" class="status-filter rp-tab--{{ tab.value }}" data-report-tab="{{ tab.value }}">
+                    {% feature_icon tab.icon %} {{ tab.label }} <span class="rp-count">{{ tab.count }}</span>
+                </button>
+            {% endfor %}
+        </div>
+        <div class="rp-tools">
+            <label class="rp-search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+                <input type="search" placeholder="Search reports…" aria-label="Search reports" data-report-search>
+            </label>
+            <select class="rp-sort" data-report-sort aria-label="Sort reports">
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Reports -->
+    <section class="rp-panel">
+        {% if reports %}
+            <ul class="rp-list" data-report-list>
+                {% for r in reports %}
+                    <li class="rp-item" data-report data-status="{{ r.status }}" data-date="{{ r.created_at|date:'U' }}"
+                        data-search="{{ r.other_name }} {{ r.reason }} {{ r.description }} {{ r.get_status_display }}">
+                        <button type="button" class="rp-item-head" data-report-toggle aria-expanded="false">
+                            <span class="rp-avatar" aria-hidden="true">{{ r.other_initials }}</span>
+                            <span class="rp-item-main">
+                                <strong>{{ r.other_name }}</strong>
+                                <small>{{ r.reason }}</small>
+                            </span>
+                            <span class="rp-status rp-status--{{ r.status }}">{{ r.get_status_display }}</span>
+                            <time datetime="{{ r.created_at|date:'c' }}">{{ r.created_at|date:"M j, Y" }}</time>
+                            <svg class="rp-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                        </button>
+                        <div class="rp-item-body" hidden>
+                            <p class="rp-desc">{{ r.description|linebreaksbr }}</p>
+                            {% if r.evidence.all %}
+                                <div class="rp-evidence">
+                                    {% for e in r.evidence.all %}
+                                        <a href="{{ e.file.url }}" target="_blank" rel="noopener" class="rp-file rp-file--{{ e.kind|default:'document' }}">
+                                            {% if e.kind == "image" %}<img src="{{ e.file.url }}" alt="" loading="lazy">{% else %}{% feature_icon "document" %}{% endif %}
+                                            <span>{{ e.name|default:"Attachment" }}</span>
+                                        </a>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <p class="rp-meta">Reported {{ r.other_role|lower }} · filed {{ r.created_at|date:"M j, Y, g:i A" }}{% if r.updated_at|date:"U" != r.created_at|date:"U" %} · updated {{ r.updated_at|date:"M j, Y" }}{% endif %}</p>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+            <p class="rp-none" data-report-none hidden>No reports match.</p>
+        {% else %}
+            <div class="rp-empty">
+                <span class="rp-empty-art" aria-hidden="true">
+                    <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="10" width="34" height="44" rx="5"/><rect x="24" y="6" width="14" height="8" rx="2"/><path d="M22 26h18M22 34h18M22 42h10"/><circle cx="48" cy="46" r="9" fill="#f5b94c" stroke="#f5b94c"/><path d="M48 42v5M48 50h.01" stroke="#fff"/></svg>
+                </span>
+                <h3>No reports filed</h3>
+                <p>You haven't filed any reports yet. If you encounter an issue, you can file a report here.</p>
+                <button type="button" class="rp-btn rp-btn--primary" data-open-report>{% feature_icon "plus" %} File a Report</button>
+            </div>
+        {% endif %}
+
+        <div class="rp-urgent">
+            {% feature_icon "info" %}
+            <div>
+                <strong>Need to report an urgent safety concern?</strong>
+                <p>For immediate assistance, contact our support team.</p>
+            </div>
+            <a class="rp-btn rp-btn--ghost" href="mailto:{{ report_support_email }}">
+                Contact Support
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/></svg>
+            </a>
+        </div>
+    </section>
+</div>
+
+{% include "core_reports/shared/report_modal.html" %}

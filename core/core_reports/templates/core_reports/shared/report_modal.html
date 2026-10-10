@@ -1,300 +1,110 @@
-<div
-    id="reportModal"
-    class="report-modal-overlay"
-    aria-hidden="true"
->
+{% comment %}
+    "File a Report" pop-up (reports.js). Layout: lm-* from listing_modals.css.
+    1. who (renters: any landlord they can see; landlords: their applicants,
+       tenants and people who messaged them)  2. reason ("Others" shows a field)
+    3. details  4. evidence (optional). The server re-checks everything.
+{% endcomment %}
+{% load listing_tags %}
 
-    <div class="report-modal">
-
-        <!-- Modal Header -->
-        <div class="report-modal-header">
-
+<dialog class="lm-modal rp-modal" data-report-modal aria-labelledby="rp-modal-title">
+    <form class="lm-form" data-report-form novalidate data-url="{% url 'core_reports:create' %}"
+          data-max-files="{{ report_max_files }}" data-max-mb="{{ report_max_mb }}">
+        {% csrf_token %}
+        <header class="lm-header">
+            <span class="lm-header-icon rp-modal-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg>
+            </span>
             <div>
-                <h2>File a Report</h2>
-
-                <p>
-                    Help us keep LookApt safe and fair.
-                </p>
+                <h2 id="rp-modal-title">File a Report</h2>
+                <p>Help us keep LookApt safe and fair for everyone.</p>
             </div>
-
-            <button
-                type="button"
-                class="modal-close-btn"
-                onclick="closeReportModal()"
-                aria-label="Close"
-            >
-                <i class="fa-solid fa-xmark"></i>
+            <button type="button" class="lm-close" data-modal-close aria-label="Close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
             </button>
+        </header>
 
+        <div class="lm-body">
+            <p class="lm-alert" data-form-error role="alert" hidden></p>
+
+            <!-- 1. Who -->
+            <section class="rp-step">
+                <h3>1. Select {{ report_target|title }} to Report <span class="rp-req">*</span></h3>
+                <label class="rp-search rp-search--modal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+                    <input type="search" data-person-search autocomplete="off"
+                           placeholder="Search {{ report_target }} name or property…" aria-label="Search {{ report_target }}s">
+                </label>
+                <div class="rp-people" role="radiogroup" aria-label="{{ report_target|title }} to report">
+                    {% for p in report_people %}
+                        <label class="rp-person" data-person data-search="{{ p.search }}">
+                            <input type="radio" name="reported_user" value="{{ p.id }}">
+                            <span class="rp-avatar" aria-hidden="true">{{ p.initials }}</span>
+                            <span class="rp-person-text">
+                                <strong>{{ p.name }}{% if p.verified %} <i class="rp-verified" title="Verified">{% feature_icon "shield" %}</i>{% endif %}</strong>
+                                <small>{{ p.detail }}</small>
+                            </span>
+                            <span class="rp-check" aria-hidden="true">{% feature_icon "check" %}</span>
+                        </label>
+                    {% empty %}
+                        <p class="rp-people-empty">
+                            {% if report_target == "renter" %}
+                                You can report renters who applied to your units, messaged you, or rent from you. There's no one yet.
+                            {% else %}
+                                There are no landlords to report yet.
+                            {% endif %}
+                        </p>
+                    {% endfor %}
+                    <p class="rp-people-empty" data-person-none hidden>No {{ report_target }}s match.</p>
+                </div>
+                <p class="lm-field-error" data-error-for="reported_user" hidden></p>
+            </section>
+
+            <!-- 2. Reason -->
+            <section class="rp-step">
+                <h3>2. Reason for Reporting <span class="rp-req">*</span></h3>
+                <select class="rp-select" name="category" required>
+                    <option value="">Select a reason for reporting</option>
+                    {% for value, label in report_categories %}
+                        <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <p class="lm-field-error" data-error-for="category" hidden></p>
+                <div class="rp-other" data-other hidden>
+                    <input type="text" class="rp-input" name="other_category_text" maxlength="200" placeholder="Please specify the reason" aria-label="Other reason">
+                    <p class="lm-field-error" data-error-for="other_category_text" hidden></p>
+                </div>
+            </section>
+
+            <!-- 3. Details -->
+            <section class="rp-step">
+                <h3>3. Provide Additional Details <span class="rp-req">*</span></h3>
+                <textarea class="rp-textarea" name="description" rows="4" maxlength="500" required
+                          placeholder="Please provide a detailed description of the issue…"></textarea>
+                <div class="rp-row">
+                    <p class="lm-field-error" data-error-for="description" hidden></p>
+                    <small class="rp-counter" data-desc-count>0/500</small>
+                </div>
+            </section>
+
+            <!-- 4. Evidence -->
+            <section class="rp-step">
+                <h3>4. Submit Evidence <span class="rp-optional">(Optional)</span></h3>
+                <p class="rp-hint">You can upload photos, videos, or files to support your report.</p>
+                <label class="rp-drop" data-drop>
+                    <input type="file" name="evidence" multiple hidden data-evidence-input
+                           accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a4 4 0 0 1-.5-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1 .5 9"/><path d="M12 12v8M9 15l3-3 3 3"/></svg>
+                    <span>Drag and drop files here, or <b>click to upload</b></span>
+                    <small>Photos, videos, PDF or DOCX · up to {{ report_max_files }} files, {{ report_max_mb }} MB each</small>
+                </label>
+                <ul class="rp-files" data-file-list></ul>
+                <p class="lm-field-error" data-error-for="evidence" hidden></p>
+            </section>
         </div>
 
-
-        <!-- Stepper -->
-        <div class="report-stepper">
-
-            <div
-                class="step-indicator active"
-                data-step="1"
-            >
-                <span>1</span>
-                <label>Report Details</label>
-            </div>
-
-            <div class="step-line"></div>
-
-            <div
-                class="step-indicator"
-                data-step="2"
-            >
-                <span>2</span>
-                <label>Evidence</label>
-            </div>
-
-            <div class="step-line"></div>
-
-            <div
-                class="step-indicator"
-                data-step="3"
-            >
-                <span>3</span>
-                <label>Review & Submit</label>
-            </div>
-
-        </div>
-
-
-        <!-- Report Form -->
-        <form
-            id="reportForm"
-            method="POST"
-            enctype="multipart/form-data"
-        >
-
-            {% csrf_token %}
-
-
-            <!-- ================================= -->
-            <!-- STEP 1 -->
-            <!-- ================================= -->
-
-            <div
-                class="report-step active"
-                data-step-content="1"
-            >
-
-                {% include step1_template %}
-
-            </div>
-
-
-            <!-- ================================= -->
-            <!-- STEP 2 -->
-            <!-- ================================= -->
-
-            <div
-                class="report-step"
-                data-step-content="2"
-            >
-
-                <div class="step-content">
-
-                    <h3>Supporting Evidence</h3>
-
-                    <p class="step-description">
-                        Upload screenshots, message threads, photos,
-                        documents, or other files that support your report.
-                    </p>
-
-
-                    <!-- Upload Area -->
-                    <div
-                        class="evidence-upload"
-                        id="evidenceDropZone"
-                    >
-
-                        <div class="upload-icon">
-                            <i class="fa-solid fa-cloud-arrow-up"></i>
-                        </div>
-
-                        <h4>
-                            Upload supporting evidence
-                        </h4>
-
-                        <p>
-                            Drag and drop your files here or
-                            <label for="evidenceInput">
-                                browse
-                            </label>
-                        </p>
-
-                        <span>
-                            PNG, JPG, JPEG, PDF · Max 10 MB each
-                        </span>
-
-                        <input
-                            type="file"
-                            id="evidenceInput"
-                            name="evidence"
-                            multiple
-                            accept=".png,.jpg,.jpeg,.pdf"
-                            hidden
-                        >
-
-                    </div>
-
-
-                    <!-- Uploaded Files -->
-                    <div
-                        id="uploadedFiles"
-                        class="uploaded-files"
-                    >
-                    </div>
-
-                </div>
-
-            </div>
-
-
-            <!-- ================================= -->
-            <!-- STEP 3 -->
-            <!-- ================================= -->
-
-            <div
-                class="report-step"
-                data-step-content="3"
-            >
-
-                <div class="step-content">
-
-                    <h3>Review Your Report</h3>
-
-                    <p class="step-description">
-                        Please review the information before submitting.
-                    </p>
-
-
-                    <!-- Category -->
-                    <div class="review-item">
-
-                        <span>
-                            Report Category
-                        </span>
-
-                        <strong id="reviewCategory">
-                            —
-                        </strong>
-
-                    </div>
-
-
-                    <!-- Reported User -->
-                    <div class="review-item">
-
-                        <span>
-                            Reported User
-                        </span>
-
-                        <strong id="reviewReportedUser">
-                            —
-                        </strong>
-
-                    </div>
-
-
-                    <!-- Description -->
-                    <div class="review-item review-description">
-
-                        <span>
-                            Description
-                        </span>
-
-                        <p id="reviewDescription">
-                            —
-                        </p>
-
-                    </div>
-
-
-                    <!-- Evidence -->
-                    <div class="review-item">
-
-                        <span>
-                            Supporting Evidence
-                        </span>
-
-                        <strong id="reviewEvidence">
-                            No files attached
-                        </strong>
-
-                    </div>
-
-
-                    <!-- Notice -->
-                    <div class="review-notice">
-
-                        <i class="fa-solid fa-circle-info"></i>
-
-                        <p>
-                            Once submitted, your report will be sent
-                            to the LookApt team for review.
-                        </p>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-
-            <!-- ================================= -->
-            <!-- MODAL FOOTER -->
-            <!-- ================================= -->
-
-            <div class="report-modal-footer">
-
-                <button
-                    type="button"
-                    class="report-cancel-btn"
-                    onclick="closeReportModal()"
-                >
-                    Cancel
-                </button>
-
-
-                <div class="step-navigation">
-
-                    <button
-                        type="button"
-                        id="backStepBtn"
-                        class="report-back-btn"
-                        onclick="previousReportStep()"
-                    >
-                        Back
-                    </button>
-
-                    <button
-                        type="button"
-                        id="nextStepBtn"
-                        class="report-next-btn"
-                        onclick="nextReportStep()"
-                    >
-                        Next
-                    </button>
-
-                    <button
-                        type="submit"
-                        id="submitReportBtn"
-                        class="report-submit-btn"
-                    >
-                        File Report
-                    </button>
-
-                </div>
-
-            </div>
-
-        </form>
-
-    </div>
-
-</div>
+        <footer class="lm-footer rt-modal-footer">
+            <button type="button" class="rt-btn rt-btn--ghost" data-modal-close>Cancel</button>
+            <button type="submit" class="rt-btn rt-btn--primary" data-submit>Submit Report</button>
+        </footer>
+    </form>
+</dialog>

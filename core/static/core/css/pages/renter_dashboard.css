@@ -1970,7 +1970,3 @@ body:not([data-tab="home"]):not([data-tab="saved"]) .renter-dashboard .dashboard
 body:not([data-tab="home"]):not([data-tab="saved"]) .renter-dashboard .filter-button {
     display: none;
 }
-
-body:not([data-tab="home"]):not([data-tab="saved"]) .renter-dashboard .notification-button {
-    margin-left: auto;
-}

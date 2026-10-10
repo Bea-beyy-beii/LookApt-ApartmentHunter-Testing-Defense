@@ -1,6 +1,7 @@
-{% load static %}
+{% load static topbar_tags %}
 <!DOCTYPE html>
-<html lang="en">
+{# Dark mode switch: the saved theme is rendered here, so the page never flashes light #}
+<html lang="en" data-theme="{{ request.user.theme|default:'light' }}">
 
 <head>
     <meta charset="UTF-8">
@@ -27,8 +28,13 @@
     <link rel="stylesheet" href="{% static 'core/css/components/toasts.css' %}">
     <link rel="stylesheet" href="{% static 'core/css/components/gallery.css' %}">
     <link rel="stylesheet" href="{% static 'core/css/components/feature_chips.css' %}">
+    <link rel="stylesheet" href="{% static 'core/css/components/topbar_menus.css' %}">
 
     {% block extra_css %}{% endblock %}
+
+    {# Dark mode (html[data-theme="dark"]); loaded last so it wins #}
+    <link rel="stylesheet" href="{% static 'core/css/theme/dark_auto.css' %}">
+    <link rel="stylesheet" href="{% static 'core/css/theme/dark.css' %}">
 </head>
 
 {# data-tab = the open dashboard tab (renter_dashboard.js keeps it up to date) #}
@@ -158,17 +164,7 @@
                 </svg>
             </button>
 
-            <button class="notification-button" type="button" aria-label="Notifications">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>
-                </svg>
-                <span class="notification-dot"></span>
-            </button>
-
-            <div class="profile-overview">
-                <img src="{% static 'core/images/looka.png' %}" alt="Profile Picture" class="profile-picture">
-                <span class="profile-display-name">{{ request.user.display_name }}</span>
-            </div>
+            {% topbar_right %}
 
         </header>
 
@@ -183,6 +179,7 @@
 <script src="{% static 'core_maps/maps.js' %}"></script>
 <script src="{% static 'core/js/gallery.js' %}"></script>
 <script src="{% static 'core/js/saved_listings.js' %}"></script>
+<script src="{% static 'core/js/topbar_menus.js' %}"></script>
 {% block extra_js %}{% endblock %}
 
 </body>

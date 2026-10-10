@@ -582,12 +582,30 @@ def _notifications(user, conversations, applications):
     return items[:MAX_NOTIFICATIONS]
 
 
+def mark_new(user, items):
+    """Flag the notifications that arrived after the user last opened the bell."""
+    seen = user.notifications_seen_at
+    for item in items:
+        item["is_new"] = bool(item["created_at"]) and (seen is None or item["created_at"] > seen)
+    return items
+
+
+def notifications_for(user):
+    """The bell's list on any page (the Inquiries tab builds the same list itself)."""
+    from .workflow import _visible, visit_label
+
+    applications = list(_visible(user).prefetch_related(None))   # no photos needed here
+    for application in applications:
+        application.visit_label = visit_label(application)
+    return mark_new(user, _notifications(user, _conversations_for_tab(user), applications))
+
+
 def get_inquiries_context(user):
     from .workflow import request_tabs   # workflow imports core_rentals, which imports this module
 
     conversations = _conversations_for_tab(user)
     tabs = request_tabs(user, conversations)
-    notifications = _notifications(user, conversations, tabs.pop("all_requests"))
+    notifications = mark_new(user, _notifications(user, conversations, tabs.pop("all_requests")))
 
     return {
         "conversations": conversations,
@@ -595,5 +613,6 @@ def get_inquiries_context(user):
         "unread_messages_count": sum(c.unread_count for c in conversations),
         "notifications": notifications,
         "unread_notifications_count": sum(1 for n in notifications if not n["is_read"]),
+        "new_notifications_count": sum(1 for n in notifications if n["is_new"]),
         "is_landlord_inbox": user.role == "landlord",
     }

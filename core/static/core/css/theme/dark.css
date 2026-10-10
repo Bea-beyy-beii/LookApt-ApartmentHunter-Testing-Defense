@@ -1,0 +1,132 @@
+/* =========================================================
+   DARK MODE: hand-tuned layer (loads after dark_auto.css)
+   Active when <html data-theme="dark"> (the switch left of the bell).
+   dark_auto.css handles the bulk; this file sets the colours
+   themselves and the key surfaces from the sample.
+========================================================= */
+
+html[data-theme="dark"] {
+    color-scheme: dark;    /* native date pickers, scrollbars, selects */
+
+    --cream: #0b1424;          /* page */
+    --white: #121d31;          /* cards */
+    --text-primary: #e1e8f4;
+    --text-secondary: #9fa9bc;
+    --border-light: #26334a;
+    --border-medium: #3a4a66;
+    --error: #e07272;
+    --success: #6cc08f;
+    --shadow-soft: 0 8px 30px rgba(0, 0, 0, 0.35);
+    --shadow-card: 0 20px 50px rgba(0, 0, 0, 0.45);
+
+    --dark-surface-2: #18253d;     /* hover / inputs */
+    --dark-heading: #f3e3c3;       /* cream headings (welcome) */
+
+    background: #0b1424;
+}
+
+html[data-theme="dark"] body { background: #0b1424; color: var(--text-primary); }
+
+
+/* ---------- Sidebar ---------- */
+
+html[data-theme="dark"] .sidebar {
+    background: #0e1829;
+    border-right-color: #1d2a42;
+}
+
+html[data-theme="dark"] .sidebar-link { color: #b9c4d6; }
+html[data-theme="dark"] .sidebar-link:hover { background: rgba(255, 255, 255, 0.05); color: #e1e8f4; }
+
+html[data-theme="dark"] .sidebar-link.active {
+    color: #ffffff;
+    background: linear-gradient(105deg, #2b4a80, #3c4c66);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="dark"] .brand-name,
+html[data-theme="dark"] .sidebar .brand-name { color: #f3e3c3; }
+html[data-theme="dark"] .brand-name span { color: var(--gold); }
+
+
+/* ---------- Page headings ---------- */
+
+html[data-theme="dark"] .lh-welcome h1 { color: var(--dark-heading); }
+
+html[data-theme="dark"] :is(.listings-header, .reports-page-header, .inquiry-page-header, .section-heading) h1 {
+    color: var(--dark-heading);
+}
+
+
+/* ---------- Buttons ---------- */
+
+/* Quick actions: outlined dark navy; "Add Property" gold like the sample */
+html[data-theme="dark"] .lh-action {
+    background: #16243c;
+    border: 1px solid #2f4469;
+    color: #e1e8f4;
+}
+
+html[data-theme="dark"] .lh-action:hover { background: #1d2f4f; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35); }
+html[data-theme="dark"] .lh-action[data-lh-add-property] { background: var(--gold); border-color: var(--gold); color: #172f58; }
+html[data-theme="dark"] .lh-action[data-lh-add-property]:hover { background: #f7c66a; }
+
+html[data-theme="dark"] :is(button, input, select, textarea) { color-scheme: dark; }
+
+html[data-theme="dark"] :is(input, select, textarea)::placeholder { color: #7d8aa1; }
+
+
+/* ---------- Listing Performance chart (landlord_home.js draws "Views" in navy) ---------- */
+
+html[data-theme="dark"] :is(polyline, circle)[stroke="#203a68"] { stroke: #8fb0e8; }
+html[data-theme="dark"] :is(polygon, circle)[fill="#203a68"] { fill: #8fb0e8; }
+html[data-theme="dark"] .lh-chip i[style*="rgb(32, 58, 104)"] { background: #8fb0e8 !important; }
+
+
+/* ---------- Renter home: no gold glow, map banner in navy ---------- */
+
+html[data-theme="dark"] .renter-dashboard :is(.dashboard-search, .filter-button, .looka-button) {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="dark"] .near-banner {
+    background:
+        repeating-linear-gradient(90deg, transparent 0 66px, rgba(120, 150, 200, 0.08) 67px 69px),
+        repeating-linear-gradient(0deg, transparent 0 52px, rgba(120, 150, 200, 0.08) 53px 55px),
+        #13213a;
+}
+
+
+/* ---------- Top bar ---------- */
+
+html[data-theme="dark"] .notification-button { color: #e1e8f4; }
+html[data-theme="dark"] .notification-button:hover,
+html[data-theme="dark"] .profile-toggle:hover { background: rgba(255, 255, 255, 0.06); }
+html[data-theme="dark"] .notification-dot { border-color: #0b1424; }
+html[data-theme="dark"] .profile-display-name,
+html[data-theme="dark"] .profile-chevron { color: #e1e8f4; }
+
+html[data-theme="dark"] .topbar-menu {
+    background: #121d31;
+    border-color: #26334a;
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.5);
+}
+
+html[data-theme="dark"] .topbar-role { background: #1f3254; color: #c9d6ee; }
+html[data-theme="dark"] .topbar-verified { background: #1d2738; color: #9fa9bc; }
+html[data-theme="dark"] .topbar-verified.is-verified { background: #173626; color: #7fd1a0; }
+html[data-theme="dark"] .topbar-menu-item:hover { background: #18253d; color: #ffffff; }
+html[data-theme="dark"] .topbar-menu-item--danger,
+html[data-theme="dark"] .topbar-menu-item--danger:hover { color: #e07272; }
+html[data-theme="dark"] .topbar-menu-item--danger:hover { background: #3a1c22; }
+html[data-theme="dark"] .topbar-notif--green.is-unread  { background: #14301f; }
+html[data-theme="dark"] .topbar-notif--yellow.is-unread { background: #332a14; }
+html[data-theme="dark"] .topbar-notif--red.is-unread    { background: #361b1f; }
+
+
+/* ---------- Pop-ups / toasts ---------- */
+
+html[data-theme="dark"] dialog,
+html[data-theme="dark"] [role="dialog"] { color: var(--text-primary); }
+
+html[data-theme="dark"] .toast { box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5); }
