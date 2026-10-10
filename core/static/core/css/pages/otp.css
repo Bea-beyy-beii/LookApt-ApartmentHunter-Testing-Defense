@@ -394,27 +394,7 @@
 }
 
 
-.email-link {
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    gap: 5px;
-
-    font-size: 11.5px;
-
-    text-decoration: none !important;
-}
-
-
-.email-link span {
-
-    font-size: 12px;
-}
-
-
-/* Resend / switch buttons look like the links around them */
+/* The Resend button looks like the links around it */
 .otp-options form {
     margin: 0;
 }
@@ -438,17 +418,16 @@
     cursor: pointer;
 }
 
-.otp-link-button.email-link {
-    font-weight: 600;
-}
-
+/* Locked for 60 s after a code is sent: grey "Resend in 42s", no-entry cursor */
 .otp-link-button:disabled {
 
-    color: var(--text-secondary);
+    color: #9aa3b2;
+
+    font-weight: 600;
 
     text-decoration: none;
 
-    cursor: default;
+    cursor: not-allowed;
 }
 
 

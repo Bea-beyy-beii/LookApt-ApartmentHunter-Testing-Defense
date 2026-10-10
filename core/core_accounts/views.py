@@ -1,4 +1,5 @@
 import secrets
+from datetime import datetime, timedelta
 from urllib.parse import urlencode
 import requests
 from django.conf import settings
@@ -14,6 +15,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 from core.core_inquiries.services import notifications_for
+from core.core_reports.services import SUPPORT_EMAIL
 from . import otp
 from .services import AccountService
 
@@ -42,7 +44,7 @@ def signup_view(request):
                 'start_step': first_bad,
             })
         AccountService.start_pending_signup(request, cleaned)
-        _send_signup_code(request, otp.Channel.SMS)
+        _send_signup_code(request)
         return redirect('otp')
 
     # Coming back from the OTP page: keep what they typed (except the password)
@@ -60,7 +62,6 @@ def finish_signup(request):
     except ValidationError as e:
         messages.error(request, "; ".join(e.messages))
         return redirect('signup')
-    request.session.pop(OTP_CHANNEL, None)
     login(request, user)
     return redirect(ROLE_HOME[user.role])
 
@@ -101,21 +102,13 @@ def logout_view(request):
     logout(request)
     return redirect('login')
 
-# ------------------------------------------------------------------ SIGN-UP CODE (5th step)
+# ------------------------------------------------------------------ SIGN-UP CODE (5th step, by email)
 
-OTP_CHANNEL = 'otp_channel'     # session: where the sign-up code went (sms / email)
-
-
-def _signup_target(pending, channel):
-    return pending['email'] if channel == otp.Channel.EMAIL else pending['phone_number']
-
-
-def _send_signup_code(request, channel):
-    """Send a sign-up code to the pending sign-up's phone (sms) or email. True if sent."""
+def _send_signup_code(request):
+    """Email a sign-up code to the pending sign-up's email. True if sent."""
     pending = AccountService.pending_signup(request)
-    request.session[OTP_CHANNEL] = channel
     try:
-        otp.send_code(otp.Purpose.SIGNUP, channel, _signup_target(pending, channel))
+        otp.send_code(otp.Purpose.SIGNUP, pending['email'], name=pending['first_name'])
     except otp.OTPError as e:
         messages.error(request, str(e))
         return False
@@ -129,46 +122,139 @@ def otp_view(request):
         messages.error(request, "Please fill in the sign-up form first.")
         return redirect('signup')
 
-    channel = request.session.get(OTP_CHANNEL, otp.Channel.SMS)
-    target = _signup_target(pending, channel)
+    email = pending['email']
 
     if request.method == 'POST':
         code = request.POST.get('code') or ''.join(request.POST.get(f'otp_{i}', '') for i in range(1, 7))
         try:
-            otp.verify_code(otp.Purpose.SIGNUP, target, code, channel)
+            otp.verify_code(otp.Purpose.SIGNUP, email, code)
         except otp.OTPError as e:
             messages.error(request, str(e))
             return redirect('otp')
         return finish_signup(request)
 
     return render(request, 'core_accounts/otp.html', {
-        'channel': channel,
-        'masked_target': otp.mask(channel, target),
-        'expires_in': otp.seconds_until_expiry(otp.Purpose.SIGNUP, target),
-        'resend_in': otp.seconds_until_resend(otp.Purpose.SIGNUP, target),
-        'other_channel': otp.Channel.SMS if channel == otp.Channel.EMAIL else otp.Channel.EMAIL,
+        'masked_target': otp.mask(email),
+        'expires_in': otp.seconds_until_expiry(otp.Purpose.SIGNUP, email),
+        'resend_in': otp.seconds_until_resend(otp.Purpose.SIGNUP, email),
     })
 
 
 @require_POST
 def otp_resend_view(request):
-    """Resend: a new code to the same place, or switch between phone and email."""
+    """Resend: email a new code (allowed 60 s after the last one)."""
     if not AccountService.pending_signup(request):
         return redirect('signup')
-    channel = request.POST.get('channel', request.session.get(OTP_CHANNEL, otp.Channel.SMS))
-    if channel not in otp.Channel.values:
-        channel = otp.Channel.SMS
-    if _send_signup_code(request, channel):
-        where = "email" if channel == otp.Channel.EMAIL else "phone"
-        messages.success(request, f"We sent a new code to your {where}.")
+    if _send_signup_code(request):
+        messages.success(request, "We sent a new code to your email.")
     return redirect('otp')
 
+# ------------------------------------------------------------------ FORGOT PASSWORD
+# 1 Account (email or phone) -> 2 Code (emailed, same page as sign-up's OTP) -> 3 New password
 
-# ------------------------------------------------------------------ TOP BAR (dark mode switch + bell)
+RESET = 'password_reset'               # session: {'user_id', 'email', 'name', 'verified_at'}
+RESET_WINDOW = timedelta(minutes=10)   # time to choose a new password after the code
 
-def otp_view(request):
-    return render(request, 'core_accounts/otp.html')
 
+def _reset_data(request):
+    return request.session.get(RESET)
+
+
+def _send_reset_code(request, data):
+    try:
+        otp.send_code(otp.Purpose.RESET, data['email'], name=data['name'])
+    except otp.OTPError as e:
+        messages.error(request, str(e))
+        return False
+    return True
+
+
+def forgot_password_view(request):
+    """Step 1: which account? Then a code goes to the account's email."""
+    identifier, error = '', ''
+    if request.method == 'POST':
+        identifier = request.POST.get('identifier', '').strip()
+        user = AccountService.find_account(identifier)
+        if not identifier:
+            error = "Enter the email or phone number on your account."
+        elif user is None:
+            error = "We couldn't find an account with that email or phone number."
+        elif not user.email:
+            error = f"This account has no email address. Please contact {SUPPORT_EMAIL}."
+        else:
+            data = {'user_id': str(user.pk), 'email': user.email.lower(), 'name': user.first_name, 'verified_at': None}
+            request.session[RESET] = data
+            _send_reset_code(request, data)
+            return redirect('forgot_password_code')
+
+    return render(request, 'core_accounts/forgot_password.html', {
+        'step': 1, 'identifier': identifier, 'errors': {'identifier': error} if error else {},
+    })
+
+
+def forgot_password_code_view(request):
+    """Step 2: the 6-digit code (sign-up's OTP page, reset wording)."""
+    data = _reset_data(request)
+    if not data:
+        return redirect('forgot_password')
+
+    if request.method == 'POST':
+        code = request.POST.get('code') or ''.join(request.POST.get(f'otp_{i}', '') for i in range(1, 7))
+        try:
+            otp.verify_code(otp.Purpose.RESET, data['email'], code)
+        except otp.OTPError as e:
+            messages.error(request, str(e))
+            return redirect('forgot_password_code')
+        data['verified_at'] = timezone.now().isoformat()
+        request.session[RESET] = data
+        return redirect('forgot_password_new')
+
+    return render(request, 'core_accounts/otp.html', {
+        'reset': True,
+        'masked_target': otp.mask(data['email']),
+        'expires_in': otp.seconds_until_expiry(otp.Purpose.RESET, data['email']),
+        'resend_in': otp.seconds_until_resend(otp.Purpose.RESET, data['email']),
+        'resend_url': reverse('forgot_password_resend'),
+    })
+
+
+@require_POST
+def forgot_password_resend_view(request):
+    data = _reset_data(request)
+    if not data:
+        return redirect('forgot_password')
+    if _send_reset_code(request, data):
+        messages.success(request, "We sent a new code to your email.")
+    return redirect('forgot_password_code')
+
+
+def forgot_password_new_view(request):
+    """Step 3: a new password (only right after a correct code)."""
+    data = _reset_data(request)
+    verified_at = data and data.get('verified_at')
+    if not verified_at or timezone.now() - datetime.fromisoformat(verified_at) > RESET_WINDOW:
+        messages.error(request, "Please verify your email first." if not verified_at
+                       else "That took too long. Please request a new code.")
+        return redirect('forgot_password')
+    user = User.objects.filter(pk=data['user_id'], is_active=True).first()
+    if user is None:
+        request.session.pop(RESET, None)
+        return redirect('forgot_password')
+
+    errors = {}
+    if request.method == 'POST':
+        password, errors = AccountService.clean_new_password(user, request.POST)
+        if not errors:
+            user.set_password(password)              # also signs the account out everywhere else
+            user.save(update_fields=['password'])
+            request.session.pop(RESET, None)
+            messages.success(request, "Your password has been updated. Log in with your new password.")
+            return redirect('login')
+
+    return render(request, 'core_accounts/forgot_password.html', {'step': 3, 'errors': errors})
+
+
+# ------------------------------------------------------------------ GOOGLE SIGN-IN
 
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"

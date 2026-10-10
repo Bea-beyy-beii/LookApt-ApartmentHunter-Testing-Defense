@@ -294,6 +294,14 @@
     }
 }
 
+/* "Your password has been updated" after a reset */
+.login-success {
+    margin: 0 0 12px;
+    color: #2f8a52;
+    font-size: 12px;
+    text-align: center;
+}
+
 .login-error {
     margin: 0 0 12px;
     color: #c0392b;

@@ -3,6 +3,7 @@ from django.contrib.auth.hashers import make_password
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from core.models import User, Renter, Landlord, phone_regex
 
 # Session key for a sign-up that passed all 4 steps and waits for the OTP
@@ -147,6 +148,30 @@ class AccountService:
         cls.ROLE_PROFILES[user.role].objects.create(user=user)
         del request.session[PENDING_SIGNUP]
         return user
+
+    # ------------------------------------------------------------------ forgot password
+
+    @staticmethod
+    def find_account(identifier):
+        """The account for an email or phone number (or username), like the login box. None if no match."""
+        identifier = (identifier or '').strip()
+        if not identifier:
+            return None
+        return User.objects.filter(
+            Q(email__iexact=identifier) | Q(phone_number=identifier.replace(' ', '').replace('-', ''))
+            | Q(username__iexact=identifier),
+            is_active=True,
+        ).first()
+
+    @classmethod
+    def clean_new_password(cls, user, data):
+        """Forgot password step 3: same rules as sign-up step 4, and not the current password.
+        Returns (password, {field: error})."""
+        earlier = {'first_name': user.first_name, 'last_name': user.last_name, 'email': user.email}
+        cleaned, errors = cls.clean_step(4, data, earlier)
+        if not errors and user.check_password(cleaned['password']):
+            errors['password'] = "That's your current password. Please choose a new one."
+        return cleaned.get('password', ''), errors
 
     # ------------------------------------------------------------------ direct registration
 

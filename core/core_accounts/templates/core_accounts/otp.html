@@ -1,4 +1,9 @@
 {% load static %}
+{% comment %}
+    The 6-digit code page. Used by sign-up (step 5) and by forgot password
+    (views pass reset=True, resend_url and back_url).
+{% endcomment %}
+{% url 'otp_resend' as signup_resend_url %}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -8,7 +13,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>LookApt — OTP Verification</title>
+    <title>LookApt — {% if reset %}Reset Password{% else %}OTP Verification{% endif %}</title>
 
 
     <!-- Base CSS -->
@@ -74,7 +79,7 @@
         <section class="otp-content">
 
             <h1 class="otp-title">
-                OTP VERIFICATION
+                {% if reset %}RESET PASSWORD{% else %}OTP VERIFICATION{% endif %}
             </h1>
 
 
@@ -91,9 +96,15 @@
 
             <p class="otp-subtitle">
 
-                Please enter the OTP (One-Time Password)
-                sent to <strong>{{ masked_target }}</strong>
-                to finish setting up your account.
+                {% if reset %}
+                    Please enter the code we sent to
+                    <strong>{{ masked_target }}</strong>
+                    to reset your password.
+                {% else %}
+                    Please enter the OTP (One-Time Password)
+                    sent to <strong>{{ masked_target }}</strong>
+                    to finish setting up your account.
+                {% endif %}
 
             </p>
 
@@ -222,10 +233,9 @@
 
             <div class="otp-options">
 
-                <!-- Resend: same place (unlocks after 60 s) -->
+                <!-- Resend: a new code by email (unlocks after 60 s) -->
                 <form method="POST" action="{% url 'otp_resend' %}">
                     {% csrf_token %}
-                    <input type="hidden" name="channel" value="{{ channel }}">
                     <p>
                         Didn't receive the code?
                         <button type="submit" class="otp-link-button" id="resendLink" data-seconds="{{ resend_in }}">
@@ -235,23 +245,9 @@
                 </form>
 
 
-                <!-- Switch between phone and email -->
-                <form method="POST" action="{% url 'otp_resend' %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="channel" value="{{ other_channel }}">
-                    <button type="submit" class="otp-link-button email-link">
-
-                        <span aria-hidden="true">
-                            {% if other_channel == "email" %}✉{% else %}✆{% endif %}
-                        </span>
-
-                        {% if other_channel == "email" %}Send via Email instead{% else %}Send via SMS instead{% endif %}
-
-                    </button>
-                </form>
-
-
-                <a href="{% url 'signup' %}" class="otp-back-link">Wrong details? Go back</a>
+                {% if not reset %}
+                    <a href="{% url 'signup' %}" class="otp-back-link">Wrong details? Go back</a>
+                {% endif %}
 
             </div>
 

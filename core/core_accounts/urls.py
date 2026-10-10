@@ -8,6 +8,12 @@ urlpatterns = [
     path('signup/check/', views.signup_check_view, name='signup_check'),
     path('otp/', views.otp_view, name='otp'),
     path('otp/resend/', views.otp_resend_view, name='otp_resend'),
+
+    # Forgot password: account -> emailed code -> new password
+    path('forgot-password/', views.forgot_password_view, name='forgot_password'),
+    path('forgot-password/code/', views.forgot_password_code_view, name='forgot_password_code'),
+    path('forgot-password/code/resend/', views.forgot_password_resend_view, name='forgot_password_resend'),
+    path('forgot-password/new/', views.forgot_password_new_view, name='forgot_password_new'),
     path('auth/google/', views.google_login_view, name='google_login'),
     path('auth/callback', views.google_callback_view, name='google_callback'),
 

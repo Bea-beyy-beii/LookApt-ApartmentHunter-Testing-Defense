@@ -231,17 +231,6 @@ else:
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='LookApt <no-reply@lookapt.com>')
 
 
-# OTP codes by text message (core_accounts/otp.py)
-#   console   = print the code in the runserver terminal (development)
-#   semaphore = Semaphore (Philippine SMS gateway): SEMAPHORE_API_KEY
-#   twilio    = Twilio: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER
-OTP_SMS_PROVIDER = env('OTP_SMS_PROVIDER', default='console')
-SEMAPHORE_API_KEY = env('SEMAPHORE_API_KEY', default='')
-SEMAPHORE_SENDER_NAME = env('SEMAPHORE_SENDER_NAME', default='')     # approved sender name, optional
-TWILIO_ACCOUNT_SID = env('TWILIO_ACCOUNT_SID', default='')
-TWILIO_AUTH_TOKEN = env('TWILIO_AUTH_TOKEN', default='')
-TWILIO_FROM_NUMBER = env('TWILIO_FROM_NUMBER', default='')
-
 AUTH_USER_MODEL = 'core.User'
 AUTHENTICATION_BACKENDS = ['core.core_accounts.backends.PhoneOrUsernameBackend']
 LOGIN_URL = 'login'

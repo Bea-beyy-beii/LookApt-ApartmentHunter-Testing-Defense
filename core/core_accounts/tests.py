@@ -2,7 +2,7 @@ from datetime import timedelta
 from unittest import mock
 
 from django.core import mail
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
@@ -227,51 +227,51 @@ class SignupStepTests(TestCase):
 
 
 class OTPTests(TestCase):
-    """core_accounts/otp.py: one-time codes by SMS or email."""
+    """core_accounts/otp.py: one-time codes by email."""
 
-    PHONE, EMAIL = '09175550123', 'bea@example.com'
+    EMAIL = 'bea@example.com'
 
     def setUp(self):
         patcher = mock.patch('core.core_accounts.otp.deliver')
         self.deliver = patcher.start()
         self.addCleanup(patcher.stop)
 
-    def send(self, channel=otp.Channel.SMS, target=None):
-        otp.send_code(otp.Purpose.SIGNUP, channel, target or self.PHONE)
-        return self.deliver.call_args.args[2]          # the code that was sent
+    def send(self, email=None):
+        otp.send_code(otp.Purpose.SIGNUP, email or self.EMAIL)
+        return self.deliver.call_args.args[1]          # the code that was sent
 
     def later(self, **delta):
         return mock.patch('django.utils.timezone.now', return_value=timezone.now() + timedelta(**delta))
 
     def test_right_code_works_once(self):
         code = self.send()
-        self.assertTrue(otp.verify_code(otp.Purpose.SIGNUP, self.PHONE, code))
+        self.assertTrue(otp.verify_code(otp.Purpose.SIGNUP, self.EMAIL, code))
         with self.assertRaisesMessage(otp.OTPError, "request a new code"):
-            otp.verify_code(otp.Purpose.SIGNUP, self.PHONE, code)
+            otp.verify_code(otp.Purpose.SIGNUP, self.EMAIL, code)
 
     def test_code_is_six_digits_and_stored_hashed(self):
         code = self.send()
         self.assertRegex(code, r'^\d{6}$')
         row = OTPCode.objects.get()
         self.assertNotIn(code, row.code_hash)
-        self.assertEqual((row.channel, row.target), ('sms', self.PHONE))
+        self.assertEqual((row.channel, row.target), ('email', self.EMAIL))
 
     def test_wrong_code_counts_down_then_locks(self):
         code = self.send()
         wrong = '000000' if code != '000000' else '111111'
         for left in (4, 3, 2, 1):
             with self.assertRaisesMessage(otp.OTPError, f"{left} tr"):
-                otp.verify_code(otp.Purpose.SIGNUP, self.PHONE, wrong)
+                otp.verify_code(otp.Purpose.SIGNUP, self.EMAIL, wrong)
         with self.assertRaisesMessage(otp.OTPError, "Too many wrong tries"):
-            otp.verify_code(otp.Purpose.SIGNUP, self.PHONE, wrong)
+            otp.verify_code(otp.Purpose.SIGNUP, self.EMAIL, wrong)
         with self.assertRaisesMessage(otp.OTPError, "Too many wrong tries"):
-            otp.verify_code(otp.Purpose.SIGNUP, self.PHONE, code)          # even the right one now
+            otp.verify_code(otp.Purpose.SIGNUP, self.EMAIL, code)          # even the right one now
 
     def test_code_expires_after_five_minutes(self):
         code = self.send()
         with self.later(minutes=5, seconds=1):
             with self.assertRaisesMessage(otp.OTPError, "expired"):
-                otp.verify_code(otp.Purpose.SIGNUP, self.PHONE, code)
+                otp.verify_code(otp.Purpose.SIGNUP, self.EMAIL, code)
 
     def test_resend_waits_a_minute_and_only_newest_code_works(self):
         first = self.send()
@@ -281,8 +281,8 @@ class OTPTests(TestCase):
             second = self.send()
             if first != second:
                 with self.assertRaises(otp.OTPError):
-                    otp.verify_code(otp.Purpose.SIGNUP, self.PHONE, first)
-            self.assertTrue(otp.verify_code(otp.Purpose.SIGNUP, self.PHONE, second))
+                    otp.verify_code(otp.Purpose.SIGNUP, self.EMAIL, first)
+            self.assertTrue(otp.verify_code(otp.Purpose.SIGNUP, self.EMAIL, second))
 
     def test_at_most_five_codes_an_hour(self):
         for minute in range(5):
@@ -293,55 +293,35 @@ class OTPTests(TestCase):
                 self.send()
 
     def test_failed_sending_doesnt_block_a_retry(self):
-        self.deliver.side_effect = RuntimeError("provider down")
+        self.deliver.side_effect = RuntimeError("mail server down")
         with self.assertRaisesMessage(otp.OTPError, "couldn't send"):
             self.send()
         self.assertFalse(OTPCode.objects.exists())
         self.deliver.side_effect = None
         self.send()                                     # no 60 s wait
 
-    def test_email_target_is_case_insensitive(self):
-        code = self.send(otp.Channel.EMAIL, 'Bea@Example.com')
-        self.assertTrue(otp.verify_code(otp.Purpose.SIGNUP, self.EMAIL, code, otp.Channel.EMAIL))
+    def test_email_is_case_insensitive(self):
+        code = self.send('Bea@Example.com')
+        self.assertTrue(otp.verify_code(otp.Purpose.SIGNUP, self.EMAIL, code))
 
     def test_mask(self):
-        self.assertEqual(otp.mask('sms', '09175550123'), '0917 *** **23')
-        self.assertEqual(otp.mask('email', 'bea.santos@example.com'), 'be********@example.com')
+        self.assertEqual(otp.mask('bea.santos@example.com'), 'be********@example.com')
+        self.assertEqual(otp.mask('bo@example.com'), 'bo***@example.com')
 
 
-class OTPDeliveryTests(TestCase):
-    """What actually goes out: email via MAILERS, SMS via the chosen provider."""
+class OTPEmailTests(TestCase):
+    """What actually goes out: one email through settings.MAILERS."""
 
     def test_email(self):
-        otp.deliver(otp.Channel.EMAIL, 'bea@example.com', '123456')
+        otp.deliver('bea@example.com', '123456')
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, ['bea@example.com'])
+        self.assertEqual(mail.outbox[0].subject, 'Your LookApt verification code')
         self.assertIn('123456', mail.outbox[0].body)
-
-    @override_settings(OTP_SMS_PROVIDER='semaphore', SEMAPHORE_API_KEY='key', SEMAPHORE_SENDER_NAME='LOOKAPT')
-    def test_semaphore(self):
-        with mock.patch('core.core_accounts.otp.requests.post') as post:
-            otp.deliver(otp.Channel.SMS, '09175550123', '123456')
-        data = post.call_args.kwargs['data']
-        self.assertEqual((data['apikey'], data['number'], data['sendername']), ('key', '09175550123', 'LOOKAPT'))
-        self.assertIn('123456', data['message'])
-
-    @override_settings(OTP_SMS_PROVIDER='twilio', TWILIO_ACCOUNT_SID='AC1', TWILIO_AUTH_TOKEN='t', TWILIO_FROM_NUMBER='+15550001111')
-    def test_twilio_uses_plus63(self):
-        with mock.patch('core.core_accounts.otp.requests.post') as post:
-            otp.deliver(otp.Channel.SMS, '09175550123', '123456')
-        self.assertIn('/Accounts/AC1/', post.call_args.args[0])
-        self.assertEqual(post.call_args.kwargs['data']['To'], '+639175550123')
-
-    @override_settings(OTP_SMS_PROVIDER='console')
-    def test_console_prints_the_code(self):
-        with mock.patch('builtins.print') as printed:
-            otp.deliver(otp.Channel.SMS, '09175550123', '123456')
-        self.assertIn('123456', printed.call_args.args[0])
 
 
 class OTPPageTests(TestCase):
-    """Sign-up step 5: the OTP page."""
+    """Sign-up step 5: the OTP page (code by email)."""
 
     DATA = SignupStepTests.DATA
 
@@ -351,17 +331,17 @@ class OTPPageTests(TestCase):
         self.addCleanup(patcher.stop)
 
     def sent_code(self):
-        return self.deliver.call_args.args[2]
+        return self.deliver.call_args.args[1]
 
     def test_needs_a_pending_signup(self):
         self.assertRedirects(self.client.get(reverse('otp')), reverse('signup'))
 
-    def test_create_account_texts_a_code_and_shows_the_masked_number(self):
+    def test_create_account_emails_a_code_and_shows_the_masked_email(self):
         self.client.post(reverse('signup'), self.DATA)
-        self.assertEqual(self.deliver.call_args.args[:2], ('sms', '09175550123'))
+        self.assertEqual(self.deliver.call_args.args[0], 'bea.santos@example.com')
         page = self.client.get(reverse('otp'))
-        self.assertContains(page, '0917 *** **23')
-        self.assertContains(page, 'Send via Email instead')
+        self.assertContains(page, 'be********@example.com')
+        self.assertNotContains(page, 'SMS')
 
     def test_right_code_creates_the_account(self):
         self.client.post(reverse('signup'), self.DATA)
@@ -376,17 +356,14 @@ class OTPPageTests(TestCase):
         self.assertContains(response, 'That code is incorrect. 4 tries left.')
         self.assertFalse(User.objects.filter(phone_number='09175550123').exists())
 
-    def test_switch_to_email_then_verify(self):
+    def test_resend_after_a_minute(self):
         self.client.post(reverse('signup'), self.DATA)
-        response = self.client.post(reverse('otp_resend'), {'channel': 'email'}, follow=True)
-        self.assertEqual(self.deliver.call_args.args[:2], ('email', 'bea.santos@example.com'))
+        with mock.patch('django.utils.timezone.now', return_value=timezone.now() + timedelta(seconds=61)):
+            response = self.client.post(reverse('otp_resend'), follow=True)
         self.assertContains(response, 'We sent a new code to your email.')
-        self.assertContains(response, 'be********@example.com')
-        self.assertContains(response, 'Send via SMS instead')
-        self.client.post(reverse('otp'), {'code': self.sent_code()})
-        self.assertTrue(User.objects.filter(email='bea.santos@example.com').exists())
+        self.assertEqual(self.deliver.call_count, 2)
 
     def test_resend_too_soon_shows_the_wait(self):
         self.client.post(reverse('signup'), self.DATA)
-        response = self.client.post(reverse('otp_resend'), {'channel': 'sms'}, follow=True)
+        response = self.client.post(reverse('otp_resend'), follow=True)
         self.assertContains(response, 'Please wait')

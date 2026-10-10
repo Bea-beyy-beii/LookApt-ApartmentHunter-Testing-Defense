@@ -2,8 +2,10 @@ from django.db import models
 
 
 class OTPCode(models.Model):
-    """A one-time code sent by SMS or email (sign-up now, forgot password later).
-    The code itself is never stored, only a keyed hash of it (core_accounts/otp.py)."""
+    """A one-time code sent by email (sign-up now, forgot password later).
+    The code itself is never stored, only a keyed hash of it (core_accounts/otp.py).
+    Codes only go by email for now; the SMS choice is kept so texts can come back
+    later without a migration."""
 
     class Purpose(models.TextChoices):
         SIGNUP = 'signup', 'Sign up'

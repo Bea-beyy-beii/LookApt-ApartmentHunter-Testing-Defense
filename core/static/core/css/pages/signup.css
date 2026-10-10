@@ -55,6 +55,11 @@
     list-style: none;
 }
 
+/* Forgot password: 1 Account · 2 Code · 3 New Password */
+.signup-stepper--3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
 .signup-stepper-item {
 
     position: relative;
@@ -377,6 +382,8 @@
 .signup-back {
 
     border: 2px solid #c7cfdb;
+
+    text-decoration: none;          /* also used as a link (forgot password: Back to log in) */
 
     background: rgba(255, 252, 243, 0.85);
 
