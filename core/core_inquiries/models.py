@@ -1,6 +1,9 @@
 # core_inquiries/models.py
 # - Application: "Apply as Renter" (unit is available) or "Join Waitlist" (unit is occupied)
-#                -> shows up in the landlord's Requests tab
+#                pending    -> Pending Requests tab (both sides)
+#                waitlisted -> Waitlist tab (landlord approved the waitlist request)
+#                accepted   -> a Tenancy was created (Manage Rentals / Rental History)
+#                declined / withdrawn / closed -> Archive tab (kept for 30 days)
 # - Conversation + Message: "Inquire with Landlord"
 #                -> shows up in Messages for both sides
 #   A conversation is always started by a renter: landlords can only reply.
@@ -19,9 +22,37 @@ class Application(models.Model):
 
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
-        ACCEPTED = "accepted", "Accepted"
+        WAITLISTED = "waitlisted", "Waitlisted"
+        ACCEPTED = "accepted", "Approved"
+        DECLINED = "declined", "Rejected"
+        WITHDRAWN = "withdrawn", "Cancelled"
+        CLOSED = "closed", "Closed"          # the unit was rented to someone else
+
+    # Still waiting on something (shown in Pending Requests / Waitlist)
+    OPEN_STATUSES = (Status.PENDING, Status.WAITLISTED)
+    # Finished without a tenancy (shown in the Archive)
+    ARCHIVED_STATUSES = (Status.DECLINED, Status.WITHDRAWN, Status.CLOSED)
+
+    class SiteVisit(models.TextChoices):
+        PENDING = "pending", "Pending"
+        CONFIRMED = "confirmed", "Confirmed"
         DECLINED = "declined", "Declined"
-        WITHDRAWN = "withdrawn", "Withdrawn"
+
+    class Reason(models.TextChoices):
+        # Landlord rejects a request
+        UNIT_UNAVAILABLE = "unit_unavailable", "Unit is no longer available"
+        REQUIREMENTS = "requirements", "Requirements not met"
+        MOVE_IN_DATE = "move_in_date", "Move-in date doesn't work"
+        OCCUPANTS = "occupants", "Too many occupants"
+        CHOSE_OTHER = "chose_other", "Chose another applicant"
+        # Renter cancels a request
+        FOUND_OTHER = "found_other", "Found another place"
+        PLANS_CHANGED = "plans_changed", "Change of plans"
+        BUDGET = "budget", "Price / budget"
+        LOCATION = "location", "Location doesn't suit me"
+        # Set by the app
+        UNIT_RENTED = "unit_rented", "Unit was rented to another applicant"
+        OTHER = "other", "Other"
 
     application_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     renter = models.ForeignKey("core.Renter", on_delete=models.CASCADE, related_name="applications")
@@ -31,8 +62,17 @@ class Application(models.Model):
     occupants = models.JSONField(default=list)          # ["Arem Kein Maraño", "Juan Dela Cruz"]
     move_in_date = models.DateField()
     site_visit_date = models.DateField(null=True, blank=True)   # apply only (occupied units can't be visited)
+    site_visit_time = models.TimeField(null=True, blank=True)
+    site_visit_status = models.CharField(max_length=10, choices=SiteVisit.choices, blank=True)   # empty = no visit
 
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+
+    # Why it was rejected / cancelled / closed (shown in the Archive)
+    reason = models.CharField(max_length=20, choices=Reason.choices, blank=True)
+    reason_note = models.TextField(max_length=500, blank=True)
+    decided_at = models.DateTimeField(null=True, blank=True)    # last status change (waitlisted / archived)
+    notified_at = models.DateTimeField(null=True, blank=True)   # "Notify Applicant" (waitlist, unit vacant)
+    edited_at = models.DateTimeField(null=True, blank=True)     # renter changed it with "Edit Application"
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -40,16 +80,20 @@ class Application(models.Model):
     class Meta:
         ordering = ["-created_at"]
         constraints = [
-            # One open application per renter per unit
+            # One open application (pending or on the waitlist) per renter per unit
             models.UniqueConstraint(
                 fields=["renter", "unit"],
-                condition=Q(status="pending"),
-                name="one_pending_application_per_unit",
+                condition=Q(status__in=["pending", "waitlisted"]),
+                name="one_open_application_per_unit",
             ),
         ]
 
     def __str__(self):
         return f"{self.get_kind_display()} — {self.renter.user} → {self.unit}"
+
+    @property
+    def is_open(self):
+        return self.status in self.OPEN_STATUSES
 
 
 class Conversation(models.Model):

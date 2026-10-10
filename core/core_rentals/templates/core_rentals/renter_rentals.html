@@ -1,0 +1,141 @@
+{% comment %}
+    Rental History (renter dashboard). Data: core_rentals.services.get_renter_rentals_context().
+    A tenancy appears here as soon as the landlord approves the renter as tenant
+    (Inquiries → Pending Requests) or assigns them in Manage Rentals.
+{% endcomment %}
+{% load listing_tags %}
+
+<div class="section-heading">
+    <h1>Rental History</h1>
+    <p>View your previous and current rentals.</p>
+</div>
+
+{% for t in current_rentals %}
+<section class="current-rental">
+    <div class="current-rental-card">
+
+        <div class="current-rental-image">
+            {% if t.cover_url %}<img src="{{ t.cover_url }}" alt="{{ t.unit.complex.complex_name }}">{% endif %}
+            <span class="rental-status active">
+                <span class="status-dot"></span>
+                {% if t.upcoming %}Moving in {{ t.start_date|date:"M j" }}{% else %}Active Rental{% endif %}
+            </span>
+        </div>
+
+        <div class="current-rental-info">
+            <div class="rental-title-row">
+                <div>
+                    <h2>{{ t.unit.complex.complex_name }}</h2>
+                    <p class="rental-location">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 21s7-6.1 7-12A7 7 0 1 0 5 9c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></svg>
+                        {{ t.unit.complex.address }}
+                    </p>
+                </div>
+            </div>
+
+            <div class="rental-details-grid">
+                <div class="rental-detail">
+                    <div class="rental-detail-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>
+                    </div>
+                    <div>
+                        <span class="detail-label">Rental Period</span>
+                        <strong>{{ t.term_start|date:"M j, Y" }} – {{ t.term_end|date:"M j, Y" }}</strong>
+                        <span class="rental-countdown">
+                            {% if t.upcoming %}Starts in {{ t.days_to_start }} day{{ t.days_to_start|pluralize }}
+                            {% else %}Ends in {{ t.days_left }} day{{ t.days_left|pluralize }}{% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="rental-detail">
+                    <div class="rental-detail-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M15 8.5c-.7-.6-1.6-1-3-1-1.7 0-3 .8-3 2s1.3 2 3 2 3 .8 3 2-1.3 2-3 2c-1.4 0-2.4-.4-3-1"/><path d="M12 6v12"/></svg>
+                    </div>
+                    <div>
+                        <span class="detail-label">Monthly Rent</span>
+                        <strong>₱{{ t.monthly_rent|floatformat:"0g" }} / month</strong>
+                        {% if t.pay %}<span class="rental-countdown">{{ t.pay.label }} · {{ t.pay.detail }}</span>{% endif %}
+                    </div>
+                </div>
+
+                <div class="rental-detail">
+                    <div class="rental-detail-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="5" y="4" width="14" height="17" rx="1"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+                    </div>
+                    <div>
+                        <span class="detail-label">Unit / Room</span>
+                        <strong>{{ t.unit.unit_name }}</strong>
+                        <span class="rental-countdown">{{ t.occupant_count }} tenant{{ t.occupant_count|pluralize }}</span>
+                    </div>
+                </div>
+
+                <div class="rental-detail">
+                    <div class="rental-detail-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="3"/><path d="M5 20c.8-3.5 3.1-5 7-5s6.2 1.5 7 5"/></svg>
+                    </div>
+                    <div>
+                        <span class="detail-label">Landlord / Property Owner</span>
+                        <strong>{{ t.landlord_name }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</section>
+{% empty %}
+<section class="current-rental">
+    <div class="listing-empty">
+        <h3>No current rental</h3>
+        <p>Once a landlord approves your tenant application, your rental shows up here.</p>
+    </div>
+</section>
+{% endfor %}
+
+
+<section class="past-rentals">
+    <div class="past-rentals-heading">
+        <div class="past-rentals-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3.8 12a8.2 8.2 0 1 0 2.4-5.8"/><path d="M3.8 5v5h5"/><path d="M12 7.5v5l3.3 2"/></svg>
+            <h2>Past Rentals</h2>
+        </div>
+    </div>
+
+    <div class="past-rentals-list">
+        {% for t in past_rentals %}
+            <article class="past-rental-card">
+                <div class="past-rental-image">
+                    {% if t.cover_url %}<img src="{{ t.cover_url }}" alt="{{ t.unit.complex.complex_name }}">{% endif %}
+                </div>
+
+                <div class="past-rental-info">
+                    <h3>{{ t.unit.complex.complex_name }}</h3>
+                    <p class="past-rental-location">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 21s7-6.1 7-12A7 7 0 1 0 5 9c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></svg>
+                        {{ t.unit.complex.address }}
+                    </p>
+                </div>
+
+                <div class="past-rental-detail">
+                    <span>Rental Period</span>
+                    <strong>{{ t.start_date|date:"M Y" }} – {{ t.ended_on|default:t.end_date|date:"M Y" }}</strong>
+                </div>
+
+                <div class="past-rental-detail">
+                    <span>Monthly Rent</span>
+                    <strong>₱{{ t.monthly_rent|floatformat:"0g" }} / month</strong>
+                </div>
+
+                <div class="past-rental-detail">
+                    <span>Unit / Room</span>
+                    <strong>{{ t.unit.unit_name }}</strong>
+                </div>
+
+                <span class="rental-status {{ t.status }}">{{ t.get_status_display }}</span>
+            </article>
+        {% empty %}
+            <p class="past-rentals-empty">Rentals you've completed will be listed here.</p>
+        {% endfor %}
+    </div>
+</section>

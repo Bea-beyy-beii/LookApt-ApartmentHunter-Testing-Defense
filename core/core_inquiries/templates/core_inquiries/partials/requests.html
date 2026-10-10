@@ -1,103 +1,12 @@
 {# core_inquiries/partials/requests.html #}
-{# Renter: the applications they sent. Landlord: the applications sent to their units. #}
+{# Pending Requests. Renter: the requests they sent. Landlord: the requests sent to their units. #}
 <div class="requests-view" id="requests-view">
 
-    {% if requests %}
-        <div class="request-list">
-
-            {% for application in requests %}
-                <article class="inquiry-request" data-request-id="{{ application.pk }}">
-
-                    <div class="request-property">
-                        {% if application.cover_url %}
-                            <img src="{{ application.cover_url }}"
-                                 alt="{{ application.unit.complex.complex_name }}"
-                                 class="request-property-image">
-                        {% else %}
-                            <div class="request-property-placeholder">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                    <path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/>
-                                    <path d="M9 21v-6h6v6"/>
-                                </svg>
-                            </div>
-                        {% endif %}
-
-                        <div class="request-property-info">
-                            <h3>{{ application.unit.complex.complex_name }} ({{ application.unit.unit_name }})</h3>
-                            {% if is_landlord_inbox %}
-                                <p>From <strong>{{ application.renter.user.display_name }}</strong></p>
-                            {% else %}
-                                <p>{{ application.unit.complex.address }}</p>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <div class="request-details">
-
-                        <div class="request-type">
-                            <span class="request-label">Request</span>
-                            <strong>{{ application.get_kind_display }}</strong>
-                        </div>
-
-                        <div class="request-status">
-                            <span class="request-label">Status</span>
-                            <span class="status-badge status-{{ application.status }}">
-                                {{ application.get_status_display }}
-                            </span>
-                        </div>
-
-                        <time class="request-date" datetime="{{ application.created_at|date:'c' }}">
-                            Submitted {{ application.created_at|date:"M j, Y" }}
-                        </time>
-                    </div>
-
-                    <dl class="request-facts">
-                        <div>
-                            <dt>Tenant{{ application.occupants|length|pluralize }}</dt>
-                            <dd>{{ application.occupants|join:", " }}</dd>
-                        </div>
-                        <div>
-                            <dt>Move-in</dt>
-                            <dd>{{ application.move_in_date|date:"M j, Y" }}</dd>
-                        </div>
-                        <div>
-                            <dt>Site visit</dt>
-                            <dd>{% if application.site_visit_date %}{{ application.site_visit_date|date:"M j, Y" }}{% elif application.kind == "waitlist" %}Not available (occupied){% else %}Not requested{% endif %}</dd>
-                        </div>
-                    </dl>
-
-                    {% if application.status == "pending" %}
-                        <div class="request-note">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                <circle cx="12" cy="12" r="9"/>
-                                <path d="M12 8v5M12 16h.01"/>
-                            </svg>
-                            <p>
-                                {% if is_landlord_inbox %}
-                                    Waiting for your review.
-                                {% else %}
-                                    Your request is being reviewed. You will be notified when the landlord updates its status.
-                                {% endif %}
-                            </p>
-                        </div>
-
-                    {% elif application.status == "accepted" %}
-                        <div class="request-note request-note-success">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                <path d="m5 12 4 4L19 6"/>
-                            </svg>
-                            <p>This request has been accepted. Check your messages for the next steps.</p>
-                        </div>
-
-                    {% else %}
-                        <div class="request-note request-note-muted">
-                            <p>This request has been closed ({{ application.get_status_display|lower }}).</p>
-                        </div>
-                    {% endif %}
-
-                </article>
+    {% if pending_requests %}
+        <div class="rq-list">
+            {% for application in pending_requests %}
+                {% include "core_inquiries/partials/request_card.html" %}
             {% endfor %}
-
         </div>
     {% else %}
         <div class="inquiry-empty-state">
@@ -107,12 +16,12 @@
                     <path d="M9 7h6M9 11h6M9 15h4"/>
                 </svg>
             </div>
-            <h3>No requests yet</h3>
+            <h3>No pending requests</h3>
             <p>
                 {% if is_landlord_inbox %}
                     Tenant and waitlist applications for your units will appear here.
                 {% else %}
-                    Applications and waitlist requests you send to landlords will appear here.
+                    Applications and waitlist requests you send to landlords will appear here while they're being reviewed.
                 {% endif %}
             </p>
         </div>

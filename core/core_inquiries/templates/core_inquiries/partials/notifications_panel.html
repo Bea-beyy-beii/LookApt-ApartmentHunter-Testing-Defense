@@ -32,7 +32,7 @@
                     data-notification-id="{{ notification.id }}"
                 >
 
-                    <div class="notification-icon">
+                    <div class="notification-icon notification-icon--{{ notification.tone|default:'neutral' }}">
 
                         {% if notification.type == "message" %}
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">

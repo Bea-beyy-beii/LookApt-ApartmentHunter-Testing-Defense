@@ -31,7 +31,8 @@
     {% block extra_css %}{% endblock %}
 </head>
 
-<body>
+{# data-tab = the open dashboard tab (renter_dashboard.js keeps it up to date) #}
+<body data-tab="{% if active_tab %}{{ active_tab }}{% endif %}">
 
 <div class="dashboard">
 

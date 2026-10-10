@@ -7,6 +7,16 @@ urlpatterns = [
     # Renter: "Apply as Renter" / "Join Waitlist"
     path("inquiries/apply/<uuid:unit_pk>/", views.submit_application, name="submit_application"),
 
+    # Pending Requests / Waitlist (landlord)
+    path("inquiries/requests/<uuid:pk>/reject/", views.reject_request, name="reject_request"),
+    path("inquiries/requests/<uuid:pk>/waitlist/", views.approve_waitlist, name="approve_waitlist"),
+    path("inquiries/requests/<uuid:pk>/notify/", views.notify_applicant, name="notify_applicant"),
+    path("inquiries/requests/<uuid:pk>/site-visit/", views.site_visit_decision, name="site_visit_decision"),
+
+    # Pending Requests / Waitlist (renter)
+    path("inquiries/requests/<uuid:pk>/cancel/", views.cancel_request, name="cancel_request"),
+    path("inquiries/requests/<uuid:pk>/edit/", views.edit_request, name="edit_request"),
+
     # Renter: "Inquire with Landlord" pop-up
     path("inquiries/inquiry/", views.inquiry_thread, name="inquiry_thread"),
     path("inquiries/inquiry/send/", views.send_inquiry, name="send_inquiry"),

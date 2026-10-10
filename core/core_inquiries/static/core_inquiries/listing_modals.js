@@ -1,6 +1,7 @@
 // =========================================================
 // LISTING PAGE POP-UPS (renter)
 // - Apply as Renter / Join Waitlist  -> application form
+//   (also "Edit Application" in the renter's Inquiries tab: data-edit-url)
 // - Inquire with Landlord            -> message pop-up
 // Both send JSON to core_inquiries; the server re-checks everything.
 // =========================================================
@@ -83,7 +84,10 @@
         const addButton = dialog.querySelector("[data-add-tenant]");
         const moveIn = form.elements.move_in_date;
         const visitDate = form.elements.site_visit_date;
+        const visitTime = form.elements.site_visit_time;
         const visitFields = dialog.querySelector("[data-visit-fields]");
+        const visitHint = dialog.querySelector("[data-visit-hint]");
+        const draftButton = dialog.querySelector("[data-save-draft]");
         const formError = dialog.querySelector("[data-form-error]");
         const submit = dialog.querySelector("[data-submit]");
 
@@ -93,6 +97,13 @@
         const extraRows = () => [...list.querySelectorAll("input[name=occupant]")];
         const maxOccupants = () => Number(unit.maxOccupants) || 1;
         const isWaitlist = () => unit.kind === "waitlist";
+        const isEdit = () => Boolean(unit.editUrl);
+        const submitLabel = () => (isEdit() ? "Save Changes" : "Submit Application");
+
+        function showVisit(show) {
+            visitFields.hidden = !show;
+            visitHint.hidden = !show;
+        }
 
         function renumber() {
             list.querySelectorAll(".lm-tenant-number").forEach((badge, i) => { badge.textContent = i + 1; });
@@ -133,11 +144,17 @@
             const unitName = unit.unitName;
             const complexName = unit.complexName;
 
-            dialog.querySelector("[data-mode-title]").textContent = waitlist ? "Waitlist Application Form" : "Renter Application Form";
+            const title = waitlist ? "Waitlist Application" : "Renter Application";
+            dialog.querySelector("[data-mode-title]").textContent = isEdit() ? `Edit ${title}` : `${title} Form`;
+            draftButton.hidden = isEdit();
+            submit.textContent = submitLabel();
             dialog.querySelector("[data-mode-intro]").innerHTML = "";
             const intro = dialog.querySelector("[data-mode-intro]");
             const strong = text => Object.assign(document.createElement("strong"), { textContent: text });
-            if (waitlist) {
+            if (isEdit()) {
+                intro.append("Update your request for ", strong(unitName), " at ", strong(complexName),
+                    ". Changing the site visit date or time sends it to the landlord for confirmation again.");
+            } else if (waitlist) {
                 intro.append(strong(unitName), " of ", strong(complexName),
                     " is currently occupied. Fill out this form to join the waitlist and get notified when this unit becomes available.");
             } else {
@@ -165,23 +182,32 @@
         function reset() {
             form.reset();
             extraRows().forEach(input => input.closest("li").remove());
-            visitFields.hidden = true;
+            showVisit(false);
             clearErrors();
+        }
+
+        // Fill the form from a saved draft or, when editing, the request as sent
+        function fill(values) {
+            (values.occupants || []).forEach(name => addTenant(name));
+            if (values.move_in_date) moveIn.value = values.move_in_date;
+            if (!isWaitlist() && (values.wants_visit || values.site_visit_date)) {
+                form.querySelector('input[name=wants_visit][value="yes"]').checked = true;
+                showVisit(true);
+                visitDate.value = values.site_visit_date || "";
+                visitTime.value = values.site_visit_time || "";
+            }
         }
 
         function restoreDraft() {
             let draft = null;
             try { draft = JSON.parse(localStorage.getItem(draftKey())); } catch (error) { draft = null; }
             if (!draft) return false;
-
-            (draft.occupants || []).forEach(name => addTenant(name));
-            if (draft.move_in_date) moveIn.value = draft.move_in_date;
-            if (!isWaitlist() && draft.wants_visit) {
-                form.querySelector('input[name=wants_visit][value="yes"]').checked = true;
-                visitFields.hidden = false;
-                visitDate.value = draft.site_visit_date || "";
-            }
+            fill(draft);
             return true;
+        }
+
+        function restoreRequest() {
+            try { fill(JSON.parse(unit.prefill || "{}")); } catch (error) { /* keep the empty form */ }
         }
 
         function collect() {
@@ -192,6 +218,7 @@
                 occupants: ["", ...extraRows().map(input => input.value.trim())],
                 move_in_date: moveIn.value,
                 site_visit_date: wantsVisit ? visitDate.value : "",
+                site_visit_time: wantsVisit ? visitTime.value : "",
                 wants_visit: wantsVisit,
             };
         }
@@ -209,6 +236,7 @@
                 if (!data.site_visit_date) errors.site_visit_date = "Pick a date for the site visit, or choose No.";
                 else if (data.site_visit_date < visitDate.min) errors.site_visit_date = "The site visit can't be in the past.";
                 else if (data.move_in_date && data.site_visit_date > data.move_in_date) errors.site_visit_date = "Schedule the site visit on or before your move-in date.";
+                if (!data.site_visit_time) errors.site_visit_time = "Pick a time for the site visit.";
             }
             return errors;
         }
@@ -222,7 +250,7 @@
             unit.button = button;
             reset();
             setMode();
-            restoreDraft();
+            if (isEdit()) restoreRequest(); else restoreDraft();
             renumber();
             dialog.showModal();
             dialog.querySelector(".lm-body").scrollTop = 0;
@@ -245,7 +273,7 @@
             if (fieldError) fieldError.hidden = true;
 
             if (event.target.name === "wants_visit") {
-                visitFields.hidden = event.target.value !== "yes";
+                showVisit(event.target.value === "yes");
                 if (!visitFields.hidden) visitDate.focus();
             }
             if (event.target === moveIn && moveIn.value) visitDate.max = moveIn.value;
@@ -278,15 +306,21 @@
                     showErrors(result.body.errors || { __all__: "Something went wrong. Please try again." });
                     return;
                 }
-                try { localStorage.removeItem(draftKey()); } catch (error) { /* ignore */ }
                 dialog.close();
+                if (isEdit()) {
+                    // Inquiries tab: reload so the card shows the new values
+                    if (window.LookAptRequests) window.LookAptRequests.reloadWith(result.body.message);
+                    else location.reload();
+                    return;
+                }
+                try { localStorage.removeItem(draftKey()); } catch (error) { /* ignore */ }
                 toast(result.body.message);
                 markApplied(unit.unit, isWaitlist());
             } catch (error) {
                 showErrors({ __all__: "Couldn't reach the server. Check your connection and try again." });
             } finally {
                 submit.disabled = false;
-                submit.textContent = "Submit Application";
+                submit.textContent = submitLabel();
             }
         });
 

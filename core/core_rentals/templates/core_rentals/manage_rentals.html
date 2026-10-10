@@ -1,6 +1,7 @@
 {% comment %}
     Manage Rentals tab (landlord dashboard).
-    Tabs: All Units / Occupied / Vacant / Ending Soon / Archive, plus search.
+    Toolbar: search, a Filter dropdown (complex / availability / payments /
+    contract) and an Archive toggle.
     Data: core_rentals.services.get_rentals_context(). Behaviour: rentals.js.
 {% endcomment %}
 {% load listing_tags %}
@@ -15,26 +16,63 @@
         </div>
     </div>
 
-    <!-- Tabs + search -->
+    <!-- Search + Filter dropdown + Archive -->
     <div class="rt-toolbar">
-        <div class="listing-status-filters" role="tablist" aria-label="Filter units">
-            <button type="button" class="status-filter active" data-rental-tab="all">All Units <span class="status-filter-count">{{ rental_counts.all }}</span></button>
-            <button type="button" class="status-filter" data-rental-tab="occupied"><span class="status-dot rt-dot--occupied"></span>Occupied <span class="status-filter-count">{{ rental_counts.occupied }}</span></button>
-            <button type="button" class="status-filter" data-rental-tab="vacant"><span class="status-dot rt-dot--vacant"></span>Vacant <span class="status-filter-count">{{ rental_counts.vacant }}</span></button>
-            <button type="button" class="status-filter" data-rental-tab="ending"><span class="status-dot rt-dot--ending"></span>Ending Soon <span class="status-filter-count">{{ rental_counts.ending_soon }}</span></button>
-            <button type="button" class="status-filter" data-rental-tab="archive">{% feature_icon "clock" %} Archive <span class="status-filter-count">{{ rental_counts.archive }}</span></button>
-        </div>
-
         <label class="rt-search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
             <input type="search" placeholder="Search unit, tenant, or building…" aria-label="Search unit, tenant, or building" data-rental-search>
         </label>
+
+        <div class="rt-filter-wrap">
+            <button type="button" class="status-filter rt-filter-toggle" data-filter-toggle aria-haspopup="true" aria-expanded="false">
+                {% feature_icon "filter" %} Filter
+                <span class="rt-filter-badge" data-filter-count hidden></span>
+                <svg class="rt-filter-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+
+            <div class="rt-filter-panel" data-filter-panel hidden>
+                <div class="rt-filter-head">
+                    <strong>Filter</strong>
+                    <button type="button" class="rt-filter-clear" data-filter-clear>Clear all</button>
+                </div>
+
+                <fieldset class="rt-filter-group">
+                    <legend>Complex</legend>
+                    <label class="rt-check"><input type="checkbox" data-filter-all="complex" checked> All</label>
+                    {% for group in rental_groups %}
+                        <label class="rt-check"><input type="checkbox" data-filter="complex" value="{{ group.complex.pk }}"> {{ group.complex.complex_name }}</label>
+                    {% endfor %}
+                </fieldset>
+
+                <fieldset class="rt-filter-group">
+                    <legend>Availability</legend>
+                    <label class="rt-check"><input type="checkbox" data-filter="state" value="vacant"> Vacant</label>
+                    <label class="rt-check"><input type="checkbox" data-filter="state" value="occupied"> Occupied</label>
+                </fieldset>
+
+                <fieldset class="rt-filter-group">
+                    <legend>Payments</legend>
+                    <label class="rt-check"><input type="checkbox" data-filter="pay" value="paid"> Paid</label>
+                    <label class="rt-check"><input type="checkbox" data-filter="pay" value="due_soon"> Due Soon</label>
+                    <label class="rt-check"><input type="checkbox" data-filter="pay" value="overdue"> Overdue</label>
+                </fieldset>
+
+                <fieldset class="rt-filter-group">
+                    <legend>Contract</legend>
+                    <label class="rt-check"><input type="checkbox" data-filter="ending" value="1"> Terminating Soon</label>
+                </fieldset>
+            </div>
+        </div>
+
+        <button type="button" class="status-filter" data-archive-toggle aria-pressed="false">
+            {% feature_icon "clock" %} Archive <span class="status-filter-count">{{ rental_counts.archive }}</span>
+        </button>
     </div>
 
     <!-- Current units, grouped by complex -->
     <div data-rental-current>
         {% for group in rental_groups %}
-            <section class="rt-complex" data-rental-complex>
+            <section class="rt-complex" data-rental-complex data-complex="{{ group.complex.pk }}">
 
                 <header class="rt-complex-header">
                     <span class="rt-complex-cover">

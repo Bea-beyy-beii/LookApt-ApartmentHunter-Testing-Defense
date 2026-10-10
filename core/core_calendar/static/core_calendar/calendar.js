@@ -311,6 +311,7 @@
         const grid = widget.querySelector("[data-cal-grid]");
         const dayTitle = widget.querySelector("[data-day-title]");
         const dayList = widget.querySelector("[data-day-list]");
+        const dayCount = widget.querySelector("[data-day-count]");
         const agenda = widget.querySelector("[data-agenda]");
         const tabs = [...widget.querySelectorAll("[data-widget-view]")];
 
@@ -351,6 +352,7 @@
             const day = parse(selected);
             dayTitle.textContent = selected === iso(today()) ? `Today · ${shortDate(day)}` : longDate(day);
             const items = days.get(selected) || [];
+            if (dayCount) dayCount.textContent = items.length ? `${items.length} event${items.length === 1 ? "" : "s"}` : "";
             dayList.replaceChildren(...items.map(item => itemRow(item)));
             if (!items.length) dayList.append(emptyRow("Nothing scheduled on this day."));
         }

@@ -1,0 +1,15 @@
+<div class="inquiry-empty-state">
+    <div class="empty-state-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="9" cy="8" r="3"/><path d="M3 20c.6-3.3 2.8-5 6-5s5.4 1.7 6 5"/><path d="M16 5.5a3 3 0 0 1 0 5.5M18 15c1.6.6 2.6 2.2 3 5"/>
+        </svg>
+    </div>
+    <h3>No one on the waitlist</h3>
+    <p>
+        {% if is_landlord_inbox %}
+            Waitlist requests you approve appear here, grouped by unit. Once a unit is vacant you can notify them.
+        {% else %}
+            When a landlord approves your waitlist request, it moves here.
+        {% endif %}
+    </p>
+</div>

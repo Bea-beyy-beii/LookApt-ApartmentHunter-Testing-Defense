@@ -1,0 +1,26 @@
+{# Due dates in the receivables drawer. Needs rows, name, empty, hidden. #}
+<ul class="lr-rows" data-lr-list="{{ name }}"{% if hidden %} hidden{% endif %}>
+    {% for row in rows %}
+        <li class="lr-row">
+            <span class="lr-date">{{ row.due|date:"M j" }}</span>
+            <span class="lr-who">
+                <strong>{{ row.unit.unit_name }} · {{ row.unit.complex.complex_name }}</strong>
+                <small>{{ row.tenancy.tenant_name }} · ₱{{ row.amount|floatformat:"0g" }}</small>
+            </span>
+            <span class="lr-status lr-status--{{ row.status }}">
+                {% if row.status == "overdue" %}Overdue{% elif row.status == "due_soon" %}Due Soon{% else %}Upcoming{% endif %}
+            </span>
+            {% if row.pay_url %}
+                <button type="button" class="lr-pay"
+                        data-open-pay
+                        data-url="{{ row.pay_url }}"
+                        data-unit-name="{{ row.unit.unit_name }}"
+                        data-tenant="{{ row.tenancy.tenant_name }}"
+                        data-rent="{{ row.tenancy.monthly_rent|floatformat:'0g' }}"
+                        data-months="{{ row.payable_json }}">Mark as Paid</button>
+            {% endif %}
+        </li>
+    {% empty %}
+        <li class="lr-empty">{{ empty }}</li>
+    {% endfor %}
+</ul>

@@ -7,12 +7,13 @@ from decimal import Decimal
 
 from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 
 from core.core_inquiries.models import Application
 from core.core_inquiries.services import current_lease_end, earliest_move_in
 from core.core_maps.maps.services import complex_landmarks
 
-from .models import BedroomType, Complex, SavedListing, Unit
+from .models import BedroomType, Complex, ListingView, SavedListing, Unit
 from .services import renter_visible_complexes
 
 SIMILAR_LIMIT = 6
@@ -22,6 +23,13 @@ SIMILAR_PRICE_RANGE = Decimal("0.30")   # "similar" = rent within ±30%
 # =========================================================
 # HELPERS
 # =========================================================
+
+def record_view(user, complex_obj, unit=None):
+    """Count a renter's visit for the landlord's "Views" (once per page per day)."""
+    ListingView.objects.get_or_create(
+        complex=complex_obj, unit=unit, viewer=user, viewed_on=timezone.localdate(),
+    )
+
 
 def _published_units():
     # Renters never see unpublished units
@@ -49,7 +57,7 @@ def _decorate_unit(unit):
 
 def _attach_inquiry_info(units, user):
     """What the Apply / Waitlist buttons and the demand box need, per unit."""
-    pending = Application.objects.filter(unit__in=units, status=Application.Status.PENDING)
+    pending = Application.objects.filter(unit__in=units, status__in=Application.OPEN_STATUSES)
     demand = Counter(pending.values_list("unit_id", flat=True))
     mine = set(pending.filter(renter__user=user).values_list("unit_id", flat=True))
 

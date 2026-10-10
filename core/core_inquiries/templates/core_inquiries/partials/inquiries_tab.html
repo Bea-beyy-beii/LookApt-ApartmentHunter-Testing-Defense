@@ -1,24 +1,45 @@
+{% load listing_tags %}
 <div class="inquiry-page-header">
     <h1>Inquiries</h1>
-    <p>{% if is_landlord_inbox %}Messages from renters and the applications they sent you{% else %}Messages with Landlords and Review Inquiry Statuses{% endif %}</p>
+    <p>{% if is_landlord_inbox %}Manage messages with renters and review inquiry requests.{% else %}Messages with Landlords and Review Inquiry Statuses{% endif %}</p>
 </div>
 
-<div class="inquiry-layout">
+{# Fixed height: each sub-tab scrolls inside the box (requests.css) #}
+<div class="inquiry-layout" data-inquiry-layout data-role="{% if is_landlord_inbox %}landlord{% else %}renter{% endif %}">
   <section class="inquiry-main">
-    <div class="inquiry-tabs">
+    <div class="inquiry-tabs" role="tablist">
       <button type="button" class="inquiry-tab active" data-tab="messages">
-        Messages {% if unread_messages_count %}<span class="badge">{{ unread_messages_count }}</span>{% endif %}
+        {% feature_icon "chat" %} Messages {% if unread_messages_count %}<span class="badge">{{ unread_messages_count }}</span>{% endif %}
       </button>
       <button type="button" class="inquiry-tab" data-tab="requests">
-        Requests {% if pending_requests_count %}<span class="badge">{{ pending_requests_count }}</span>{% endif %}
+        {% feature_icon "document" %} Pending Requests {% if pending_requests_count %}<span class="badge">{{ pending_requests_count }}</span>{% endif %}
+      </button>
+      <button type="button" class="inquiry-tab" data-tab="waitlist">
+        {% feature_icon "occupants" %} Waitlist {% if waitlist_count %}<span class="badge">{{ waitlist_count }}</span>{% endif %}
+      </button>
+      <button type="button" class="inquiry-tab" data-tab="archive">
+        {% feature_icon "clock" %} Archive {% if archive_count %}<span class="badge">{{ archive_count }}</span>{% endif %}
       </button>
     </div>
 
     <div id="tab-messages" class="inquiry-tabpanel">
+      <label class="inquiry-search" data-thread-search-wrap>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+        <input type="search" data-thread-search autocomplete="off"
+               placeholder="{% if is_landlord_inbox %}Search by renter or property name…{% else %}Search by landlord or property name…{% endif %}"
+               aria-label="Search conversations">
+      </label>
+      <p class="inquiry-search-empty" data-thread-search-empty hidden>No conversations match.</p>
       {% include "core_inquiries/partials/messages.html" %}
     </div>
     <div id="tab-requests" class="inquiry-tabpanel" hidden>
       {% include "core_inquiries/partials/requests.html" %}
+    </div>
+    <div id="tab-waitlist" class="inquiry-tabpanel" hidden>
+      {% include "core_inquiries/partials/waitlist.html" %}
+    </div>
+    <div id="tab-archive" class="inquiry-tabpanel" hidden>
+      {% include "core_inquiries/partials/archive.html" %}
     </div>
   </section>
 
@@ -26,3 +47,9 @@
     {% include "core_inquiries/partials/notifications_panel.html" %}
   </aside>
 </div>
+
+{% include "core_inquiries/modals/request_modals.html" %}
+{% if not is_landlord_inbox %}
+    {# "Edit Application" reuses the listing page's form #}
+    {% include "core_inquiries/modals/application_modal.html" %}
+{% endif %}

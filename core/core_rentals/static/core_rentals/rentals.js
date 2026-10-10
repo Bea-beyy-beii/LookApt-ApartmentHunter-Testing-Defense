@@ -1,6 +1,6 @@
 // =========================================================
 // MANAGE RENTALS (landlord dashboard)
-// Tabs + search, collapse a complex, ⋯ menu, and the pop-ups:
+// Search + Filter dropdown + Archive, collapse a complex, ⋯ menu, and the pop-ups:
 // Assign a Renter, Mark as Paid, Complete/Terminate, Renew, Message tenant.
 // (Post on Bulletin lives on the Calendar tab: core_calendar/calendar.js.)
 // The server re-checks everything; after a change the tab reloads.
@@ -91,27 +91,42 @@
 
 
     // =====================================================
-    // TABS + SEARCH
+    // SEARCH + FILTER DROPDOWN + ARCHIVE
+    // Within a group a unit needs to match one ticked option (Vacant OR
+    // Occupied); across groups it must match every group (Vacant AND Overdue).
     // =====================================================
 
     function initFilters(page) {
-        const tabs = [...page.querySelectorAll("[data-rental-tab]")];
         const search = page.querySelector("[data-rental-search]");
         const current = page.querySelector("[data-rental-current]");
         const archive = page.querySelector("[data-rental-archive]");
         const noResults = page.querySelector("[data-no-results]");
-        let tab = "all";
+        const toggle = page.querySelector("[data-filter-toggle]");
+        const panel = page.querySelector("[data-filter-panel]");
+        const badge = page.querySelector("[data-filter-count]");
+        const allComplexes = panel.querySelector('[data-filter-all="complex"]');
+        const archiveButton = page.querySelector("[data-archive-toggle]");
+        const boxes = [...panel.querySelectorAll("[data-filter]")];
+        let showArchive = false;
 
-        function rowMatchesTab(row) {
-            if (tab === "occupied") return row.dataset.state === "occupied";
-            if (tab === "vacant") return row.dataset.state === "vacant";
-            if (tab === "ending") return row.dataset.ending === "1";
-            return true;
+        // {complex: Set, state: Set, pay: Set, ending: Set} of ticked values
+        function chosen() {
+            const groups = {};
+            boxes.filter(b => b.checked).forEach(b => {
+                (groups[b.dataset.filter] = groups[b.dataset.filter] || new Set()).add(b.value);
+            });
+            return groups;
+        }
+
+        function rowMatches(row, groups) {
+            // An empty pay value (no tenancy) never matches a Payments filter
+            return Object.entries(groups).every(([key, values]) => values.has(row.dataset[key] || ""));
         }
 
         function apply() {
             const query = search.value.trim().toLowerCase();
-            const showArchive = tab === "archive";
+            const groups = showArchive ? {} : chosen();
+            const filtering = Object.keys(groups).length > 0;
             current.hidden = showArchive;
             archive.hidden = !showArchive;
 
@@ -121,25 +136,67 @@
                 const rows = [...section.querySelectorAll("[data-rental-row]")];
                 let visible = 0;
                 rows.forEach(row => {
-                    const show = (showArchive || rowMatchesTab(row)) &&
-                        (!query || row.dataset.search.toLowerCase().includes(query));
+                    const show = rowMatches(row, groups) && (!query || row.dataset.search.toLowerCase().includes(query));
                     row.hidden = !show;
                     if (show) visible++;
                 });
-                // A complex with no matching units disappears (except on "All Units" with no search)
-                if (!showArchive) section.hidden = rows.length > 0 && visible === 0 && (tab !== "all" || query);
+                if (!showArchive) {
+                    const complexPicked = !groups.complex || groups.complex.has(section.dataset.complex);
+                    // A complex with no matching units disappears while filtering / searching
+                    section.hidden = !complexPicked || (visible === 0 && (filtering || query) && rows.length > 0);
+                }
                 const empty = section.querySelector("[data-filter-empty]");
                 if (empty) empty.hidden = !(rows.length && visible === 0);
-                if (visible || (!showArchive && !section.hidden)) anyVisible = true;
+                if (!section.hidden) anyVisible = true;
             });
             noResults.hidden = anyVisible || showArchive || !current.querySelector("[data-rental-complex]");
+
+            const count = boxes.filter(b => b.checked).length;
+            badge.textContent = count;
+            badge.hidden = !count;
+            toggle.classList.toggle("is-filtering", count > 0);
         }
 
-        tabs.forEach(button => button.addEventListener("click", () => {
-            tab = button.dataset.rentalTab;
-            tabs.forEach(t => t.classList.toggle("active", t === button));
+        // ---------- open / close ----------
+        function setOpen(open) {
+            panel.hidden = !open;
+            toggle.setAttribute("aria-expanded", String(open));
+        }
+        toggle.addEventListener("click", () => setOpen(panel.hidden));
+        document.addEventListener("click", event => {
+            if (!panel.hidden && !event.target.closest(".rt-filter-wrap")) setOpen(false);
+        });
+        document.addEventListener("keydown", event => { if (event.key === "Escape") setOpen(false); });
+
+        // ---------- checkboxes ----------
+        panel.addEventListener("change", event => {
+            const box = event.target;
+            if (box === allComplexes) {
+                // "All" clears the individual complexes
+                boxes.filter(b => b.dataset.filter === "complex").forEach(b => { b.checked = false; });
+                allComplexes.checked = true;
+            } else if (box.dataset.filter === "complex") {
+                allComplexes.checked = !boxes.some(b => b.dataset.filter === "complex" && b.checked);
+            }
             apply();
-        }));
+        });
+
+        panel.querySelector("[data-filter-clear]").addEventListener("click", () => {
+            boxes.forEach(b => { b.checked = false; });
+            allComplexes.checked = true;
+            apply();
+        });
+
+        // ---------- archive ----------
+        archiveButton.addEventListener("click", () => {
+            showArchive = !showArchive;
+            archiveButton.classList.toggle("active", showArchive);
+            archiveButton.setAttribute("aria-pressed", String(showArchive));
+            toggle.disabled = showArchive;          // archived contracts have no unit filters
+            setOpen(false);
+            apply();
+        });
+
         search.addEventListener("input", apply);
         apply();
     }
@@ -176,8 +233,11 @@
             let top = button.bottom + gap;
             if (height > below && button.top - gap - edge > below) top = button.top - gap - height;
             const left = Math.min(Math.max(edge, button.right - width), window.innerWidth - width - edge);
-            menu.style.top = `${Math.max(edge, top)}px`;
-            menu.style.left = `${left}px`;
+            // The page is drawn at --ui-zoom (90%): measurements come back in
+            // screen pixels, but top/left are applied before the zoom
+            const zoom = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+            menu.style.top = `${Math.max(edge, top) / zoom}px`;
+            menu.style.left = `${left / zoom}px`;
         }
 
         document.addEventListener("click", event => {

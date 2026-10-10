@@ -13,6 +13,7 @@ from dateutil.relativedelta import relativedelta
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Prefetch, Q
+from django.utils import timezone
 
 from core.core_inquiries.models import Application
 from core.core_inquiries.services import LEASE_MONTHS, today
@@ -175,10 +176,10 @@ def mark_paid(tenancy, due_date_values, on=None):
 # =========================================================
 
 def candidates(unit):
-    """Renters who applied for / joined the waitlist of this unit (still pending)."""
+    """Renters who applied for / joined the waitlist of this unit (pending or waitlisted)."""
     return (
         unit.applications
-        .filter(status=Application.Status.PENDING)
+        .filter(status__in=Application.OPEN_STATUSES)
         .select_related("renter__user")
         .order_by("created_at")
     )
@@ -200,7 +201,7 @@ def assign_tenant(unit, start_date, application=None, tenant_name="", occupant_c
         raise ValidationError({"start_date": "The start date can't be more than 5 years ago."})
 
     if application:
-        if application.unit_id != unit.pk or application.status != Application.Status.PENDING:
+        if application.unit_id != unit.pk or not application.is_open:
             raise ValidationError({"application": "That application is no longer open."})
         renter = application.renter
         name = renter.user.display_name
@@ -228,13 +229,22 @@ def assign_tenant(unit, start_date, application=None, tenant_name="", occupant_c
     except IntegrityError:
         raise ValidationError({"__all__": f"{unit.unit_name} already has a tenant."})
 
+    now = timezone.now()
     if application:
         application.status = Application.Status.ACCEPTED
-        application.save(update_fields=["status", "updated_at"])
-        # The unit is taken: other "Apply" requests close; waitlist requests stay for later
-        unit.applications.filter(
-            status=Application.Status.PENDING, kind=Application.Kind.APPLY,
-        ).update(status=Application.Status.DECLINED)
+        application.decided_at = now
+        application.save(update_fields=["status", "decided_at", "updated_at"])
+    # The vacancy is filled: every other request (pending or waitlisted) moves to the Archive.
+    # Recording the tenant already living in an occupied unit keeps its waitlist.
+    others = unit.applications.filter(status__in=Application.OPEN_STATUSES)
+    if application:
+        others = others.exclude(pk=application.pk)
+    elif unit.availability == Unit.Availability.OCCUPIED:
+        others = others.filter(kind=Application.Kind.APPLY)
+    others.update(
+        status=Application.Status.CLOSED, reason=Application.Reason.UNIT_RENTED,
+        reason_note="", decided_at=now, updated_at=now,
+    )
 
     unit.availability = Unit.Availability.OCCUPIED
     unit.occupied_since = start_date
@@ -322,14 +332,14 @@ def get_rentals_context(user):
     )
 
     pending = (
-        Application.objects.filter(unit__complex__landlord__user=user, status=Application.Status.PENDING)
+        Application.objects.filter(unit__complex__landlord__user=user, status__in=Application.OPEN_STATUSES)
         .select_related("renter__user").order_by("created_at")
     )
     candidates_by_unit = {}
     for application in pending:
         candidates_by_unit.setdefault(application.unit_id, []).append(application)
 
-    groups, counts = [], {"all": 0, "occupied": 0, "vacant": 0, "ending_soon": 0}
+    groups = []
     for complex_obj in complexes:
         rows = []
         for unit in complex_obj.units.all():
@@ -344,7 +354,7 @@ def get_rentals_context(user):
                 {
                     "id": str(a.pk),
                     "name": a.renter.user.display_name,
-                    "kind": a.get_kind_display(),
+                    "kind": "On the waitlist" if a.status == Application.Status.WAITLISTED else a.get_kind_display(),
                     "occupants": len(a.occupants) or 1,
                     "move_in": a.move_in_date.isoformat(),
                     "move_in_label": f"{a.move_in_date:%b} {a.move_in_date.day}, {a.move_in_date.year}",
@@ -362,9 +372,7 @@ def get_rentals_context(user):
             "vacant": sum(1 for u in rows if u.state == "vacant"),
             "ending_soon": sum(1 for u in rows if u.ending_soon),
         }
-        for key in ("occupied", "vacant", "ending_soon"):
-            counts[key] += stats[key]
-        counts["all"] += stats["total"]
+    
         groups.append({"complex": complex_obj, "cover_url": _cover_url(complex_obj.pictures.all()), "units": rows, "stats": stats})
 
     archive = [
@@ -377,12 +385,32 @@ def get_rentals_context(user):
     ]
     for tenancy in archive:
         tenancy.unit.cover_url = _cover_url(tenancy.unit.pictures.all())
-    counts["archive"] = len(archive)
+  
 
     return {
         "rental_groups": groups,
         "rental_archive": archive,
-        "rental_counts": counts,
+        "rental_counts": {"archive": len(archive)},
         "bulletin_complexes": [g for g in groups],
         "today_iso": on.isoformat(),
     }
+
+def get_renter_rentals_context(user):
+    """Rental History (renter): current rentals (incl. approved ones that start later) + past ones."""
+    on = today()
+    tenancies = (
+        Tenancy.objects.filter(renter__user=user)
+        .select_related("unit__complex__landlord__user")
+        .prefetch_related("payments", "unit__pictures", "unit__complex__pictures")
+    )
+    current, past = [], []
+    for tenancy in tenancies:
+        _decorate(tenancy, on)
+        unit = tenancy.unit
+        tenancy.cover_url = _cover_url(unit.pictures.all()) or _cover_url(unit.complex.pictures.all())
+        tenancy.landlord_name = unit.complex.landlord.user.display_name
+        tenancy.upcoming = tenancy.start_date > on
+        tenancy.days_to_start = (tenancy.start_date - on).days
+        (current if tenancy.is_active else past).append(tenancy)
+    past.sort(key=lambda t: t.ended_on or t.end_date, reverse=True)
+    return {"current_rentals": current, "past_rentals": past}

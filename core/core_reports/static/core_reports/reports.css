@@ -530,7 +530,7 @@
 .report-modal {
     width: min(550px, calc(100vw - 50px));
 
-    max-height: calc(100vh - 180px);
+    max-height: calc(var(--vh) - 180px);
 
     display: flex;
     flex-direction: column;
@@ -706,7 +706,7 @@
 
     padding: 22px 27px;
 
-    max-height: calc(100vh - 390px);
+    max-height: calc(var(--vh) - 390px);
 }
 
 .report-step.active {
@@ -1368,11 +1368,11 @@
 
     .report-modal {
         width: 100%;
-        max-height: calc(100vh - 30px);
+        max-height: calc(var(--vh) - 30px);
     }
 
     .report-step {
-        max-height: calc(100vh - 300px);
+        max-height: calc(var(--vh) - 300px);
     }
 
     .step-indicator label {

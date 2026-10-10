@@ -1,0 +1,155 @@
+/* Top bar: notification bell + profile dropdown (landlord pages) */
+
+.landlord-dashboard .dashboard-topbar { position: relative; z-index: 20; }
+
+/* Every dashboard tab except My Listings: no breadcrumbs, and the bell /
+   profile float in the top-right corner so the tab's header (or Home's
+   welcome message) starts at the very top, level with them.
+   (40px / 42px = .landlord-dashboard's padding.) */
+body[data-tab]:not([data-tab=""]):not([data-tab="myListings"]) .landlord-dashboard .topbar-breadcrumb { display: none; }
+
+body[data-tab]:not([data-tab=""]):not([data-tab="myListings"]) .landlord-dashboard .dashboard-topbar {
+    position: absolute;
+    top: 40px;
+    right: 42px;
+    margin: 0;
+}
+
+/* Headers with a button on the right (Calendar, Reports Filed): the button
+   drops to the row under the bell / profile, like Home's quick actions. */
+body[data-tab]:not([data-tab=""]):not([data-tab="myListings"]) .landlord-dashboard :is(.listings-header, .reports-page-header):has(> button) {
+    align-items: flex-start;
+    min-height: 98px;
+}
+
+body[data-tab]:not([data-tab=""]):not([data-tab="myListings"]) .landlord-dashboard :is(.listings-header, .reports-page-header) > button {
+    align-self: flex-end;
+}
+
+.topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.topbar-menu-wrap { position: relative; }
+
+.notification-button { cursor: pointer; border-radius: 50%; }
+.notification-button:hover { background: rgba(32, 58, 104, 0.06); }
+
+.profile-toggle {
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    font: inherit;
+    cursor: pointer;
+}
+
+.profile-toggle:hover { background: rgba(32, 58, 104, 0.06); }
+.profile-chevron { width: 16px; height: 16px; color: var(--navy); transition: transform 0.2s ease; }
+.profile-toggle[aria-expanded="true"] .profile-chevron { transform: rotate(180deg); }
+
+.topbar-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 60;
+
+    width: 240px;
+    padding: 8px;
+
+    border: 1px solid var(--border-light);
+    border-radius: 14px;
+    background: var(--white);
+    box-shadow: 0 16px 40px rgba(32, 58, 104, 0.14);
+}
+
+.topbar-menu[hidden] { display: none; }
+.topbar-menu--notifs { width: 340px; max-height: min(70vh, 520px); overflow-y: auto; }
+
+.topbar-menu-title {
+    margin: 4px 8px 6px;
+    color: var(--navy);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.topbar-notif {
+    display: grid;
+    gap: 2px;
+    padding: 9px 10px;
+    border-radius: 10px;
+    color: var(--text-primary);
+    text-decoration: none;
+}
+
+.topbar-notif:hover { background: #f6f8fc; }
+.topbar-notif strong { color: var(--navy); font-size: 13px; }
+.topbar-notif span { color: var(--text-secondary); font-size: 12.5px; line-height: 1.4; }
+.topbar-notif small { color: #8a95a5; font-size: 11px; }
+.topbar-notif strong { display: flex; align-items: center; gap: 7px; }
+
+/* Colour per kind: green = new message, yellow = new / changed request, red = cancelled */
+.topbar-notif-dot { flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%; background: #a9afb6; }
+.topbar-notif--green  .topbar-notif-dot { background: #2f8a52; }
+.topbar-notif--yellow .topbar-notif-dot { background: #e9a21f; }
+.topbar-notif--red    .topbar-notif-dot { background: var(--error); }
+
+.topbar-notif { border-left: 3px solid transparent; }
+.topbar-notif--green  { border-left-color: #2f8a52; }
+.topbar-notif--yellow { border-left-color: #e9a21f; }
+.topbar-notif--red    { border-left-color: var(--error); }
+.topbar-notif--green.is-unread  { background: #f1faf4; }
+.topbar-notif--yellow.is-unread { background: #fffaf0; }
+.topbar-notif--red.is-unread    { background: #fdf4f3; }
+
+.topbar-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    margin: 0 8px 6px;
+    color: var(--text-secondary);
+    font-size: 10.5px;
+}
+
+.topbar-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.topbar-legend .topbar-notif-dot { width: 6px; height: 6px; }
+
+.topbar-menu-empty { margin: 6px 10px 10px; color: var(--text-secondary); font-size: 13px; }
+
+.topbar-menu-link {
+    display: block;
+    margin-top: 4px;
+    padding: 9px 10px 4px;
+    border-top: 1px solid #edf0f3;
+    color: #2f73bd;
+    font-size: 12.5px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.topbar-profile {
+    display: grid;
+    gap: 2px;
+    padding: 8px 10px 10px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid #edf0f3;
+}
+
+.topbar-profile strong { color: var(--navy); font-size: 14px; }
+.topbar-profile small { color: var(--text-secondary); font-size: 12px; overflow-wrap: anywhere; }
+.topbar-profile span { color: #2f8a52; font-size: 11.5px; font-weight: 600; }
+
+.topbar-menu-item {
+    display: block;
+    padding: 8px 10px;
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 13.5px;
+    text-decoration: none;
+}
+
+.topbar-menu-item:hover { background: #f6f8fc; color: var(--navy); }
+.topbar-menu-item--danger { color: var(--error); }
+.topbar-menu-item--danger:hover { background: #fdeceb; color: var(--error); }

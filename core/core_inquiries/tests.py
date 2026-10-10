@@ -85,6 +85,7 @@ class ApplicationTests(Base):
             "kind": "apply", "occupants": ["", "Juan Dela Cruz"],
             "move_in_date": (date.today() + timedelta(days=30)).isoformat(),
             "site_visit_date": (date.today() + timedelta(days=5)).isoformat(),
+            "site_visit_time": "14:00",
         }
         data.update(overrides)
         return self.post(self.url(unit), data)
@@ -133,8 +134,19 @@ class ApplicationTests(Base):
         self.apply(self.available)
         self.client.force_login(self.landlord_user)
         context = services.get_inquiries_context(self.landlord_user)
-        self.assertEqual(len(context["requests"]), 1)
+        self.assertEqual(len(context["pending_requests"]), 1)
         self.assertEqual(context["pending_requests_count"], 1)
+
+    def test_site_visit_needs_a_time(self):
+        response = self.apply(self.available, site_visit_time="")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("site_visit_time", response.json()["errors"])
+
+    def test_site_visit_time_is_saved_as_pending(self):
+        self.apply(self.available)
+        application = Application.objects.get()
+        self.assertEqual(application.site_visit_time.hour, 14)
+        self.assertEqual(application.site_visit_status, Application.SiteVisit.PENDING)
 
     def test_landlords_cannot_apply(self):
         self.client.force_login(self.landlord_user)
@@ -307,3 +319,262 @@ class AttachmentTests(Base):
     def test_unsupported_type(self):
         doc = SimpleUploadedFile("notes.docx", b"PK...", content_type="application/octet-stream")
         self.assertEqual(self.send_file(doc).status_code, 400)
+
+# =========================================================
+# PENDING REQUESTS / WAITLIST / ARCHIVE
+# =========================================================
+
+from core.core_rentals.models import Tenancy   # noqa: E402
+
+
+class RequestWorkflowTests(Base):
+
+    def setUp(self):
+        super().setUp()
+        self.application = services.create_application(
+            self.renter_user, self.available, "apply", ["", "Elise Tan"],
+            date.today() + timedelta(days=20), date.today() + timedelta(days=3), time_of(14),
+        )
+
+    def as_landlord(self):
+        self.client.force_login(self.landlord_user)
+
+    def url(self, name, application=None):
+        return reverse(f"core_inquiries:{name}", args=[(application or self.application).pk])
+
+    def refresh(self):
+        self.application.refresh_from_db()
+        return self.application
+
+    def waitlist_request(self, renter_user=None):
+        return services.create_application(
+            renter_user or self.renter_user, self.occupied, "waitlist", [""], date(2026, 12, 1),
+        )
+
+    # ---------- reject / cancel ----------
+
+    def test_landlord_must_give_a_reason(self):
+        self.as_landlord()
+        response = self.post(self.url("reject_request"), {})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("reason", response.json()["errors"])
+
+    def test_reject_moves_request_to_archive(self):
+        self.as_landlord()
+        response = self.post(self.url("reject_request"), {"reason": "requirements", "reason_note": "Need 2 IDs"})
+        self.assertEqual(response.status_code, 200)
+        application = self.refresh()
+        self.assertEqual(application.status, Application.Status.DECLINED)
+        self.assertEqual(application.reason_note, "Need 2 IDs")
+
+        tabs = services.get_inquiries_context(self.renter_user)
+        self.assertEqual(tabs["pending_requests_count"], 0)
+        self.assertEqual([a.pk for a in tabs["archived_requests"]], [application.pk])
+
+    def test_other_reason_needs_a_note(self):
+        self.as_landlord()
+        response = self.post(self.url("reject_request"), {"reason": "other"})
+        self.assertIn("reason_note", response.json()["errors"])
+
+    def test_renter_reasons_are_not_allowed_for_landlords(self):
+        self.as_landlord()
+        response = self.post(self.url("reject_request"), {"reason": "found_other"})
+        self.assertEqual(response.status_code, 400)
+
+    def test_renter_can_cancel_without_a_reason(self):
+        response = self.post(self.url("cancel_request"), {})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.refresh().status, Application.Status.WITHDRAWN)
+        # ...and shows up in the landlord's archive as cancelled
+        archive = services.get_inquiries_context(self.landlord_user)["archived_requests"]
+        self.assertEqual(archive[0].get_status_display(), "Cancelled")
+
+    def test_renter_cannot_touch_someone_elses_request(self):
+        other = make_user("bea", "renter", "09333333333")
+        Renter.objects.create(user=other)
+        self.client.force_login(other)
+        self.assertEqual(self.post(self.url("cancel_request"), {}).status_code, 404)
+
+    def test_other_landlord_cannot_reject(self):
+        stranger = make_user("mark", "landlord", "09444444444")
+        Landlord.objects.create(user=stranger)
+        self.client.force_login(stranger)
+        self.assertEqual(self.post(self.url("reject_request"), {"reason": "requirements"}).status_code, 404)
+
+    def test_archive_keeps_requests_for_30_days(self):
+        self.post(self.url("cancel_request"), {})
+        Application.objects.filter(pk=self.application.pk).update(
+            decided_at=self.refresh().decided_at - timedelta(days=31),
+        )
+        self.assertEqual(services.get_inquiries_context(self.renter_user)["archive_count"], 0)
+
+    # ---------- edit ----------
+
+    def test_edit_changes_dates_and_resets_site_visit(self):
+        self.application.site_visit_status = Application.SiteVisit.CONFIRMED
+        self.application.save()
+        response = self.post(self.url("edit_request"), {
+            "occupants": [""], "move_in_date": (date.today() + timedelta(days=25)).isoformat(),
+            "site_visit_date": (date.today() + timedelta(days=4)).isoformat(), "site_visit_time": "10:30",
+        })
+        self.assertEqual(response.status_code, 200)
+        application = self.refresh()
+        self.assertEqual(application.occupants, [self.renter_user.display_name])
+        self.assertEqual(application.site_visit_status, Application.SiteVisit.PENDING)
+
+    def test_bell_colours(self):
+        # New request -> yellow
+        tones = {n["title"]: n["tone"] for n in services.get_inquiries_context(self.landlord_user)["notifications"]}
+        self.assertEqual(tones, {"New tenant application": "yellow"})
+
+        # Renter changes the dates -> yellow "Request updated" with the new values
+        self.post(self.url("edit_request"), {
+            "occupants": [""], "move_in_date": (date.today() + timedelta(days=25)).isoformat(),
+            "site_visit_date": (date.today() + timedelta(days=4)).isoformat(), "site_visit_time": "10:30",
+        })
+        note = services.get_inquiries_context(self.landlord_user)["notifications"][0]
+        self.assertEqual((note["title"], note["tone"]), ("Request updated", "yellow"))
+        self.assertIn("10:30 AM", note["message"])
+
+        # Renter messages -> green; renter cancels -> red
+        self.post(reverse("core_inquiries:send_inquiry"), {"unit": str(self.available.pk), "body": "Hi!"})
+        self.post(self.url("cancel_request"), {})
+        tones = {n["title"]: n["tone"] for n in services.get_inquiries_context(self.landlord_user)["notifications"]}
+        self.assertEqual(tones, {"New message": "green", "Request cancelled": "red"})
+
+    def test_edit_without_visit_clears_it(self):
+        self.post(self.url("edit_request"), {
+            "occupants": [""], "move_in_date": (date.today() + timedelta(days=25)).isoformat(),
+        })
+        application = self.refresh()
+        self.assertIsNone(application.site_visit_date)
+        self.assertEqual(application.site_visit_status, "")
+
+    # ---------- site visit ----------
+
+    def test_landlord_confirms_site_visit(self):
+        self.as_landlord()
+        response = self.post(self.url("site_visit_decision"), {"decision": "confirm"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.refresh().site_visit_status, Application.SiteVisit.CONFIRMED)
+
+    # ---------- approve as tenant (= Manage Rentals assign) ----------
+
+    def test_approve_as_tenant_creates_tenancy_and_closes_others(self):
+        other = make_user("bea", "renter", "09333333333")
+        Renter.objects.create(user=other)
+        rival = services.create_application(other, self.available, "apply", [""], date.today() + timedelta(days=10))
+
+        self.as_landlord()
+        response = self.post(reverse("core_rentals:assign_tenant", args=[self.available.pk]), {
+            "application": str(self.application.pk), "start_date": (date.today() + timedelta(days=20)).isoformat(),
+        })
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(self.refresh().status, Application.Status.ACCEPTED)
+        self.assertTrue(Tenancy.objects.filter(application=self.application, status="active").exists())
+        rival.refresh_from_db()
+        self.assertEqual(rival.status, Application.Status.CLOSED)
+        self.assertEqual(rival.reason, Application.Reason.UNIT_RENTED)
+
+    # ---------- waitlist ----------
+
+    def test_approve_for_waitlist(self):
+        application = self.waitlist_request()
+        self.as_landlord()
+        response = self.post(self.url("approve_waitlist", application), {})
+        self.assertEqual(response.status_code, 200)
+        application.refresh_from_db()
+        self.assertEqual(application.status, Application.Status.WAITLISTED)
+
+        tabs = services.get_inquiries_context(self.landlord_user)
+        group = tabs["waitlist_groups"][0]
+        self.assertEqual(group["unit"], self.occupied)
+        self.assertEqual(group["outlook"]["key"], "occupied")
+        self.assertFalse(group["applications"][0].can_notify)
+
+    def test_tenant_application_cannot_go_to_waitlist(self):
+        self.as_landlord()
+        self.assertEqual(self.post(self.url("approve_waitlist"), {}).status_code, 400)
+
+    def test_waitlisted_renter_cannot_apply_twice(self):
+        application = self.waitlist_request()
+        workflow_approve(application)
+        with self.assertRaises(Exception):
+            self.waitlist_request()
+
+    def test_notify_only_once_the_unit_is_vacant(self):
+        application = self.waitlist_request()
+        workflow_approve(application)
+        self.as_landlord()
+        self.assertEqual(self.post(self.url("notify_applicant", application), {}).status_code, 400)
+
+        self.occupied.availability = Unit.Availability.AVAILABLE
+        self.occupied.save()
+        tabs = services.get_inquiries_context(self.landlord_user)
+        self.assertTrue(tabs["waitlist_groups"][0]["applications"][0].can_notify)
+
+        response = self.post(self.url("notify_applicant", application), {})
+        self.assertEqual(response.status_code, 200)
+        application.refresh_from_db()
+        self.assertIsNotNone(application.notified_at)
+        # The renter got a message
+        self.assertTrue(Conversation.objects.get(renter__user=self.renter_user).messages.exists())
+
+    def test_assigning_someone_archives_the_waitlist(self):
+        application = self.waitlist_request()
+        workflow_approve(application)
+        self.occupied.availability = Unit.Availability.AVAILABLE
+        self.occupied.save()
+
+        self.as_landlord()
+        response = self.post(reverse("core_rentals:assign_tenant", args=[self.occupied.pk]), {
+            "tenant_name": "Walk In", "occupant_count": 1, "start_date": date.today().isoformat(),
+        })
+        self.assertEqual(response.status_code, 201)
+        application.refresh_from_db()
+        self.assertEqual(application.status, Application.Status.CLOSED)
+
+    def test_recording_current_tenant_keeps_the_waitlist(self):
+        application = self.waitlist_request()
+        workflow_approve(application)
+        self.as_landlord()
+        # The unit is already occupied; the landlord just records who lives there
+        self.post(reverse("core_rentals:assign_tenant", args=[self.occupied.pk]), {
+            "tenant_name": "Current Tenant", "occupant_count": 1, "start_date": "2025-10-26",
+        })
+        application.refresh_from_db()
+        self.assertEqual(application.status, Application.Status.WAITLISTED)
+
+    def test_waitlisted_renter_can_be_assigned_in_manage_rentals(self):
+        application = self.waitlist_request()
+        workflow_approve(application)
+        self.occupied.availability = Unit.Availability.AVAILABLE
+        self.occupied.save()
+        self.as_landlord()
+        response = self.post(reverse("core_rentals:assign_tenant", args=[self.occupied.pk]), {
+            "application": str(application.pk), "start_date": "2026-12-01",
+        })
+        self.assertEqual(response.status_code, 201)
+        application.refresh_from_db()
+        self.assertEqual(application.status, Application.Status.ACCEPTED)
+
+    def test_dashboards_render(self):
+        self.waitlist_request()
+        response = self.client.get(reverse("core_renters:dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Pending Requests")
+        self.assertContains(response, "Edit Application")
+        self.as_landlord()
+        response = self.client.get(reverse("core_landlords:dashboard"))
+        self.assertContains(response, "Approve as Tenant")
+        self.assertContains(response, "Approve for Waitlist")
+
+
+def time_of(hour):
+    from datetime import time
+    return time(hour, 0)
+
+
+def workflow_approve(application):
+    from .workflow import approve_waitlist
+    approve_waitlist(application)

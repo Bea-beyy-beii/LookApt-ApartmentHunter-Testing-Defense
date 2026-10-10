@@ -3,6 +3,8 @@
     Calendar View: a small month with coloured dots; click a day to see its items.
     Events View: what's coming up in the next 30 days.
     `view_link=True` (landlords) adds "View calendar →" to the Calendar tab.
+    The widget has a fixed height (set by the page around it); only the
+    day's list / the Events View list scroll, so the month never moves.
     Read-only: renters can't add anything here. calendar.js fills it.
 {% endcomment %}
 {% load listing_tags %}
@@ -37,7 +39,7 @@
         </div>
         <div class="cal-mini-grid" data-cal-grid></div>
         <div class="cal-mini-day">
-            <p class="cal-mini-day-title" data-day-title></p>
+            <p class="cal-mini-day-title"><span data-day-title></span><span class="cal-mini-day-count" data-day-count></span></p>
             <ul class="cal-items" data-day-list></ul>
         </div>
     </div>

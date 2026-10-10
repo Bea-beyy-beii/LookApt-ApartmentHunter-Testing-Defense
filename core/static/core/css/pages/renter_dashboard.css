@@ -4,7 +4,7 @@
 ========================================================= */
 
 .renter-dashboard {
-    min-height: 100vh;
+    min-height: var(--vh);
 
     background: var(--cream);
 
@@ -22,11 +22,17 @@
     margin-bottom: 16px;
 }
 
+/* Same font as the landlord's welcome message / page headers */
 #saved-section .section-heading h1,
 #rentals-section .section-heading h1,
 .inquiry-page-header h1,
 .reports-page-header .reports-title h1 {
-    font-size: 20px;
+    margin: 0;
+    color: var(--navy);
+    font-family: var(--font-display);
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1.2;
 }
 
 #saved-section .section-heading p,
@@ -61,7 +67,7 @@
 
 .dashboard {
     display: flex;
-    min-height: 100vh;
+    min-height: var(--vh);
 }
 
 .renter-dashboard {
@@ -1940,6 +1946,9 @@
 
 .home-side { position: sticky; top: 20px; }
 
+/* Same fixed-size schedule widget as the landlord's home */
+.home-side .cal-widget { height: 560px; }
+
 @media (max-width: 1100px) {
     .home-layout { grid-template-columns: 1fr; }
     .home-side { position: static; order: -1; max-width: 560px; }
@@ -1948,4 +1957,20 @@
 @media (max-width: 640px) {
     .near-banner { flex-wrap: wrap; padding: 14px 16px; }
     .near-banner-btn { width: 100%; justify-content: center; }
+}
+
+
+/* =========================================================
+   TOP BAR: the search bar + "Filter by" only belong to Home and Saved
+   Listings; everywhere else the bell / profile stay on the right.
+   (body[data-tab] is kept up to date by renter_dashboard.js)
+========================================================= */
+
+body:not([data-tab="home"]):not([data-tab="saved"]) .renter-dashboard .dashboard-search,
+body:not([data-tab="home"]):not([data-tab="saved"]) .renter-dashboard .filter-button {
+    display: none;
+}
+
+body:not([data-tab="home"]):not([data-tab="saved"]) .renter-dashboard .notification-button {
+    margin-left: auto;
 }

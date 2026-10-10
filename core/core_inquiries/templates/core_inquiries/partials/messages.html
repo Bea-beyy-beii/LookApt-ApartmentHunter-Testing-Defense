@@ -13,6 +13,7 @@
                     data-url="{% url 'core_inquiries:conversation_detail' conversation.pk %}"
                     data-reply-url="{% url 'core_inquiries:conversation_reply' conversation.pk %}"
                     data-action="open-conversation"
+                    data-search="{{ conversation.other_user.display_name }} {{ conversation.subject }} {{ conversation.complex.complex_name }}"
                 >
                     <span class="thread-avatar">
                         <span class="thread-avatar-fallback">{{ conversation.other_initials|default:"U" }}</span>

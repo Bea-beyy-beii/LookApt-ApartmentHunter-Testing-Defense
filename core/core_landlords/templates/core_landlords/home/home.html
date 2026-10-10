@@ -1,0 +1,185 @@
+{% comment %}
+    Landlord Home tab. Data: core_landlords.services.home_context().
+    Behaviour (card links, chart, receivables drawer, quick actions): landlord_home.js.
+    The Monthly Receivables drawer slides in on the right, over the calendar column.
+{% endcomment %}
+{% load listing_tags %}
+
+<div class="lh" data-lh>
+
+    <div class="lh-main">
+
+        <!-- Welcome + quick actions -->
+        <div class="lh-welcome">
+            <div class="lh-welcome-text">
+                <h1>Welcome back, {{ home.first_name }}!</h1>
+                <p>Here's what's happening with your properties today.</p>
+            </div>
+            <div class="lh-actions">
+                <button type="button" class="lh-action" data-lh-add-property>
+                    {% feature_icon "plus" %} Add Property
+                </button>
+                <button type="button" class="lh-action" data-open-bulletin>
+                    {% feature_icon "megaphone" %} Post on Bulletin
+                </button>
+                <button type="button" class="lh-action" data-lh-coming-soon="Exporting financials">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+                    Export Financials
+                </button>
+            </div>
+        </div>
+
+        <!-- Cards -->
+        <div class="lh-cards">
+            <button type="button" class="lh-card" data-lh-goto="myListings">
+                <span class="lh-card-icon lh-tone--gold">{% feature_icon "unit_type" %}</span>
+                <span class="lh-card-body">
+                    <small>Total Listings</small>
+                    <strong>{{ home.properties_count }} propert{{ home.properties_count|pluralize:"y,ies" }} · {{ home.units_count }} unit{{ home.units_count|pluralize }}</strong>
+                </span>
+                <span class="lh-card-arrow" aria-hidden="true">›</span>
+            </button>
+
+            <div class="lh-card lh-card--static">
+                <span class="lh-card-icon lh-tone--gold">{% feature_icon "units" %}</span>
+                <span class="lh-card-body">
+                    <small>Occupancy</small>
+                    <span class="lh-card-row">
+                        <strong>{{ home.occupied }} / {{ home.units_count }} <em>occupied</em></strong>
+                        <b>{{ home.occupancy }}%</b>
+                    </span>
+                    <span class="lh-bar"><i style="width: {{ home.occupancy }}%"></i></span>
+                </span>
+            </div>
+
+            <button type="button" class="lh-card" data-lh-goto="inquiries">
+                <span class="lh-card-icon lh-tone--navy">{% feature_icon "chat" %}</span>
+                <span class="lh-card-body">
+                    <small>Inquiries</small>
+                    <span class="lh-trio">
+                        <span><strong>{{ pending_requests_count }}</strong><em>Pending</em></span>
+                        <span><strong>{{ waitlist_count }}</strong><em>Waitlist</em></span>
+                        <span><strong>{{ unread_messages_count }}</strong><em>Unread</em></span>
+                    </span>
+                </span>
+                <span class="lh-card-arrow" aria-hidden="true">›</span>
+            </button>
+
+            <button type="button" class="lh-card" data-lh-receivables aria-expanded="false" aria-controls="lh-receivables">
+                <span class="lh-card-icon lh-tone--green">{% feature_icon "wallet" %}</span>
+                <span class="lh-card-body">
+                    <small>Monthly Receivables</small>
+                    <span class="lh-card-row">
+                        <strong>₱{{ receivables.paid.amount|floatformat:"0g" }} <em>of ₱{{ receivables.expected.amount|floatformat:"0g" }}</em></strong>
+                        <b>{{ receivables.percent }}%</b>
+                    </span>
+                    <span class="lh-bar lh-bar--green"><i style="width: {{ receivables.percent }}%"></i></span>
+                    {% if home.overdue_units %}<em class="lh-overdue">{{ home.overdue_units }} unit{{ home.overdue_units|pluralize }} overdue</em>{% else %}<em class="lh-ok">Nothing overdue</em>{% endif %}
+                </span>
+                <span class="lh-card-arrow" aria-hidden="true">›</span>
+            </button>
+        </div>
+
+        <!-- Performance + calendar + attention + properties -->
+        <div class="lh-grid">
+
+            <section class="lh-panel lh-performance" data-lh-performance
+                     data-url="{% url 'core_landlords:performance_data' %}">
+                <header class="lh-panel-head">
+                    <span class="lh-panel-icon">{% feature_icon "list" %}</span>
+                    <div>
+                        <h2>Listing Performance</h2>
+                        <p>How renters engage with your listings on LookApt.</p>
+                    </div>
+                    <select class="lh-select" data-lh-month aria-label="Month">
+                        {% for m in performance.months %}
+                            <option value="{{ m.value }}"{% if m.value == performance.month %} selected{% endif %}>{{ m.label }}</option>
+                        {% endfor %}
+                    </select>
+                </header>
+                <div class="lh-chips" data-lh-chips></div>
+                <div class="lh-chart" data-lh-chart></div>
+                {{ performance|json_script:"lh-performance-data" }}
+            </section>
+
+            <aside class="lh-calendar">
+                {% include "core_calendar/partials/calendar_widget.html" with view_link=True %}
+            </aside>
+
+            <section class="lh-panel lh-attention">
+                <header class="lh-panel-head">
+                    <span class="lh-panel-icon lh-tone--red">{% feature_icon "bell" %}</span>
+                    <div><h2>Needs Your Attention</h2></div>
+                </header>
+                <ul class="lh-list">
+                    {% for item in home.attention %}
+                        <li>
+                            <button type="button" class="lh-attn"
+                                    data-lh-goto="{{ item.tab }}"
+                                    {% if item.subtab %}data-lh-subtab="{{ item.subtab }}"{% endif %}
+                                    {% if item.filter %}data-lh-filter="{{ item.filter }}"{% endif %}>
+                                <span class="lh-attn-icon lh-tone--{{ item.tone }}">{% feature_icon item.icon %}</span>
+                                <span class="lh-attn-text">
+                                    <strong>{{ item.title }}</strong>
+                                    <small>{{ item.detail }}</small>
+                                </span>
+                                <span class="lh-count lh-tone--{{ item.tone }}">{{ item.count }}</span>
+                                <span class="lh-chevron" aria-hidden="true">›</span>
+                            </button>
+                        </li>
+                    {% empty %}
+                        <li class="lh-empty">
+                            {% feature_icon "check" %}
+                            <strong>You're all caught up</strong>
+                            <small>No overdue rent, pending requests or contracts ending soon.</small>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </section>
+
+            <section class="lh-panel lh-properties">
+                <header class="lh-panel-head">
+                    <span class="lh-panel-icon">{% feature_icon "units" %}</span>
+                    <div><h2>Managed Properties</h2></div>
+                </header>
+                <ul class="lh-list">
+                    {% for p in home.properties %}
+                        <li>
+                            <a class="lh-prop" href="{% url 'core_listings:property_detail' p.complex.pk %}">
+                                <span class="lh-prop-cover">
+                                    {% if p.cover_url %}<img src="{{ p.cover_url }}" alt="" loading="lazy">{% else %}{% feature_icon "units" %}{% endif %}
+                                </span>
+                                <span class="lh-prop-text">
+                                    <strong>{{ p.complex.complex_name }}</strong>
+                                    <small>{{ p.complex.address }}</small>
+                                    <span class="lh-prop-row">
+                                        <b>{{ p.units }} unit{{ p.units|pluralize }}</b>
+                                        <span class="lh-bar lh-bar--green"><i style="width: {{ p.percent }}%"></i></span>
+                                        <small>{{ p.occupied }} occupied · {{ p.vacant }} vacant</small>
+                                    </span>
+                                </span>
+                                <span class="lh-chevron" aria-hidden="true">›</span>
+                            </a>
+                        </li>
+                    {% empty %}
+                        <li class="lh-empty">
+                            {% feature_icon "unit_type" %}
+                            <strong>No properties yet</strong>
+                            <small>Add your first property to start listing units.</small>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </section>
+
+        </div>
+    </div>
+
+    <!-- Monthly Receivables drawer -->
+    <aside class="lh-drawer" id="lh-receivables" data-lh-drawer
+           data-url="{% url 'core_landlords:receivables_panel' %}" hidden aria-label="Monthly Receivables">
+        <div data-lh-drawer-body>
+            {% include "core_landlords/home/receivables_panel.html" %}
+        </div>
+    </aside>
+
+</div>

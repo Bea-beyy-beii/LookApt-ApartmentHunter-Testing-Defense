@@ -8,6 +8,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function showTab(tabName, updateURL = true) {
 
+        // Lets the CSS change the top bar per tab (breadcrumbs, search bar...)
+        document.body.dataset.tab = tabName;
+
         tabSections.forEach(section => {
             section.hidden = section.dataset.section !== tabName;
         });

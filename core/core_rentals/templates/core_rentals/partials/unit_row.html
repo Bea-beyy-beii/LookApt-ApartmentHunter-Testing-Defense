@@ -1,13 +1,15 @@
 {% comment %}
     One unit in Manage Rentals. `unit.tenancy` is its active tenancy (or None).
-    data-* attributes drive the tabs and the search (rentals.js).
+    data-* attributes drive the Filter dropdown and the search (rentals.js).
 {% endcomment %}
 {% load listing_tags %}
 {% with t=unit.tenancy %}
 
 <div class="rt-row" role="row"
      data-rental-row
+     data-complex="{{ unit.complex_id }}"
      data-state="{{ unit.state }}"
+     data-pay="{% if t %}{{ t.pay.key }}{% endif %}"
      data-ending="{% if unit.ending_soon %}1{% else %}0{% endif %}"
      data-search="{{ unit.unit_name }} {{ unit.complex.complex_name }} {% if t %}{{ t.tenant_name }} {{ t.occupants|join:' ' }}{% endif %}">
 
@@ -121,7 +123,7 @@
                             data-lease="{{ unit.complex.get_lease_term_display }}">
                         {% feature_icon "lease" %} Renew Lease Contract
                     </button>
-                    
+
                     <button type="button" role="menuitem"
                             data-open-end data-status="completed"
                             data-url="{% url 'core_rentals:end_tenancy' t.pk %}"

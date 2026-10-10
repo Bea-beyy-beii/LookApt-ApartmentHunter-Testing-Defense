@@ -203,43 +203,7 @@
 
 /* Chat bubbles: see chat.css (shared with the Inquire pop-up) */
 
-/* Requests */
-.request-list{display:flex;padding:18px;flex-direction:column;gap:14px}
-.inquiry-request{
-    padding:17px;border:1px solid var(--border-light,#d8e0e5);
-    border-radius:14px;background:#fff;
-}
-.inquiry-request:hover{box-shadow:0 5px 18px rgba(32,58,104,.05)}
-.request-property{display:flex;align-items:center;gap:13px}
-.request-property-image,.request-property-placeholder{
-    flex:0 0 auto;width:72px;height:62px;border-radius:10px;
-}
-.request-property-image{display:block;object-fit:cover}
-.request-property-placeholder{
-    display:flex;align-items:center;justify-content:center;
-    background:#eef2f6;color:var(--navy,#203a68);
-}
-.request-property-placeholder svg{width:25px;height:25px}
-.request-property-info{min-width:0}
-.request-property-info h3{
-    margin:0 0 4px;overflow:hidden;
-    color:var(--navy,#203a68);font-size:14px;
-    text-overflow:ellipsis;white-space:nowrap;
-}
-.request-property-info p{
-    margin:0;overflow:hidden;color:var(--text-secondary,#69758a);
-    font-size:12px;text-overflow:ellipsis;white-space:nowrap;
-}
-.request-details{
-    display:grid;grid-template-columns:1fr 1fr;gap:14px;
-    margin-top:16px;padding-top:14px;border-top:1px solid #edf0f3;
-}
-.request-label{
-    display:block;margin-bottom:4px;color:#8a95a5;
-    font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
-}
-.request-type strong{color:#263a5c;font-size:12.5px}
-.request-date{grid-column:1/-1;color:#8a95a5;font-size:11px}
+/* Status badge (also used on the dashboard) */
 .status-badge{
     display:inline-flex;align-items:center;min-height:25px;
     padding:4px 9px;border-radius:999px;
@@ -254,19 +218,6 @@
 .status-rejected,.status-declined{
     background:rgba(201,75,75,.10);color:#c94b4b;
 }
-.request-note{
-    display:flex;align-items:flex-start;
-    margin-top:14px;padding:10px 11px;gap:8px;
-    border-radius:9px;background:#f7f9fb;
-}
-.request-note svg{flex:0 0 auto;width:16px;height:16px;color:#8a95a5}
-.request-note p{
-    margin:0;color:var(--text-secondary,#69758a);
-    font-size:11.5px;line-height:1.5;
-}
-.request-note-success{background:rgba(61,139,92,.07)}
-.request-note-success svg{color:#3d8b5c}
-
 /* Notifications */
 .notifications-panel{display:flex;min-height:100%;flex-direction:column}
 .notifications-header{
@@ -350,9 +301,6 @@
     .inquiry-tabs{padding:0 17px;gap:22px}
     .message-thread{padding:12px 15px}
     .thread-avatar,.thread-avatar-fallback{width:44px;height:44px}
-    .request-list{padding:12px}
-    .request-details{grid-template-columns:1fr}
-    .request-date{grid-column:auto}
     .conversation-messages{padding:18px 14px}
     .message-composer{padding:10px}
 }
@@ -379,17 +327,6 @@
     color:#8a5a10;font-size:13px;
 }
 .conversation-locked[hidden]{display:none}
-
-.request-facts{
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
-    gap:8px 16px;
-    margin:12px 0 0;
-}
-.request-facts dt{color:var(--text-secondary,#69758a);font-size:12px}
-.request-facts dd{margin:0;color:var(--navy,#203a68);font-size:13px;font-weight:600}
-.status-withdrawn{background:#f1f1f1;color:#6b7280}
-.request-note-muted{background:#f4f5f7}
 
 .message-composer{flex-wrap:wrap}
 .message-error{width:100%;margin:0;color:var(--error,#c94b4b);font-size:12px;font-weight:600}

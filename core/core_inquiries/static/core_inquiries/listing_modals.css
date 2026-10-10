@@ -9,7 +9,7 @@
 .lm-modal {
     margin: auto;   /* reset.css zeroes margins; dialogs need auto to stay centered */
     width: min(600px, calc(100vw - 32px));
-    max-height: calc(100vh - 40px);
+    max-height: calc(var(--vh) - 40px);
     padding: 0;
 
     border: 1px solid var(--border-light);
@@ -41,7 +41,7 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
-    max-height: calc(100vh - 40px);
+    max-height: calc(var(--vh) - 40px);
 }
 
 .lm-close {
@@ -389,8 +389,8 @@
 
 .lm-visit {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    align-items: end;
     gap: 14px;
 
     padding: 10px 12px 10px 16px;
@@ -403,6 +403,22 @@
 }
 
 .lm-visit[hidden] { display: none; }
+
+.lm-visit-field {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+}
+
+.lm-visit-field > span { font-weight: 600; }
+
+.lm-hint {
+    margin: 8px 0 0;
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.lm-hint[hidden] { display: none; }
 
 
 /* ---------- Info / note boxes ---------- */
@@ -529,7 +545,7 @@
 
 .lm-chat {
     width: min(520px, calc(100vw - 32px));
-    height: min(560px, calc(100vh - 40px));
+    height: min(560px, calc(var(--vh) - 40px));
 }
 
 .lm-chat-header {

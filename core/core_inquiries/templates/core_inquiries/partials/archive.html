@@ -1,0 +1,56 @@
+{% comment %}
+    Archive: rejected, cancelled and closed requests from the last `archive_days` days.
+    (Approved tenant requests live in Manage Rentals / Rental History instead.)
+{% endcomment %}
+{% load listing_tags %}
+<div class="archive-view">
+
+    {% if archived_requests %}
+        <p class="ar-intro">{% feature_icon "info" %} Rejected, cancelled and closed requests stay here for {{ archive_days }} days.</p>
+
+        <div class="ar-list">
+            {% for a in archived_requests %}
+                <article class="ar-row">
+                    <span class="rq-cover rq-cover--small">
+                        {% if a.cover_url %}<img src="{{ a.cover_url }}" alt="" loading="lazy">{% else %}{% feature_icon "unit_type" %}{% endif %}
+                    </span>
+
+                    <div class="ar-unit">
+                        <strong>{{ a.unit.complex.complex_name }} – {{ a.unit.unit_name }}</strong>
+                        <small>
+                            {% if is_landlord_inbox %}{{ a.renter_name }} · {{ a.occupants|length }} tenant{{ a.occupants|length|pluralize }}{% else %}Landlord: {{ a.landlord_name }}{% endif %}
+                        </small>
+                        <span class="rq-pill rq-pill--{{ a.kind }} rq-pill--small">{{ a.get_kind_display }}</span>
+                    </div>
+
+                    <div class="ar-status">
+                        {% include "core_inquiries/partials/status_pill.html" %}
+                        <small>
+                            {% if a.status == "declined" %}{% if is_landlord_inbox %}by you{% else %}by the landlord{% endif %}
+                            {% elif a.status == "withdrawn" %}{% if is_landlord_inbox %}by the renter{% else %}by you{% endif %}
+                            {% else %}automatically{% endif %}
+                            · {{ a.since|date:"M j, Y" }}
+                        </small>
+                    </div>
+
+                    <div class="ar-reason">
+                        <h4>Reason</h4>
+                        {% if a.reason %}<strong>{{ a.get_reason_display }}</strong>{% else %}<strong class="rq-muted">No reason given</strong>{% endif %}
+                        {% if a.reason_note %}<p>“{{ a.reason_note }}”</p>{% endif %}
+                    </div>
+
+                    {% include "core_inquiries/partials/chat_button.html" with chat=a.chat %}
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="inquiry-empty-state">
+            <div class="empty-state-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            </div>
+            <h3>Archive is empty</h3>
+            <p>Rejected, cancelled and closed requests are kept here for {{ archive_days }} days.</p>
+        </div>
+    {% endif %}
+
+</div>

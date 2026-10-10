@@ -330,3 +330,21 @@ class SavedListing(models.Model):
 
     def __str__(self):
         return f"{self.renter.user} saved {self.complex}"
+
+
+# --------------------------------------------------------------------------------------------------------------- LISTING VIEWS (landlord dashboard)
+
+class ListingView(models.Model):
+    """A renter opened a complex or unit page. At most one row per renter per
+    page per day, so refreshing doesn't inflate the landlord's "Views"."""
+    complex = models.ForeignKey(Complex, on_delete=models.CASCADE, related_name="views")
+    unit = models.ForeignKey(Unit, on_delete=models.CASCADE, null=True, blank=True, related_name="views")
+    viewer = models.ForeignKey("core.User", on_delete=models.CASCADE, related_name="listing_views")
+    viewed_on = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["complex", "viewed_on"])]
+
+    def __str__(self):
+        return f"{self.viewer} viewed {self.unit or self.complex} on {self.viewed_on}"

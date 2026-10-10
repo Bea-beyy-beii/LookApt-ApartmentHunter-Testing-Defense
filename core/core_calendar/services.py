@@ -3,8 +3,11 @@
 #
 # Landlord: their bulletin events, rent due dates (grouped per complex),
 #           contract end dates, and site visits renters asked for.
-# Renter:   their own rent due dates, contract end and site visits, plus
-#           bulletin events for the complexes they currently rent in.
+# Renter:   their own rent due dates, contract end and confirmed site visits,
+#           plus bulletin events for the complexes they currently rent in
+#           (only from their move-in date on).
+# Site visits show up only once the landlord confirms them; until then they
+# live in Inquiries → Pending Requests.
 # Only bulletin events are stored (CalendarEvent); the rest is read live.
 from collections import defaultdict
 from datetime import timedelta
@@ -59,14 +62,19 @@ def _item(day, category, title, detail="", end_day=None, time_label="", all_day=
 # ITEMS FOR A DATE RANGE
 # =========================================================
 
-def _event_items(events):
+def _event_items(events, visible_complexes=None):
+    """visible_complexes: for renters, only name the complexes they rent in
+    (an event posted to several complexes shouldn't reveal the others)."""
     items = []
     for event in events:
         if event.all_day:
             time_label = "All week" if event.end_date > event.start_date else "All-day"
         else:
             time_label = _time(event.start_time) + (f" – {_time(event.end_time)}" if event.end_time else "")
-        names = ", ".join(c.complex_name for c in event.complexes.all())
+        names = ", ".join(
+            c.complex_name for c in event.complexes.all()
+            if visible_complexes is None or c.pk in visible_complexes
+        )
         items.append(_item(
             event.start_date, CATEGORY_FOR_TYPE.get(event.event_type, "announcement"),
             event.title, detail=names, end_day=event.end_date, time_label=time_label, all_day=event.all_day,
@@ -105,9 +113,10 @@ def _site_visit_items(applications, landlord_view):
     for application in applications:
         unit = application.unit
         detail = application.renter.user.display_name if landlord_view else unit.complex.complex_name
-        status = "" if application.status == Application.Status.ACCEPTED else " (requested)"
+        visit_time = application.site_visit_time
         items.append(_item(application.site_visit_date, "site_visit",
-                           f"{unit.unit_name} – Site Visit{status}", detail=detail))
+                           f"{unit.unit_name} – Site Visit", detail=detail,
+                           time_label=_time(visit_time) if visit_time else "", all_day=visit_time is None))
     return items
 
 
@@ -117,10 +126,11 @@ def calendar_items(user, start, end):
         end = start + timedelta(days=MAX_RANGE_DAYS)
 
     overlapping = Q(start_date__lte=end, end_date__gte=start)
+    # Only visits the landlord confirmed (pending ones stay in Pending Requests)
     visits = (
         Application.objects
-        .filter(site_visit_date__range=(start, end))
-        .exclude(status__in=[Application.Status.DECLINED, Application.Status.WITHDRAWN])
+        .filter(site_visit_date__range=(start, end), site_visit_status=Application.SiteVisit.CONFIRMED)
+        .exclude(status__in=Application.ARCHIVED_STATUSES)
         .select_related("unit__complex", "renter__user")
     )
     active = Tenancy.objects.filter(status=Tenancy.Status.ACTIVE).select_related("unit__complex").prefetch_related("payments")
@@ -134,13 +144,20 @@ def calendar_items(user, start, end):
         )
     else:
         mine = list(active.filter(renter__user=user))
-        complex_ids = {t.unit.complex_id for t in mine}
-        events = (
-            CalendarEvent.objects.filter(overlapping, complexes__in=complex_ids)
-            .distinct().prefetch_related("complexes")
-        )
+        # Bulletins only for complexes they're an approved tenant of, from their move-in date on
+        moved_in = {}
+        for tenancy in mine:
+            complex_id = tenancy.unit.complex_id
+            moved_in[complex_id] = min(tenancy.start_date, moved_in.get(complex_id, tenancy.start_date))
+        if moved_in:
+            renting = Q()
+            for complex_id, since in moved_in.items():
+                renting |= Q(complexes=complex_id, end_date__gte=since)
+            events = CalendarEvent.objects.filter(overlapping).filter(renting).distinct().prefetch_related("complexes")
+        else:
+            events = CalendarEvent.objects.none()
         items = (
-            _event_items(events)
+            _event_items(events, visible_complexes=set(moved_in))
             + _tenancy_items(mine, start, end, group_rent=False)
             + _site_visit_items(visits.filter(renter__user=user), landlord_view=False)
         )

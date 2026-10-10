@@ -1,24 +1,34 @@
 // =========================================================
 // INQUIRIES TAB (renter + landlord dashboards)
-// - Messages / Requests tabs
+// - Messages / Pending Requests / Waitlist / Archive tabs
 // - thread list refreshes every 8 s (newest conversation on top)
+// - search the thread list by person or property name
 // - an open thread refreshes every 4 s (chat.js), with ✓✓ seen
 // - replies with text and/or a file
 // =========================================================
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Tab switching (Messages / Requests)
+  // Tab switching (Messages / Pending Requests / Waitlist / Archive).
   const tabs = document.querySelectorAll(".inquiry-tab");
   const panels = document.querySelectorAll(".inquiry-tabpanel");
 
-  tabs.forEach((tab) => {
-    tab.addEventListener("click", () => {
-      tabs.forEach((t) => t.classList.toggle("active", t === tab));
-      panels.forEach((p) => {
-        p.hidden = p.id !== `tab-${tab.dataset.tab}`;
-      });
+  function showTab(tab) {
+    tabs.forEach((t) => t.classList.toggle("active", t === tab));
+    panels.forEach((p) => {
+      p.hidden = p.id !== `tab-${tab.dataset.tab}`;
     });
-  });
+  }
+  tabs.forEach((tab) => tab.addEventListener("click", () => showTab(tab)));
+
+  // Back on the same sub-tab after a request action reloaded the page (requests.js)
+  try {
+    const saved = sessionStorage.getItem("lookapt:inquiries:tab");
+    if (saved) {
+      sessionStorage.removeItem("lookapt:inquiries:tab");
+      const tab = document.querySelector(`.inquiry-tab[data-tab="${saved}"]`);
+      if (tab) showTab(tab);
+    }
+  } catch (err) { /* ignore */ }
 
   const threadList = document.getElementById("messages-view");
   const convo = document.getElementById("conversation-view");
@@ -35,6 +45,33 @@ document.addEventListener("DOMContentLoaded", () => {
   const error = convo.querySelector("[data-message-error]");
   let replyUrl = null;
   let openId = null;
+
+  // Search: matches the other person's name and the property / unit
+  const search = document.querySelector("[data-thread-search]");
+  const searchWrap = document.querySelector("[data-thread-search-wrap]");
+  const searchEmpty = document.querySelector("[data-thread-search-empty]");
+
+  function applySearch() {
+    if (!search) return;
+    const query = search.value.trim().toLowerCase();
+    const buttons = [...threadList.querySelectorAll('[data-action="open-conversation"]')];
+    let shown = 0;
+    buttons.forEach((btn) => {
+      const show = !query || (btn.dataset.search || btn.textContent).toLowerCase().includes(query);
+      btn.hidden = !show;
+      if (show) shown++;
+    });
+    searchEmpty.hidden = !(query && buttons.length && !shown);
+  }
+  search?.addEventListener("input", applySearch);
+
+  function showList(show) {
+    threadList.hidden = !show;
+    convo.hidden = show;
+    if (searchWrap) searchWrap.hidden = !show;
+    if (searchEmpty && !show) searchEmpty.hidden = true;
+    if (show) applySearch();
+  }
 
   function showError(message) {
     error.textContent = message;
@@ -66,8 +103,7 @@ document.addEventListener("DOMContentLoaded", () => {
     replyUrl = btn.dataset.replyUrl;
     showError("");
     picker.clear();
-    threadList.hidden = true;
-    convo.hidden = false;
+    showList(false);
     box.replaceChildren(Chat.el("div", "conversation-empty", "Loading…"));
 
     try {
@@ -90,8 +126,7 @@ document.addEventListener("DOMContentLoaded", () => {
   convo.querySelector('[data-action="back-to-threads"]').addEventListener("click", () => {
     thread.stop();
     openId = null;
-    convo.hidden = true;
-    threadList.hidden = false;
+    showList(true);
     refreshInbox();
   });
 
@@ -134,6 +169,7 @@ document.addEventListener("DOMContentLoaded", () => {
     btn.dataset.conversationId = item.id;
     btn.dataset.url = item.url;
     btn.dataset.replyUrl = item.reply_url;
+    btn.dataset.search = `${item.other_name} ${item.subject}`;
 
     const avatar = Chat.el("span", "thread-avatar");
     avatar.append(Chat.el("span", "thread-avatar-fallback", item.other_initials || "U"));
@@ -185,6 +221,7 @@ document.addEventListener("DOMContentLoaded", () => {
         threadList.replaceChildren(list);   // replaces the "No messages yet" state
       }
       list.replaceChildren(...data.threads.map(threadButton));
+      applySearch();      // keep the search applied after a refresh
     } catch (err) {
       /* try again next time */
     }

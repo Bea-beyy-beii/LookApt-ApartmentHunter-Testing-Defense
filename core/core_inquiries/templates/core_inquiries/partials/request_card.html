@@ -1,0 +1,259 @@
+{% comment %}
+    One request card (Pending Requests, and the renter's Waitlist tab).
+    `application` comes from core_inquiries.workflow.request_tabs().
+    Buttons open the pop-ups in modals/request_modals.html (requests.js);
+    "Edit Application" opens the listing page's form (listing_modals.js).
+{% endcomment %}
+{% load listing_tags %}
+{% with a=application unit=application.unit complex=application.unit.complex %}
+
+<article class="rq-card" data-request-card>
+
+    <!-- Unit -->
+    <header class="rq-head">
+        <span class="rq-cover">
+            {% if a.cover_url %}<img src="{{ a.cover_url }}" alt="" loading="lazy">{% else %}{% feature_icon "unit_type" %}{% endif %}
+            {% if a.photo_count %}
+                <span class="rq-photos">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg>
+                    {{ a.photo_count }} photo{{ a.photo_count|pluralize }}
+                </span>
+            {% endif %}
+        </span>
+
+        <div class="rq-title">
+            <h3>{{ complex.complex_name }} – {{ unit.unit_name }}</h3>
+            <p class="rq-address">{% feature_icon "location" %} {{ complex.address }}</p>
+            <div class="rq-tags">
+                {% if is_landlord_inbox %}
+                    {% include "core_inquiries/partials/status_pill.html" %}
+                {% else %}
+                    <span class="rq-pill rq-pill--{{ a.kind }}">{% if a.kind == "waitlist" %}{% feature_icon "bell" %}{% else %}{% feature_icon "document" %}{% endif %} {{ a.get_kind_display }}</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="rq-corner">
+            {% if is_landlord_inbox %}
+                <span class="rq-pill rq-pill--{{ a.kind }}">{% if a.kind == "waitlist" %}{% feature_icon "bell" %}{% else %}{% feature_icon "person" %}{% endif %} {{ a.get_kind_display }}</span>
+            {% else %}
+                {% include "core_inquiries/partials/status_pill.html" %}
+            {% endif %}
+            <time class="rq-sent" datetime="{{ a.created_at|date:'c' }}">Sent {{ a.created_at|date:"M j, Y" }}</time>
+        </div>
+    </header>
+
+    <div class="rq-body">
+
+        <!-- Who -->
+        <section class="rq-col">
+            {% if is_landlord_inbox %}
+                <h4>Requested by</h4>
+                <div class="rq-person">
+                    <span class="rq-avatar" aria-hidden="true">{{ a.renter_initials }}</span>
+                    <span class="rq-stack">
+                        <strong>{{ a.renter_name }}</strong>
+                        <small>{{ a.renter_contact }}</small>
+                    </span>
+                </div>
+                <div class="rq-divider"></div>
+                <h4>{% feature_icon "occupants" %} Applicants ({{ a.occupants|length }})</h4>
+                <ul class="rq-names">
+                    {% for name in a.occupants %}<li>{{ name }}</li>{% endfor %}
+                </ul>
+            {% else %}
+                <h4>Landlord</h4>
+                <div class="rq-person">
+                    <span class="rq-avatar" aria-hidden="true">{{ a.landlord_initials }}</span>
+                    <span class="rq-stack">
+                        <strong>{{ a.landlord_name }}</strong>
+                        {% if a.landlord_verified %}<small class="rq-verified">{% feature_icon "shield" %} Verified Landlord</small>{% endif %}
+                    </span>
+                </div>
+                <div class="rq-divider"></div>
+                <h4>{% feature_icon "occupants" %} Other Applicants ({{ a.other_occupants|length }})</h4>
+                <ul class="rq-names">
+                    {% for name in a.other_occupants %}<li>{{ name }}</li>{% empty %}<li class="rq-muted">Just you</li>{% endfor %}
+                </ul>
+            {% endif %}
+        </section>
+
+        <!-- Dates -->
+        <section class="rq-col">
+            <div class="rq-fact">
+                <span class="rq-fact-icon">{% feature_icon "lease" %}</span>
+                <div>
+                    <h4>Preferred Move-in Date</h4>
+                    <strong>{{ a.move_in_date|date:"M j, Y" }}</strong>
+                </div>
+            </div>
+
+            {% if a.status == "waitlisted" %}
+                <div class="rq-fact">
+                    <span class="rq-fact-icon">{% feature_icon "clock" %}</span>
+                    <div>
+                        <h4>{% if a.outlook.key == "vacant" %}Unit Status{% else %}Expected Availability{% endif %}</h4>
+                        {% if a.outlook.key == "vacant" %}
+                            <strong class="rq-good">Available now</strong>
+                        {% else %}
+                            <strong>{{ a.outlook.expected|date:"M j, Y" }}</strong>
+                            <small>{{ a.outlook.label }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+            {% else %}
+                <div class="rq-fact">
+                    <span class="rq-fact-icon">{% feature_icon "calendar_check" %}</span>
+                    <div>
+                        <h4>Requested Site Visit</h4>
+                        {% if a.kind == "waitlist" %}
+                            <strong>Not available</strong>
+                            <small>The unit is currently occupied</small>
+                        {% elif not a.site_visit_date %}
+                            <strong>No</strong>
+                        {% else %}
+                            <strong>Yes</strong>
+                            <small>{{ a.visit_label }}</small>
+                            <span class="rq-visit rq-visit--{{ a.site_visit_status|default:'pending' }}">
+                                {% if a.site_visit_status == "confirmed" %}{% feature_icon "check" %}{% elif a.site_visit_status == "declined" %}{% feature_icon "info" %}{% else %}{% feature_icon "clock" %}{% endif %}
+                                {% if a.site_visit_status == "confirmed" %}Confirmed{% elif a.site_visit_status == "declined" %}Declined{% else %}Awaiting confirmation{% endif %}
+                            </span>
+                            {% if is_landlord_inbox %}
+                                <div class="rq-visit-actions">
+                                    {% if a.site_visit_status != "confirmed" %}
+                                        <button type="button" class="rq-mini rq-mini--good"
+                                                data-open-confirm
+                                                data-url="{% url 'core_inquiries:site_visit_decision' a.pk %}"
+                                                data-payload='{"decision": "confirm"}'
+                                                data-title="Confirm Site Visit?"
+                                                data-text="{{ a.renter_name }} will visit {{ unit.unit_name }} on {{ a.visit_label }}."
+                                                data-note="It's added to both of your calendars, and {{ a.renter_name }} sees it as Confirmed."
+                                                data-confirm-label="Confirm Visit">
+                                            Confirm
+                                        </button>
+                                    {% endif %}
+                                    {% if a.site_visit_status != "declined" %}
+                                        <button type="button" class="rq-mini rq-mini--bad"
+                                                data-open-confirm data-danger
+                                                data-url="{% url 'core_inquiries:site_visit_decision' a.pk %}"
+                                                data-payload='{"decision": "decline"}'
+                                                data-title="Decline Site Visit?"
+                                                data-text="{{ a.renter_name }} asked to visit {{ unit.unit_name }} on {{ a.visit_label }}."
+                                                data-note="The request itself stays pending. Message the renter to suggest another time; they can change it with Edit Application."
+                                                data-confirm-label="Decline Visit">
+                                            Decline
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            {% elif a.site_visit_status == "declined" %}
+                                <small class="rq-muted">Message the landlord or edit your application to pick another time.</small>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        </section>
+
+        <!-- Latest message -->
+        <section class="rq-col rq-col--message">
+            <h4>
+                {% feature_icon "chat" %}
+                {% if not a.chat.preview %}Messages{% elif a.chat.mine %}Latest Message{% elif is_landlord_inbox %}Message from Renter{% else %}Message from Landlord{% endif %}
+            </h4>
+            {% include "core_inquiries/partials/chat_button.html" with chat=a.chat bubble=True %}
+        </section>
+    </div>
+
+    <!-- Actions -->
+    <footer class="rq-actions">
+        {% if a.status == "pending" and is_landlord_inbox %}
+            <button type="button" class="rq-btn rq-btn--reject"
+                    data-open-reason
+                    data-url="{% url 'core_inquiries:reject_request' a.pk %}"
+                    data-title="Reject Request?"
+                    data-text="{{ a.renter_name }}'s {{ a.get_kind_display|lower }} for {{ unit.unit_name }} at {{ complex.complex_name }}."
+                    data-confirm-label="Reject Request">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/></svg>
+                Reject Request
+            </button>
+            {% if a.kind == "waitlist" %}
+                <button type="button" class="rq-btn rq-btn--primary"
+                        data-open-confirm
+                        data-url="{% url 'core_inquiries:approve_waitlist' a.pk %}"
+                        data-title="Approve for Waitlist?"
+                        data-text="{{ a.renter_name }} will be added to the waitlist for {{ unit.unit_name }} at {{ complex.complex_name }}."
+                        data-note="The request moves to the Waitlist tab. Once the unit is vacant you can notify them and assign them in Manage Rentals."
+                        data-confirm-label="Approve for Waitlist">
+                    {% feature_icon "bell" %} Approve for Waitlist
+                </button>
+            {% else %}
+                <button type="button" class="rq-btn rq-btn--primary"
+                        data-open-approve
+                        data-url="{% url 'core_rentals:assign_tenant' unit.pk %}"
+                        data-application="{{ a.pk }}"
+                        data-renter-name="{{ a.renter_name }}"
+                        data-unit-name="{{ unit.unit_name }}"
+                        data-complex-name="{{ complex.complex_name }}"
+                        data-occupants="{{ a.occupants|length }}"
+                        data-move-in="{{ a.move_in_date|date:'Y-m-d' }}"
+                        data-move-in-label="{{ a.move_in_date|date:'M j, Y' }}"
+                        data-rent="{{ unit.price|floatformat:'0g' }}"
+                        data-lease="{{ complex.get_lease_term_display }}">
+                    {% feature_icon "person" %} Approve as Tenant
+                </button>
+            {% endif %}
+
+        {% elif a.status == "pending" %}
+            <button type="button" class="rq-btn rq-btn--reject"
+                    data-open-reason
+                    data-url="{% url 'core_inquiries:cancel_request' a.pk %}"
+                    data-title="Cancel Application?"
+                    data-text="Your {{ a.get_kind_display|lower }} for {{ unit.unit_name }} at {{ complex.complex_name }}."
+                    data-confirm-label="Cancel Application">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/></svg>
+                Cancel Application
+            </button>
+            <button type="button" class="rq-btn rq-btn--primary"
+                    data-open-application
+                    data-edit-url="{% url 'core_inquiries:edit_request' a.pk %}"
+                    data-url="{% url 'core_inquiries:edit_request' a.pk %}"
+                    data-kind="{{ a.kind }}"
+                    data-unit="{{ unit.pk }}"
+                    data-unit-name="{{ unit.unit_name }}"
+                    data-complex-name="{{ complex.complex_name }}"
+                    data-max-occupants="{{ unit.max_occupant }}"
+                    data-earliest="{{ a.earliest_move_in|date:'Y-m-d' }}"
+                    data-earliest-label="{{ a.earliest_move_in|date:'M j, Y' }}"
+                    data-lease-known="{% if a.lease_known %}1{% else %}0{% endif %}"
+                    data-turnover-days="{{ complex.turnover_days }}"
+                    data-prefill="{{ a.prefill_json }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                Edit Application
+            </button>
+
+        {% elif a.status == "waitlisted" %}
+            <p class="rq-footnote">
+                {% feature_icon "info" %}
+                {% if a.notified_at %}
+                    The landlord notified you on {{ a.notified_at|date:"M j" }} that this unit is available. Check your messages.
+                {% elif a.outlook.key == "vacant" %}
+                    This unit is vacant. The landlord will contact you if you're chosen.
+                {% else %}
+                    You'll be notified once this unit is vacant. Joining the waitlist doesn't guarantee tenancy.
+                {% endif %}
+            </p>
+            <button type="button" class="rq-btn rq-btn--reject"
+                    data-open-reason
+                    data-url="{% url 'core_inquiries:cancel_request' a.pk %}"
+                    data-title="Leave Waitlist?"
+                    data-text="You're on the waitlist for {{ unit.unit_name }} at {{ complex.complex_name }}."
+                    data-confirm-label="Leave Waitlist">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/></svg>
+                Leave Waitlist
+            </button>
+        {% endif %}
+    </footer>
+
+</article>
+
+{% endwith %}

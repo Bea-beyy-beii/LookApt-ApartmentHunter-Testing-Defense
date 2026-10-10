@@ -4,12 +4,21 @@
     box-sizing: border-box;
 }
 
+/* The whole UI is drawn at 90% (what it looked like at 90% browser zoom).
+   Change --ui-zoom to resize everything at once. Inside a zoomed page 100vh
+   shrinks too, so full-height things use var(--vh) instead of 100vh. */
+:root {
+    --ui-zoom: 0.9;
+    --vh: calc(100vh / var(--ui-zoom));
+}
+
 html {
+    zoom: var(--ui-zoom);
     scroll-behavior: smooth;
 }
 
 body {
-    min-height: 100vh;
+    min-height: var(--vh);
 }
 
 img {
@@ -23,4 +32,3 @@ textarea,
 select {
     font: inherit;
 }
-

@@ -21,7 +21,9 @@ import logging
 from .models import SavedListing
 from .services import renter_visible_complexes
 from core.models import Renter
-from .detail_services import complex_detail_context, get_renter_complex, get_renter_unit, unit_detail_context
+from .detail_services import (
+    complex_detail_context, get_renter_complex, get_renter_unit, record_view, unit_detail_context,
+)
 
 
 def _my_listings_url(saved=False):
@@ -403,7 +405,9 @@ def _renter_origin(request):
 @ensure_csrf_cookie   # the pop-ups post with fetch(), which needs the CSRF cookie
 def renter_complex_detail(request, pk):
     origin = _renter_origin(request)
-    context = complex_detail_context(get_renter_complex(pk), request.user)
+    complex_obj = get_renter_complex(pk)
+    record_view(request.user, complex_obj)
+    context = complex_detail_context(complex_obj, request.user)
     context.update(origin=origin, origin_label=RENTER_ORIGINS[origin])
     return render(request, "core_listings/renters/complex_detail.html", context)
 
@@ -412,6 +416,8 @@ def renter_complex_detail(request, pk):
 @ensure_csrf_cookie   # the pop-ups post with fetch(), which needs the CSRF cookie
 def renter_unit_detail(request, pk):
     origin = _renter_origin(request)
-    context = unit_detail_context(get_renter_unit(pk), request.user)
+    unit = get_renter_unit(pk)
+    record_view(request.user, unit.complex, unit)
+    context = unit_detail_context(unit, request.user)
     context.update(origin=origin, origin_label=RENTER_ORIGINS[origin])
     return render(request, "core_listings/renters/unit_detail.html", context)

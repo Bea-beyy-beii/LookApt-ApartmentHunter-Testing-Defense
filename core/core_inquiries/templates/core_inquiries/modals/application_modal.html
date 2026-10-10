@@ -2,8 +2,9 @@
     "Apply as Renter" / "Join Waitlist" pop-up, shared by every unit on the page.
     listing_modals.js fills it from the clicked button's data-* attributes
     (unit, max occupants, earliest move-in...) and switches between the two modes:
-      apply    -> move-in date (today or later) + optional site visit
+      apply    -> move-in date (today or later) + optional site visit (date + time)
       waitlist -> move-in date from the current lease end + turnover days, no site visit
+    The renter's Inquiries tab also uses it for "Edit Application" (data-edit-url).
 {% endcomment %}
 {% load listing_tags %}
 
@@ -109,13 +110,24 @@
                 </div>
 
                 <div class="lm-visit" data-visit-fields hidden>
-                    <span>Preferred Site Visit Date</span>
-                    <label class="lm-date">
-                        {% feature_icon "lease" %}
-                        <input type="date" name="site_visit_date" aria-label="Preferred site visit date">
-                    </label>
+                    <div class="lm-visit-field">
+                        <span>Preferred Site Visit Date</span>
+                        <label class="lm-date">
+                            {% feature_icon "lease" %}
+                            <input type="date" name="site_visit_date" aria-label="Preferred site visit date">
+                        </label>
+                    </div>
+                    <div class="lm-visit-field">
+                        <span>Preferred Time</span>
+                        <label class="lm-date">
+                            {% feature_icon "clock" %}
+                            <input type="time" name="site_visit_time" step="900" aria-label="Preferred site visit time">
+                        </label>
+                    </div>
                 </div>
                 <p class="lm-field-error" data-error-for="site_visit_date" hidden></p>
+                <p class="lm-field-error" data-error-for="site_visit_time" hidden></p>
+                <p class="lm-hint" data-visit-hint>The landlord will confirm the date and time. You'll see it in Inquiries → Pending Requests.</p>
             </section>
 
             <!-- Waitlist note -->

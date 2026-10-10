@@ -1,0 +1,7 @@
+{# Status of a request: Pending / On the Waitlist / Rejected / Cancelled / Closed. Needs `a`. #}
+{% load listing_tags %}
+<span class="rq-pill rq-pill--status-{{ a.status }}">
+    {% if a.status == "pending" %}{% feature_icon "clock" %} Pending
+    {% elif a.status == "waitlisted" %}{% feature_icon "bell" %} On the Waitlist
+    {% else %}{% feature_icon "info" %} {{ a.get_status_display }}{% endif %}
+</span>

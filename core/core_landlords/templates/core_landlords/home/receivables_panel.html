@@ -1,0 +1,68 @@
+{% comment %}
+    Monthly Receivables drawer content for one month. `receivables` comes from
+    core_landlords.services.receivables(). The < > arrows reload this partial
+    (landlord_home.js); "Mark as Paid" opens Manage Rentals' pop-up (rentals.js).
+{% endcomment %}
+{% load listing_tags %}
+{% with r=receivables %}
+
+<header class="lr-head">
+    <span class="lh-card-icon lh-tone--green">{% feature_icon "wallet" %}</span>
+    <div>
+        <h2>Monthly Receivables</h2>
+        <p>Rental payments for {{ r.month_label }}</p>
+    </div>
+    <button type="button" class="lr-close" data-lh-drawer-close aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+</header>
+
+<div class="lr-month">
+    <button type="button" data-lh-month-nav="{{ r.prev_value }}" aria-label="Previous month">‹</button>
+    <span>{% feature_icon "lease" %} {{ r.month_label }}</span>
+    <button type="button" data-lh-month-nav="{{ r.next_value }}" aria-label="Next month">›</button>
+</div>
+
+<section class="lr-total">
+    <div class="lh-card-row">
+        <strong>₱{{ r.paid.amount|floatformat:"0g" }} <em>of ₱{{ r.expected.amount|floatformat:"0g" }} collected</em></strong>
+        <b>{{ r.percent }}%</b>
+    </div>
+    <span class="lh-bar lh-bar--green"><i style="width: {{ r.percent }}%"></i></span>
+</section>
+
+<div class="lr-stats">
+    <div class="lr-stat lr-stat--paid"><strong>{{ r.paid.count }}</strong><span>Paid</span><small>₱{{ r.paid.amount|floatformat:"0g" }}</small></div>
+    <div class="lr-stat lr-stat--overdue"><strong>{{ r.overdue.count }}</strong><span>Overdue</span><small>₱{{ r.overdue.amount|floatformat:"0g" }}</small></div>
+    <div class="lr-stat lr-stat--soon"><strong>{{ r.due_soon.count }}</strong><span>Next 7 days</span><small>₱{{ r.due_soon.amount|floatformat:"0g" }}</small></div>
+    <div class="lr-stat"><strong>{{ r.not_due.count }}</strong><span>Not yet due</span><small>₱{{ r.not_due.amount|floatformat:"0g" }}</small></div>
+</div>
+
+<section class="lr-section">
+    <h3>Expected Rental Income</h3>
+    <p class="lr-note">From every unit with rent due this month, grouped by monthly rate.</p>
+    {% if r.breakdown %}
+        <table class="lr-table">
+            <thead><tr><th>Monthly Rate</th><th>Units</th><th>Expected</th></tr></thead>
+            <tbody>
+                {% for row in r.breakdown %}
+                    <tr><td>₱{{ row.rate|floatformat:"0g" }}</td><td>{{ row.units }}</td><td>₱{{ row.amount|floatformat:"0g" }}</td></tr>
+                {% endfor %}
+            </tbody>
+            <tfoot><tr><td>Total</td><td>{{ r.expected.count }}</td><td>₱{{ r.expected.amount|floatformat:"0g" }}</td></tr></tfoot>
+        </table>
+    {% else %}
+        <p class="lr-empty">No rent is due this month.</p>
+    {% endif %}
+</section>
+
+<section class="lr-section">
+    <div class="lr-tabs" role="tablist">
+        <button type="button" class="active" data-lr-tab="upcoming">Upcoming ({{ r.upcoming|length }})</button>
+        <button type="button" data-lr-tab="overdue">Overdue ({{ r.overdue_rows|length }})</button>
+    </div>
+    {% include "core_landlords/home/receivables_rows.html" with rows=r.upcoming name="upcoming" empty="No upcoming due dates this month." %}
+    {% include "core_landlords/home/receivables_rows.html" with rows=r.overdue_rows name="overdue" empty="Nothing overdue this month." hidden=True %}
+</section>
+
+{% endwith %}

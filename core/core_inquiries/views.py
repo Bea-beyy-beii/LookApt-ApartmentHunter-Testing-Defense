@@ -1,11 +1,11 @@
 # core_inquiries/views.py
 # JSON endpoints used by the listing pages' pop-ups and the Inquiries tab.
 import json
-from datetime import date
+from datetime import date, time
 
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import PermissionDenied, ValidationError
-from django.http import JsonResponse
+from django.core.exceptions import ObjectDoesNotExist, PermissionDenied, ValidationError
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
@@ -13,9 +13,10 @@ from django.views.decorators.http import require_GET, require_POST
 from core.core_accounts.decorators import role_required
 from core.core_listings.services import renter_visible_complexes
 
-from . import services
-from .models import Application
 from core.models import Renter
+
+from . import services, workflow
+from .models import Application
 
 
 def _payload(request):
@@ -28,6 +29,13 @@ def _payload(request):
 def _date(value):
     try:
         return date.fromisoformat(value) if value else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _time(value):
+    try:
+        return time.fromisoformat(value) if value else None
     except (TypeError, ValueError):
         return None
 
@@ -58,6 +66,7 @@ def submit_application(request, unit_pk):
             occupants=data.get("occupants"),
             move_in_date=_date(data.get("move_in_date")),
             site_visit_date=_date(data.get("site_visit_date")),
+            site_visit_time=_time(data.get("site_visit_time")),
         )
     except ValidationError as error:
         return _errors(error)
@@ -215,3 +224,98 @@ def send_to_renter(request):
         "detail_url": reverse("core_inquiries:conversation_detail", args=[conversation.pk]),
         "message": services.message_json(request.user, message),
     }, status=201)
+
+
+
+# =========================================================
+# PENDING REQUESTS / WAITLIST (Inquiries tab)
+# "Approve as Tenant" posts to core_rentals:assign_tenant (same as Manage Rentals).
+# =========================================================
+
+def _own(lookup, request, pk):
+    try:
+        return lookup(request.user, pk)
+    except ObjectDoesNotExist:
+        raise Http404
+
+
+def _done(message):
+    return JsonResponse({"message": message})
+
+
+@role_required("landlord")
+@require_POST
+def reject_request(request, pk):
+    application = _own(workflow.landlord_application, request, pk)
+    data = _payload(request)
+    was_waitlisted = application.status == Application.Status.WAITLISTED
+    try:
+        workflow.reject(application, data.get("reason"), data.get("reason_note"))
+    except ValidationError as error:
+        return _errors(error)
+    action = "removed from the waitlist" if was_waitlisted else "rejected"
+    return _done(f"{application.renter.user.display_name}'s request was {action} and moved to the Archive.")
+
+
+@role_required("landlord")
+@require_POST
+def approve_waitlist(request, pk):
+    application = _own(workflow.landlord_application, request, pk)
+    try:
+        workflow.approve_waitlist(application)
+    except ValidationError as error:
+        return _errors(error)
+    return _done(f"{application.renter.user.display_name} is now on the waitlist for {application.unit.unit_name}.")
+
+
+@role_required("landlord")
+@require_POST
+def notify_applicant(request, pk):
+    application = _own(workflow.landlord_application, request, pk)
+    try:
+        workflow.notify_applicant(request.user, application)
+    except ValidationError as error:
+        return _errors(error)
+    return _done(f"{application.renter.user.display_name} was notified that {application.unit.unit_name} is available.")
+
+
+@role_required("landlord")
+@require_POST
+def site_visit_decision(request, pk):
+    application = _own(workflow.landlord_application, request, pk)
+    try:
+        workflow.decide_site_visit(application, _payload(request).get("decision"))
+    except ValidationError as error:
+        return _errors(error)
+    word = application.get_site_visit_status_display().lower()
+    return _done(f"Site visit {word} for {application.renter.user.display_name} ({workflow.visit_label(application)}).")
+
+
+@role_required("renter")
+@require_POST
+def cancel_request(request, pk):
+    application = _own(workflow.renter_application, request, pk)
+    data = _payload(request)
+    try:
+        workflow.cancel(application, data.get("reason"), data.get("reason_note"))
+    except ValidationError as error:
+        return _errors(error)
+    return _done(f"Your request for {application.unit.unit_name} was cancelled.")
+
+
+@role_required("renter")
+@require_POST
+def edit_request(request, pk):
+    application = _own(workflow.renter_application, request, pk)
+    data = _payload(request)
+    try:
+        services.edit_application(
+            request.user, application,
+            occupants=data.get("occupants"),
+            move_in_date=_date(data.get("move_in_date")),
+            site_visit_date=_date(data.get("site_visit_date")),
+            site_visit_time=_time(data.get("site_visit_time")),
+        )
+    except ValidationError as error:
+        return _errors(error)
+    return _done(f"Your application for {application.unit.unit_name} was updated.")

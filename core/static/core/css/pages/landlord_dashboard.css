@@ -13,13 +13,13 @@
 
 .dashboard {
     display: flex;
-    min-height: 100vh;
+    min-height: var(--vh);
 }
 
 .landlord-dashboard {
     min-width: 0;
     flex: 1;
-    min-height: 100vh;
+    min-height: var(--vh);
 
     padding: 40px 42px 50px;
 
@@ -431,10 +431,10 @@
 .reports-page-header .reports-title h1,
 .listings-heading h1 {
     margin: 0;
-    font-family: Georgia, Times New Roman, serif;
-    color: var(--primary-color);
+    font-family: var(--font-display);      /* same font as Home's welcome message */
+    color: var(--navy);
     font-size: 32px;
-    font-weight: 750;
+    font-weight: 700;
     line-height: 1.2;
 }
 

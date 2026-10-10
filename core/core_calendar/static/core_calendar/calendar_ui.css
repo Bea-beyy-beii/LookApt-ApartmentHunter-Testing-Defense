@@ -580,9 +580,43 @@
     border-top: 1px solid #ece6da;
 }
 
-.cal-mini-day-title { margin: 0 0 8px; color: var(--navy); font-size: 13px; font-weight: 700; }
-.cal-mini-day .cal-items { max-height: 190px; overflow-y: auto; }
-.cal-agenda { max-height: 420px; overflow-y: auto; }
+.cal-mini-day-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0 0 8px;
+    color: var(--navy);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.cal-mini-day-count { color: #2f73bd; font-size: 12px; font-weight: 600; }
+/* Fixed-height widget (both dashboards): the page sets its height; the month
+   stays put and only the day's list / the Events View list scroll. Fewer
+   events just leave empty space at the bottom. */
+.cal-widget { min-height: 0; overflow: hidden; }
+
+.cal-widget [data-widget-panel] {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.cal-widget .cal-mini-day {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.cal-mini-day .cal-items,
+.cal-agenda {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
 
 
 /* =========================================================

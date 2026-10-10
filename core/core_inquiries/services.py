@@ -1,6 +1,7 @@
 # core_inquiries/services.py
 # Applications (apply / waitlist), messages, and the data for the Inquiries tab.
 import os
+import uuid
 from datetime import timedelta
 
 from dateutil.relativedelta import relativedelta
@@ -111,15 +112,10 @@ def _clean_occupants(user, unit, names):
     return occupants
 
 
-def create_application(user, unit, kind, occupants, move_in_date, site_visit_date=None):
-    """Validate and save an application. Raises ValidationError({field: message})."""
+def _clean_details(user, unit, kind, occupants, move_in_date, site_visit_date=None, site_visit_time=None):
+    """Checks shared by "submit" and "edit". Returns the cleaned values."""
     now = today()
     latest = now + timedelta(days=MAX_DAYS_AHEAD)
-
-    if kind == Application.Kind.APPLY and unit.availability != Unit.Availability.AVAILABLE:
-        raise ValidationError({"__all__": f"{unit.unit_name} is no longer available. You can join its waitlist instead."})
-    if kind == Application.Kind.WAITLIST and unit.availability != Unit.Availability.OCCUPIED:
-        raise ValidationError({"__all__": f"{unit.unit_name} is available now. You can apply right away."})
 
     occupants = _clean_occupants(user, unit, occupants)
 
@@ -131,28 +127,74 @@ def create_application(user, unit, kind, occupants, move_in_date, site_visit_dat
     if move_in_date > max(latest, earliest + timedelta(days=MAX_DAYS_AHEAD)):
         raise ValidationError({"move_in_date": "Pick a move-in date within the next year."})
 
-    if kind == Application.Kind.WAITLIST:
-        site_visit_date = None   # occupied units can't be visited
-    elif site_visit_date:
+    if kind == Application.Kind.WAITLIST or not site_visit_date:
+        site_visit_date = site_visit_time = None   # occupied units can't be visited
+    else:
         if site_visit_date < now:
             raise ValidationError({"site_visit_date": "The site visit can't be in the past."})
         if site_visit_date > move_in_date:
             raise ValidationError({"site_visit_date": "Schedule the site visit on or before your move-in date."})
+        if not site_visit_time:
+            raise ValidationError({"site_visit_time": "Pick a time for the site visit."})
+        if site_visit_date == now and site_visit_time <= timezone.localtime().time():
+            raise ValidationError({"site_visit_time": "That time has already passed. Pick a later time."})
+
+    return {
+        "occupants": occupants,
+        "move_in_date": move_in_date,
+        "site_visit_date": site_visit_date,
+        "site_visit_time": site_visit_time,
+    }
+
+
+def create_application(user, unit, kind, occupants, move_in_date, site_visit_date=None, site_visit_time=None):
+    """Validate and save an application. Raises ValidationError({field: message})."""
+    if kind == Application.Kind.APPLY and unit.availability != Unit.Availability.AVAILABLE:
+        raise ValidationError({"__all__": f"{unit.unit_name} is no longer available. You can join its waitlist instead."})
+    if kind == Application.Kind.WAITLIST and unit.availability != Unit.Availability.OCCUPIED:
+        raise ValidationError({"__all__": f"{unit.unit_name} is available now. You can apply right away."})
+
+    details = _clean_details(user, unit, kind, occupants, move_in_date, site_visit_date, site_visit_time)
 
     renter, _ = Renter.objects.get_or_create(user=user)
     try:
         with transaction.atomic():
             return Application.objects.create(
-                renter=renter, unit=unit, kind=kind, occupants=occupants,
-                move_in_date=move_in_date, site_visit_date=site_visit_date,
+                renter=renter, unit=unit, kind=kind, **details,
+                site_visit_status=Application.SiteVisit.PENDING if details["site_visit_date"] else "",
             )
     except IntegrityError:
-        raise ValidationError({"__all__": f"You already have a pending application for {unit.unit_name}."})
+        raise ValidationError({"__all__": f"You already have an open application for {unit.unit_name}."})
+
+
+@transaction.atomic
+def edit_application(user, application, occupants, move_in_date, site_visit_date=None, site_visit_time=None):
+    """Renter changes a pending request ("Edit Application"). A new site visit
+    date/time needs the landlord's confirmation again."""
+    if application.status != Application.Status.PENDING:
+        raise ValidationError({"__all__": "Only pending requests can be edited."})
+
+    details = _clean_details(
+        user, application.unit, application.kind, occupants, move_in_date, site_visit_date, site_visit_time,
+    )
+    visit_changed = (
+        details["site_visit_date"] != application.site_visit_date
+        or details["site_visit_time"] != application.site_visit_time
+    )
+    for field, value in details.items():
+        setattr(application, field, value)
+    if not application.site_visit_date:
+        application.site_visit_status = ""
+    elif visit_changed:
+        application.site_visit_status = Application.SiteVisit.PENDING
+    application.edited_at = timezone.now()     # the landlord's bell shows "Request updated"
+    application.save()
+    return application
 
 
 def unit_demand(unit):
-    """Pending applications for one unit, e.g. for "3 renters interested"."""
-    return unit.applications.filter(status=Application.Status.PENDING).count()
+    """Open applications for one unit (pending + waitlisted), e.g. for "3 renters interested"."""
+    return unit.applications.filter(status__in=Application.OPEN_STATUSES).count()
 
 
 # =========================================================
@@ -411,7 +453,9 @@ class _Latest:
     def __init__(self, conversation):
         self.body = conversation.latest_body or ""
         self.attachment_name = conversation.latest_attachment_name or ""
-        self.sender_id = conversation.latest_sender_id
+        # A subquery value can come back as a plain string (SQLite): make it a UUID like user.pk
+        sender = conversation.latest_sender_id
+        self.sender_id = sender if sender is None or isinstance(sender, uuid.UUID) else uuid.UUID(str(sender))
         self.created_at = conversation.last_message_at
 
     @property
@@ -465,22 +509,24 @@ def inbox_json(user):
     }
 
 
-def _requests_for_tab(user):
-    applications = Application.objects.select_related(
-        "renter__user", "unit__complex",
-    ).prefetch_related("unit__complex__pictures")
+# Bell colours: green = new message / good news, yellow = needs a look
+# (new or changed requests), red = cancelled / turned down
+GREEN, YELLOW, RED = "green", "yellow", "red"
 
-    if user.role == "landlord":
-        applications = applications.filter(unit__complex__landlord__user=user)
-    else:
-        applications = applications.filter(renter__user=user)
 
-    applications = list(applications)
-    for application in applications:
-        pictures = list(application.unit.complex.pictures.all())
-        cover = next((p for p in pictures if p.is_cover), None) or (pictures[0] if pictures else None)
-        application.cover_url = cover.image.url if cover else ""
-    return applications
+def _notification(key, title, message, when, tone, is_read=True, type_="application"):
+    return {
+        "id": key, "type": type_, "tone": tone, "is_read": is_read,
+        "title": title, "message": message, "created_at": when,
+    }
+
+
+def _changes(application):
+    """"move-in Nov 1, 2026 · site visit Oct 25, 2026 · 2:00 PM" (what an edit set)."""
+    parts = [f"move-in {date_label(application.move_in_date)}"]
+    if application.site_visit_date:
+        parts.append(f"site visit {application.visit_label}")
+    return " · ".join(parts)
 
 
 def _notifications(user, conversations, applications):
@@ -488,48 +534,64 @@ def _notifications(user, conversations, applications):
 
     for conversation in conversations:
         if conversation.unread_count:
-            items.append({
-                "id": f"m-{conversation.pk}",
-                "type": "message",
-                "is_read": False,
-                "title": "New message",
-                "message": f"{conversation.other_user.display_name} messaged you about {conversation.subject}.",
-                "created_at": conversation.last_message_at,
-            })
+            items.append(_notification(
+                f"m-{conversation.pk}", "New message",
+                f"{conversation.other_user.display_name} messaged you about {conversation.subject}.",
+                conversation.last_message_at, GREEN, is_read=False, type_="message",
+            ))
 
-    for application in applications:
-        if user.role == "landlord" and application.status == Application.Status.PENDING:
-            items.append({
-                "id": f"a-{application.pk}",
-                "type": "application",
-                "is_read": False,
-                "title": f"New {application.get_kind_display().lower()}",
-                "message": f"{application.renter.user.display_name} applied for {application.unit.unit_name} at {application.unit.complex.complex_name}.",
-                "created_at": application.created_at,
-            })
-        elif user.role == "renter" and application.status in (Application.Status.ACCEPTED, Application.Status.DECLINED):
-            items.append({
-                "id": f"a-{application.pk}",
-                "type": "application",
-                "is_read": True,
-                "title": f"Application {application.get_status_display().lower()}",
-                "message": f"Your request for {application.unit.unit_name} at {application.unit.complex.complex_name} was {application.get_status_display().lower()}.",
-                "created_at": application.updated_at,
-            })
+    S = Application.Status
+    for a in applications:
+        where = f"{a.unit.unit_name} at {a.unit.complex.complex_name}"
+        when = a.decided_at or a.updated_at
+        key = f"a-{a.pk}"
+
+        if user.role == "landlord":
+            name = a.renter.user.display_name
+            if a.status == S.PENDING and a.edited_at:
+                items.append(_notification(key, "Request updated",
+                                           f"{name} changed their request for {where}: {_changes(a)}.",
+                                           a.edited_at, YELLOW, is_read=False))
+            elif a.status == S.PENDING:
+                items.append(_notification(key, f"New {a.get_kind_display().lower()}",
+                                           f"{name} applied for {where}.", a.created_at, YELLOW, is_read=False))
+            elif a.status == S.WITHDRAWN:
+                items.append(_notification(key, "Request cancelled",
+                                           f"{name} cancelled their request for {where}.", when, RED))
+            continue
+
+        if a.status == S.WAITLISTED and a.notified_at:
+            items.append(_notification(key, "Unit now available",
+                                       f"{where} is vacant. The landlord sent you a message.", a.notified_at, GREEN, is_read=False))
+        elif a.status == S.WAITLISTED:
+            items.append(_notification(key, "Added to the waitlist", f"The landlord approved your waitlist request for {where}.", when, YELLOW))
+        elif a.status == S.ACCEPTED:
+            items.append(_notification(key, "Application approved",
+                                       f"You're the new tenant of {where}. See Rental History.", when, GREEN, is_read=False))
+        elif a.status == S.DECLINED:
+            items.append(_notification(key, "Request rejected", f"Your request for {where} was rejected.", when, RED))
+        elif a.status == S.CLOSED:
+            items.append(_notification(key, "Request closed", f"{where} was rented to another applicant.", when, RED))
+        elif a.status == S.PENDING and a.site_visit_status in (Application.SiteVisit.CONFIRMED, Application.SiteVisit.DECLINED):
+            confirmed = a.site_visit_status == Application.SiteVisit.CONFIRMED
+            items.append(_notification(f"v-{a.pk}", f"Site visit {a.get_site_visit_status_display().lower()}",
+                                       f"Your site visit for {where} ({a.visit_label}) was {a.get_site_visit_status_display().lower()}.",
+                                       a.updated_at, GREEN if confirmed else RED, type_="site_visit"))
 
     items.sort(key=lambda item: item["created_at"], reverse=True)
     return items[:MAX_NOTIFICATIONS]
 
 
 def get_inquiries_context(user):
+    from .workflow import request_tabs   # workflow imports core_rentals, which imports this module
+
     conversations = _conversations_for_tab(user)
-    applications = _requests_for_tab(user)
-    notifications = _notifications(user, conversations, applications)
+    tabs = request_tabs(user, conversations)
+    notifications = _notifications(user, conversations, tabs.pop("all_requests"))
 
     return {
         "conversations": conversations,
-        "requests": applications,
-        "pending_requests_count": sum(1 for a in applications if a.status == Application.Status.PENDING),
+        **tabs,
         "unread_messages_count": sum(c.unread_count for c in conversations),
         "notifications": notifications,
         "unread_notifications_count": sum(1 for n in notifications if not n["is_read"]),

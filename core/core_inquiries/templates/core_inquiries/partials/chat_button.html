@@ -1,0 +1,27 @@
+{% comment %}
+    Opens the request chat pop-up (requests.js) with the other person.
+    `chat` = workflow._chat(): name, initials, subject, detail_url, send_url, send_params, preview...
+    bubble=True -> the latest message in a bubble (request cards); otherwise a "Message" link.
+{% endcomment %}
+{% load listing_tags %}
+<button type="button"
+        class="{% if bubble %}rq-bubble{% if chat.unread %} is-unread{% endif %}{% else %}rq-link{% endif %}"
+        data-open-request-chat
+        data-name="{{ chat.name }}"
+        data-initials="{{ chat.initials }}"
+        data-subject="{{ chat.subject }}"
+        data-detail-url="{{ chat.detail_url }}"
+        data-send-url="{{ chat.send_url }}"
+        data-send-params="{{ chat.send_params }}"
+        aria-label="Message {{ chat.name }}">
+    {% if bubble %}
+        {% if chat.preview %}
+            <span class="rq-bubble-text">{% if chat.mine %}<b>You:</b> {% endif %}{{ chat.preview|truncatechars:160 }}</span>
+            <span class="rq-bubble-time">{{ chat.time }}{% if chat.unread %} · <b>{{ chat.unread }} unread</b>{% endif %}</span>
+        {% else %}
+            <span class="rq-bubble-text rq-muted">No messages yet. Tap to start a conversation with {{ chat.name }}.</span>
+        {% endif %}
+    {% else %}
+        {% feature_icon "chat" %} <span>Message</span>{% if chat.unread %}<span class="rq-dot" aria-label="{{ chat.unread }} unread"></span>{% endif %}
+    {% endif %}
+</button>
