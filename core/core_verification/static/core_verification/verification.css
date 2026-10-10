@@ -1,0 +1,255 @@
+/* =========================================================
+   LANDLORD VERIFICATION (core_verification)
+   Prefix: vf-. The pop-ups reuse lm-* (listing_modals.css) and rt-btn
+   (rentals.css). Colours come from the theme variables (or are
+   semi-transparent), so dark mode needs nothing extra.
+========================================================= */
+
+
+/* ---------- Status banner (top of the landlord dashboard) ---------- */
+
+/* The bell / profile normally float in the top-right corner (topbar_menus.css);
+   while the banner shows they stay in their own row above it instead. */
+body[data-tab]:not([data-tab=""]):not([data-tab="myListings"]) .landlord-dashboard:has(.vf-banner) .dashboard-topbar {
+    position: relative;
+    top: auto;
+    right: auto;
+    margin-bottom: 16px;
+}
+
+.vf-banner {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+
+    margin: 0 0 20px;
+    padding: 14px 18px;
+
+    border: 1px solid rgba(245, 185, 76, 0.45);
+    border-radius: var(--radius-md);
+    background: rgba(245, 185, 76, 0.12);
+
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.vf-banner--review,
+.vf-banner--checking {
+    border-color: rgba(32, 58, 104, 0.2);
+    background: rgba(32, 58, 104, 0.06);
+}
+
+.vf-banner--resubmit,
+.vf-banner--rejected {
+    border-color: rgba(201, 75, 75, 0.3);
+    background: rgba(201, 75, 75, 0.07);
+}
+
+.vf-banner-icon {
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+
+    width: 40px;
+    height: 40px;
+
+    border-radius: 50%;
+    background: var(--white);
+    color: var(--navy);
+}
+
+.vf-banner--resubmit .vf-banner-icon,
+.vf-banner--rejected .vf-banner-icon { color: var(--error); }
+
+.vf-banner-icon svg { width: 22px; height: 22px; }
+
+.vf-banner-text {
+    flex: 1;
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.vf-banner-text strong { color: var(--text-primary); font-size: 15px; }
+.vf-banner-text span { color: var(--text-secondary); }
+.vf-banner-text a { color: inherit; font-weight: 700; text-decoration: underline; }
+
+.vf-banner-btn { flex-shrink: 0; }
+
+.vf-spinner {
+    width: 20px;
+    height: 20px;
+
+    border: 2.5px solid rgba(32, 58, 104, 0.2);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+
+    animation: vf-spin 0.9s linear infinite;
+}
+
+@keyframes vf-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 640px) {
+    .vf-banner { flex-wrap: wrap; }
+    .vf-banner-btn { width: 100%; }
+}
+
+
+/* ---------- Upload pop-up ---------- */
+
+.vf-modal { width: min(580px, calc(100vw - 32px)); }
+
+.vf-modal .lm-body {
+    display: grid;
+    gap: 18px;
+    padding: 4px 24px 20px;
+    overflow-y: auto;
+}
+
+.vf-modal-icon { background: rgba(245, 185, 76, 0.2); }
+
+.vf-notice {
+    padding: 10px 14px;
+
+    border: 1px solid rgba(201, 75, 75, 0.25);
+    border-radius: 12px;
+    background: rgba(201, 75, 75, 0.08);
+
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+.vf-step { display: grid; gap: 8px; }
+
+.vf-step h3 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    color: var(--text-primary);
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.vf-step-num {
+    display: grid;
+    place-items: center;
+
+    width: 24px;
+    height: 24px;
+
+    border-radius: 50%;
+    background: var(--navy);
+    color: #fff;
+    font-size: 12px;
+}
+
+.vf-hint { color: var(--text-secondary); font-size: 13px; }
+
+.vf-select {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 12px;
+
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    background: var(--white);
+
+    color: var(--text-primary);
+    font-family: var(--font-primary);
+    font-size: 14px;
+}
+
+.vf-select:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+
+.vf-drop {
+    display: grid;
+    justify-items: center;
+    gap: 4px;
+
+    padding: 16px;
+
+    border: 1.5px dashed var(--border-medium);
+    border-radius: 12px;
+
+    color: var(--text-secondary);
+    font-size: 14px;
+    text-align: center;
+
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.vf-drop:hover,
+.vf-drop:focus-within { border-color: var(--navy); background: rgba(32, 58, 104, 0.04); }
+
+.vf-drop svg { width: 28px; height: 28px; color: var(--navy); }
+
+.vf-drop [data-file-name] {
+    max-width: 100%;
+    overflow: hidden;
+    color: var(--text-primary);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.vf-drop small { font-size: 12px; }
+
+.vf-drop.has-file {
+    border-style: solid;
+    border-color: var(--success);
+    background: rgba(61, 139, 92, 0.06);
+}
+
+.vf-privacy {
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.vf-footer { grid-template-columns: 1fr 1.6fr; }
+.vf-footer .rt-btn { min-height: 46px; font-size: 14px; }
+
+
+/* ---------- "You're verified" welcome ---------- */
+
+.vf-welcome { width: min(440px, calc(100vw - 32px)); }
+
+.vf-welcome-body {
+    display: grid;
+    justify-items: center;
+    gap: 10px;
+
+    padding: 32px 28px 26px;
+    text-align: center;
+}
+
+.vf-welcome-badge {
+    display: grid;
+    place-items: center;
+
+    width: 72px;
+    height: 72px;
+    margin-bottom: 6px;
+
+    border-radius: 50%;
+    background: rgba(61, 139, 92, 0.14);
+    color: var(--success);
+}
+
+.vf-welcome-badge svg { width: 38px; height: 38px; }
+
+.vf-welcome h2 { color: var(--text-primary); font-size: 22px; font-weight: 700; }
+.vf-welcome p { color: var(--text-secondary); font-size: 14px; line-height: 1.55; }
+
+.vf-welcome-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+
+    width: 100%;
+    margin-top: 12px;
+}
+
+.vf-welcome-actions .rt-btn { min-height: 44px; text-decoration: none; }

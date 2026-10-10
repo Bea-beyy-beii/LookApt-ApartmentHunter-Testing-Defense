@@ -133,6 +133,12 @@ STORAGES = {
     # Compressed files with a fingerprint in the name (calendar.3f2a1c.css), so
     # browsers can cache them for a year and still get updates after a deploy
     "staticfiles": {"BACKEND": "core.storage.StaticStorage"},   # see core/storage.py
+    # Landlord IDs and permits (core_verification): never public, links expire after 5 minutes
+    "verification": {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {"location": "verification", "default_acl": "private",
+                    "querystring_auth": True, "querystring_expire": 300},
+    },
 }
 
 # GOOGLE MAPS API KEY
@@ -232,6 +238,12 @@ DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='LookApt <no-reply@lookap
 # Logo in the OTP email: empty = embedded in the email (works everywhere).
 # Set to a full public https:// URL of a PNG to link to it instead.
 EMAIL_LOGO_URL = env('EMAIL_LOGO_URL', default='')
+
+
+# Landlord verification (core_verification): Claude reads the uploaded documents.
+# Without ANTHROPIC_API_KEY every submission simply waits for an admin.
+ANTHROPIC_API_KEY = env('ANTHROPIC_API_KEY', default='')
+VERIFICATION_AI_MODEL = env('VERIFICATION_AI_MODEL', default='claude-opus-5-5')
 
 
 AUTH_USER_MODEL = 'core.User'

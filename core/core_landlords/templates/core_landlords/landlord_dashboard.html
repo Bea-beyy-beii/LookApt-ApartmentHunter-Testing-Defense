@@ -15,10 +15,15 @@
     <link rel="stylesheet" href="{% static 'core_calendar/calendar_ui.css' %}">
     <link rel="stylesheet" href="{% static 'core_reports/reports.css' %}">
     <link rel="stylesheet" href="{% static 'core/css/pages/landlord_home.css' %}">
+    <link rel="stylesheet" href="{% static 'core_verification/verification.css' %}">
 {% endblock %}
 
 
 {% block content %}
+
+{# Verification: status banner + welcome, and the upload pop-up (core_verification) #}
+{% include "core_verification/status.html" %}
+{% include "core_verification/upload.html" %}
 
 <!-- =====================================================
      HOME
@@ -121,6 +126,8 @@
 
 
 {% block extra_js %}
+
+    <script src="{% static 'core_verification/verification.js' %}" defer></script>
 
     <script
         src="{% static 'core_inquiries/chat.js' %}"
