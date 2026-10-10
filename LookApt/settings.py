@@ -147,13 +147,12 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
     },
+    # Length, uppercase, lowercase, number, symbol, no spaces: one combined message
+    # (replaces Django's MinimumLength and Numeric checks, which repeated it)
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        'NAME': 'core.core_accounts.validators.StrongPasswordValidator',
     },
 ]
 
@@ -229,6 +228,8 @@ else:
     }
 
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='LookApt <no-reply@lookapt.com>')
+
+EMAIL_LOGO_URL = env('EMAIL_LOGO_URL', default='')   #embeds the logo in emails (instead of linking to it) if set to a PNG file in S3 or /media
 
 
 AUTH_USER_MODEL = 'core.User'

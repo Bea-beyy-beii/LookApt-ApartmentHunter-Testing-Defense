@@ -14,7 +14,6 @@ EMAIL_HOST they're printed in the runserver terminal instead).
 import math
 import secrets
 from datetime import timedelta
-from email.message import MIMEPart
 from functools import cache
 
 from django.conf import settings
@@ -117,15 +116,24 @@ def _logo_bytes():
         return f.read()
 
 
-def _logo():
-    """The logo as an inline image part (cid:lookapt-logo), or None if the file is missing."""
-    data = _logo_bytes()
-    if data is None:
-        return None
-    part = MIMEPart()
-    part.set_content(data, maintype='image', subtype='png', disposition='inline',
-                     filename='lookapt-logo.png', cid='<lookapt-logo>')
-    return part
+class EmailWithInlineLogo(EmailMultiAlternatives):
+    """HTML email whose logo sits *inside* the HTML part (multipart/related),
+    so mail apps show it in the message and not as an attachment."""
+
+    def __init__(self, *args, logo=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.logo = logo
+
+    def message(self, *args, **kwargs):
+        msg = super().message(*args, **kwargs)
+        if self.logo:
+            for part in msg.walk():
+                if part.get_content_type() == 'text/html':
+                    part.add_related(self.logo, maintype='image', subtype='png',
+                                     cid='<lookapt-logo@lookapt>', filename='lookapt-logo.png',
+                                     disposition='inline')
+                    break
+        return msg
 
 
 def deliver(email, code, purpose=Purpose.SIGNUP, name=''):
@@ -138,21 +146,20 @@ def deliver(email, code, purpose=Purpose.SIGNUP, name=''):
     text = (
         f"{greeting}\n\n"
         f"{intro} {code}\n"
-        f"It expires in {minutes} minutes. Don't share it with anyone. "
-        f"If you didn't ask for this, you can ignore this email."
+        f"It expires in {minutes} minutes. Don't share it with anyone. If you didn't ask for this, you can ignore this email."
         f"\n\nBest,\nLookApt"
     )
 
-    
+
+    linked_logo = settings.EMAIL_LOGO_URL                # Option B: a link, nothing attached
     html = render_to_string('core_accounts/emails/otp_code.html', {
         'greeting': greeting, 'intro': intro, 'code': code, 'minutes': minutes,
+        'logo_src': linked_logo or 'cid:lookapt-logo@lookapt',
     })
 
-    message = EmailMultiAlternatives("Your LookApt verification code", text, settings.DEFAULT_FROM_EMAIL, [email])
+    message = EmailWithInlineLogo("Your LookApt verification code", text, settings.DEFAULT_FROM_EMAIL, [email],
+                                  logo=None if linked_logo else _logo_bytes())
     message.attach_alternative(html, 'text/html')
-    logo = _logo()
-    if logo is not None:
-        message.attach(logo)
     message.send()
 
 
