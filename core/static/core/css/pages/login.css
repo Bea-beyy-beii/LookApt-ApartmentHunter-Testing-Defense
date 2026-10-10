@@ -128,6 +128,29 @@
     font-size: 12px;
 }
 
+/* =========================================================
+   SHOW / HIDE PASSWORD
+========================================================= */
+
+.login-form .password-toggle {
+    display: grid;
+    place-items: center;
+}
+
+.login-form .password-toggle svg {
+    width: 19px;
+    height: 19px;
+}
+
+.password-toggle .eye-closed,
+.password-toggle[aria-pressed="true"] .eye-open {
+    display: none;
+}
+
+.password-toggle[aria-pressed="true"] .eye-closed {
+    display: block;
+}
+
 
 /* =========================================================
    LOGIN BUTTON

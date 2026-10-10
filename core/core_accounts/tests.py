@@ -1,12 +1,17 @@
 from datetime import timedelta
+from unittest import mock
 
-from django.test import TestCase
+from django.core import mail
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from core.core_inquiries.services import start_or_continue_inquiry
 from core.core_listings.models import Area, Complex, Unit
 from core.models import Landlord, Renter, User
+
+from . import otp
+from .models import OTPCode
 
 
 def make_user(username, role, phone, **extra):
@@ -113,3 +118,275 @@ class TopBarTests(TestCase):
         self.assertContains(page, "Landlord")
         self.assertContains(page, "Verified")
         self.assertNotContains(page, "Not verified")
+
+
+class SignupStepTests(TestCase):
+    """Sign-up in 4 steps: each Next is checked by signup/check/, Create Account opens the OTP page."""
+
+    DATA = {
+        'first_name': ' Bea ', 'last_name': 'Santos', 'phone_number': '09175550123',
+        'email': 'Bea.Santos@Example.com', 'sex': 'female', 'role': 'renter',
+        'password': 'Sunny-Window-42', 'confirm_password': 'Sunny-Window-42',
+    }
+
+    def setUp(self):
+        patcher = mock.patch('core.core_accounts.otp.deliver')     # no SMS while testing
+        self.deliver = patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def check(self, step, **changes):
+        return self.client.post(reverse('signup_check'), {**self.DATA, **changes, 'step': step}).json()
+
+    def test_page_shows_four_steps_and_login_link_only_on_step_one(self):
+        page = self.client.get(reverse('signup')).content.decode()
+        self.assertEqual(page.count('class="signup-step"'), 4)
+        for title in ("What&rsquo;s your name?", "Your contact details", "Tell us about yourself", "Create a password"):
+            self.assertIn(title, page)
+        step_one = page.split('data-step="2"')[0]
+        self.assertIn("Already have an account?", step_one)
+        self.assertEqual(page.count("Already have an account?"), 1)
+
+    def test_each_step_passes_with_good_data(self):
+        for step in (1, 2, 3, 4):
+            self.assertEqual(self.check(step), {'ok': True, 'errors': {}}, step)
+
+    def test_step_errors(self):
+        self.assertIn('first_name', self.check(1, first_name='  ')['errors'])
+        self.assertIn('last_name', self.check(1, last_name='123')['errors'])
+        self.assertIn('phone_number', self.check(2, phone_number='0917')['errors'])
+        self.assertIn('email', self.check(2, email='not-an-email')['errors'])
+        self.assertEqual(set(self.check(3, sex='', role='admin')['errors']), {'sex', 'role'})
+        self.assertIn('password', self.check(4, password='password', confirm_password='password')['errors'])
+        self.assertIn('password', self.check(4, password='12345678901', confirm_password='12345678901')['errors'])
+        self.assertIn('confirm_password', self.check(4, confirm_password='Sunny-Window-43')['errors'])
+
+    def test_password_cant_be_like_the_name(self):
+        errors = self.check(4, first_name='Bernadette', password='bernadette1', confirm_password='bernadette1')['errors']
+        self.assertIn('password', errors)
+
+    def test_phone_and_email_must_be_new(self):
+        make_user('taken', 'renter', '09175550123', email='bea.santos@example.com')
+        errors = self.check(2)['errors']
+        self.assertIn('already registered', errors['phone_number'])
+        self.assertIn('already registered', errors['email'])
+
+    def test_unknown_step(self):
+        response = self.client.post(reverse('signup_check'), {'step': '9'})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(self.client.get(reverse('signup_check')).status_code, 405)
+
+    def test_create_account_waits_for_the_otp(self):
+        response = self.client.post(reverse('signup'), self.DATA)
+        self.assertRedirects(response, reverse('otp'), fetch_redirect_response=False)
+        self.assertFalse(User.objects.filter(phone_number='09175550123').exists())   # not before the OTP
+
+        pending = self.client.session['pending_signup']
+        self.assertEqual(pending['first_name'], 'Bea')
+        self.assertEqual(pending['email'], 'bea.santos@example.com')
+        self.assertNotIn('password', pending)
+        self.assertNotIn('Sunny-Window-42', str(pending))                           # only the hash is kept
+
+        # Back to sign-up from the OTP page: what they typed is still there (not the password)
+        page = self.client.get(reverse('signup'))
+        self.assertContains(page, 'value="Bea"')
+        self.assertNotContains(page, 'Sunny-Window-42')
+
+    def test_finish_signup_after_otp_creates_and_logs_in(self):
+        from django.test import RequestFactory
+        from django.contrib.sessions.middleware import SessionMiddleware
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        from .services import AccountService
+        from .views import finish_signup
+
+        self.client.post(reverse('signup'), self.DATA)
+        request = RequestFactory().post('/otp/')
+        SessionMiddleware(lambda r: None).process_request(request)
+        request.session.update(self.client.session.items())
+        request._messages = FallbackStorage(request)
+
+        response = finish_signup(request)
+        self.assertEqual(response.url, reverse('core_renters:dashboard'))
+        user = User.objects.get(phone_number='09175550123')
+        self.assertTrue(user.check_password('Sunny-Window-42'))
+        self.assertEqual((user.first_name, user.role), ('Bea', 'renter'))
+        self.assertTrue(Renter.objects.filter(user=user).exists())
+        self.assertIsNone(AccountService.pending_signup(request))                   # used up
+
+        # A second call (no pending sign-up) goes back to the sign-up page
+        self.assertEqual(finish_signup(request).url, reverse('signup'))
+
+    def test_create_account_with_errors_reopens_the_first_bad_step(self):
+        response = self.client.post(reverse('signup'), {**self.DATA, 'email': 'nope', 'confirm_password': 'x'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-start-step="2"')
+        self.assertContains(response, 'Enter a valid email address.')
+        self.assertContains(response, 'Passwords do not match.')
+        self.assertContains(response, 'value="09175550123"')
+        self.assertNotIn('pending_signup', self.client.session)
+
+
+
+class OTPTests(TestCase):
+    """core_accounts/otp.py: one-time codes by SMS or email."""
+
+    PHONE, EMAIL = '09175550123', 'bea@example.com'
+
+    def setUp(self):
+        patcher = mock.patch('core.core_accounts.otp.deliver')
+        self.deliver = patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def send(self, channel=otp.Channel.SMS, target=None):
+        otp.send_code(otp.Purpose.SIGNUP, channel, target or self.PHONE)
+        return self.deliver.call_args.args[2]          # the code that was sent
+
+    def later(self, **delta):
+        return mock.patch('django.utils.timezone.now', return_value=timezone.now() + timedelta(**delta))
+
+    def test_right_code_works_once(self):
+        code = self.send()
+        self.assertTrue(otp.verify_code(otp.Purpose.SIGNUP, self.PHONE, code))
+        with self.assertRaisesMessage(otp.OTPError, "request a new code"):
+            otp.verify_code(otp.Purpose.SIGNUP, self.PHONE, code)
+
+    def test_code_is_six_digits_and_stored_hashed(self):
+        code = self.send()
+        self.assertRegex(code, r'^\d{6}$')
+        row = OTPCode.objects.get()
+        self.assertNotIn(code, row.code_hash)
+        self.assertEqual((row.channel, row.target), ('sms', self.PHONE))
+
+    def test_wrong_code_counts_down_then_locks(self):
+        code = self.send()
+        wrong = '000000' if code != '000000' else '111111'
+        for left in (4, 3, 2, 1):
+            with self.assertRaisesMessage(otp.OTPError, f"{left} tr"):
+                otp.verify_code(otp.Purpose.SIGNUP, self.PHONE, wrong)
+        with self.assertRaisesMessage(otp.OTPError, "Too many wrong tries"):
+            otp.verify_code(otp.Purpose.SIGNUP, self.PHONE, wrong)
+        with self.assertRaisesMessage(otp.OTPError, "Too many wrong tries"):
+            otp.verify_code(otp.Purpose.SIGNUP, self.PHONE, code)          # even the right one now
+
+    def test_code_expires_after_five_minutes(self):
+        code = self.send()
+        with self.later(minutes=5, seconds=1):
+            with self.assertRaisesMessage(otp.OTPError, "expired"):
+                otp.verify_code(otp.Purpose.SIGNUP, self.PHONE, code)
+
+    def test_resend_waits_a_minute_and_only_newest_code_works(self):
+        first = self.send()
+        with self.assertRaisesMessage(otp.OTPError, "Please wait"):
+            self.send()
+        with self.later(seconds=61):
+            second = self.send()
+            if first != second:
+                with self.assertRaises(otp.OTPError):
+                    otp.verify_code(otp.Purpose.SIGNUP, self.PHONE, first)
+            self.assertTrue(otp.verify_code(otp.Purpose.SIGNUP, self.PHONE, second))
+
+    def test_at_most_five_codes_an_hour(self):
+        for minute in range(5):
+            with self.later(minutes=minute * 2):
+                self.send()
+        with self.later(minutes=11):
+            with self.assertRaisesMessage(otp.OTPError, "Too many codes"):
+                self.send()
+
+    def test_failed_sending_doesnt_block_a_retry(self):
+        self.deliver.side_effect = RuntimeError("provider down")
+        with self.assertRaisesMessage(otp.OTPError, "couldn't send"):
+            self.send()
+        self.assertFalse(OTPCode.objects.exists())
+        self.deliver.side_effect = None
+        self.send()                                     # no 60 s wait
+
+    def test_email_target_is_case_insensitive(self):
+        code = self.send(otp.Channel.EMAIL, 'Bea@Example.com')
+        self.assertTrue(otp.verify_code(otp.Purpose.SIGNUP, self.EMAIL, code, otp.Channel.EMAIL))
+
+    def test_mask(self):
+        self.assertEqual(otp.mask('sms', '09175550123'), '0917 *** **23')
+        self.assertEqual(otp.mask('email', 'bea.santos@example.com'), 'be********@example.com')
+
+
+class OTPDeliveryTests(TestCase):
+    """What actually goes out: email via MAILERS, SMS via the chosen provider."""
+
+    def test_email(self):
+        otp.deliver(otp.Channel.EMAIL, 'bea@example.com', '123456')
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ['bea@example.com'])
+        self.assertIn('123456', mail.outbox[0].body)
+
+    @override_settings(OTP_SMS_PROVIDER='semaphore', SEMAPHORE_API_KEY='key', SEMAPHORE_SENDER_NAME='LOOKAPT')
+    def test_semaphore(self):
+        with mock.patch('core.core_accounts.otp.requests.post') as post:
+            otp.deliver(otp.Channel.SMS, '09175550123', '123456')
+        data = post.call_args.kwargs['data']
+        self.assertEqual((data['apikey'], data['number'], data['sendername']), ('key', '09175550123', 'LOOKAPT'))
+        self.assertIn('123456', data['message'])
+
+    @override_settings(OTP_SMS_PROVIDER='twilio', TWILIO_ACCOUNT_SID='AC1', TWILIO_AUTH_TOKEN='t', TWILIO_FROM_NUMBER='+15550001111')
+    def test_twilio_uses_plus63(self):
+        with mock.patch('core.core_accounts.otp.requests.post') as post:
+            otp.deliver(otp.Channel.SMS, '09175550123', '123456')
+        self.assertIn('/Accounts/AC1/', post.call_args.args[0])
+        self.assertEqual(post.call_args.kwargs['data']['To'], '+639175550123')
+
+    @override_settings(OTP_SMS_PROVIDER='console')
+    def test_console_prints_the_code(self):
+        with mock.patch('builtins.print') as printed:
+            otp.deliver(otp.Channel.SMS, '09175550123', '123456')
+        self.assertIn('123456', printed.call_args.args[0])
+
+
+class OTPPageTests(TestCase):
+    """Sign-up step 5: the OTP page."""
+
+    DATA = SignupStepTests.DATA
+
+    def setUp(self):
+        patcher = mock.patch('core.core_accounts.otp.deliver')
+        self.deliver = patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def sent_code(self):
+        return self.deliver.call_args.args[2]
+
+    def test_needs_a_pending_signup(self):
+        self.assertRedirects(self.client.get(reverse('otp')), reverse('signup'))
+
+    def test_create_account_texts_a_code_and_shows_the_masked_number(self):
+        self.client.post(reverse('signup'), self.DATA)
+        self.assertEqual(self.deliver.call_args.args[:2], ('sms', '09175550123'))
+        page = self.client.get(reverse('otp'))
+        self.assertContains(page, '0917 *** **23')
+        self.assertContains(page, 'Send via Email instead')
+
+    def test_right_code_creates_the_account(self):
+        self.client.post(reverse('signup'), self.DATA)
+        response = self.client.post(reverse('otp'), {f'otp_{i + 1}': d for i, d in enumerate(self.sent_code())})
+        self.assertRedirects(response, reverse('core_renters:dashboard'), fetch_redirect_response=False)
+        self.assertTrue(User.objects.filter(phone_number='09175550123', email='bea.santos@example.com').exists())
+
+    def test_wrong_code_stays_on_the_page(self):
+        self.client.post(reverse('signup'), self.DATA)
+        wrong = '000000' if self.sent_code() != '000000' else '111111'
+        response = self.client.post(reverse('otp'), {'code': wrong}, follow=True)
+        self.assertContains(response, 'That code is incorrect. 4 tries left.')
+        self.assertFalse(User.objects.filter(phone_number='09175550123').exists())
+
+    def test_switch_to_email_then_verify(self):
+        self.client.post(reverse('signup'), self.DATA)
+        response = self.client.post(reverse('otp_resend'), {'channel': 'email'}, follow=True)
+        self.assertEqual(self.deliver.call_args.args[:2], ('email', 'bea.santos@example.com'))
+        self.assertContains(response, 'We sent a new code to your email.')
+        self.assertContains(response, 'be********@example.com')
+        self.assertContains(response, 'Send via SMS instead')
+        self.client.post(reverse('otp'), {'code': self.sent_code()})
+        self.assertTrue(User.objects.filter(email='bea.santos@example.com').exists())
+
+    def test_resend_too_soon_shows_the_wait(self):
+        self.client.post(reverse('signup'), self.DATA)
+        response = self.client.post(reverse('otp_resend'), {'channel': 'sms'}, follow=True)
+        self.assertContains(response, 'Please wait')

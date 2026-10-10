@@ -31,6 +31,8 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 SECRET_KEY = env("SECRET_KEY")
+GOOGLE_OAUTH_CLIENT_ID = env("GOOGLE_OAUTH_CLIENT_ID", default="")
+GOOGLE_OAUTH_CLIENT_SECRET = env("GOOGLE_OAUTH_CLIENT_SECRET", default="")
 
 DEBUG = env("DEBUG")
 
@@ -203,11 +205,42 @@ LOGGING = {
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
+# Sign-up / forgot-password codes are emailed from here. Without EMAIL_HOST in
+# .env, emails are printed in the runserver terminal instead of being sent.
+if env('EMAIL_HOST', default=''):
+    MAILERS = {
+        'default': {
+            'BACKEND': 'django.core.mail.backends.smtp.EmailBackend',
+            'OPTIONS': {
+                'host': env('EMAIL_HOST'),                      # e.g. smtp.gmail.com
+                'port': env.int('EMAIL_PORT', default=587),
+                'username': env('EMAIL_HOST_USER', default=''),
+                'password': env('EMAIL_HOST_PASSWORD', default=''),   # Gmail: an App Password
+                'use_tls': True,
+                'timeout': 10,
+            },
+        },
+    }
+else:
+    MAILERS = {
+        'default': {
+            'BACKEND': 'django.core.mail.backends.console.EmailBackend',
+        },
+    }
+
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='LookApt <no-reply@lookapt.com>')
+
+
+# OTP codes by text message (core_accounts/otp.py)
+#   console   = print the code in the runserver terminal (development)
+#   semaphore = Semaphore (Philippine SMS gateway): SEMAPHORE_API_KEY
+#   twilio    = Twilio: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER
+OTP_SMS_PROVIDER = env('OTP_SMS_PROVIDER', default='console')
+SEMAPHORE_API_KEY = env('SEMAPHORE_API_KEY', default='')
+SEMAPHORE_SENDER_NAME = env('SEMAPHORE_SENDER_NAME', default='')     # approved sender name, optional
+TWILIO_ACCOUNT_SID = env('TWILIO_ACCOUNT_SID', default='')
+TWILIO_AUTH_TOKEN = env('TWILIO_AUTH_TOKEN', default='')
+TWILIO_FROM_NUMBER = env('TWILIO_FROM_NUMBER', default='')
 
 AUTH_USER_MODEL = 'core.User'
 AUTHENTICATION_BACKENDS = ['core.core_accounts.backends.PhoneOrUsernameBackend']

@@ -92,7 +92,7 @@
             <p class="otp-subtitle">
 
                 Please enter the OTP (One-Time Password)
-                sent to <strong>09** *** ****</strong>
+                sent to <strong>{{ masked_target }}</strong>
                 to finish setting up your account.
 
             </p>
@@ -111,7 +111,7 @@
 
                 <span>
                     Remaining Time :
-                    <strong id="timer">00:59s</strong>
+                    <strong id="timer" data-seconds="{{ expires_in }}">--:--</strong>
                 </span>
 
             </div>
@@ -126,6 +126,10 @@
             >
 
                 {% csrf_token %}
+
+                {% for message in messages %}
+                    <p class="otp-message otp-message--{{ message.tags|default:'info' }}" role="alert">{{ message }}</p>
+                {% endfor %}
 
 
                 <div class="otp-inputs">
@@ -218,26 +222,36 @@
 
             <div class="otp-options">
 
-                <p>
-                    Didn't receive the code?
-                    <a href="#" id="resendLink">
-                        Resend
-                    </a>
-                </p>
+                <!-- Resend: same place (unlocks after 60 s) -->
+                <form method="POST" action="{% url 'otp_resend' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="channel" value="{{ channel }}">
+                    <p>
+                        Didn't receive the code?
+                        <button type="submit" class="otp-link-button" id="resendLink" data-seconds="{{ resend_in }}">
+                            Resend
+                        </button>
+                    </p>
+                </form>
 
 
-                <a
-                    href="#"
-                    class="email-link"
-                >
+                <!-- Switch between phone and email -->
+                <form method="POST" action="{% url 'otp_resend' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="channel" value="{{ other_channel }}">
+                    <button type="submit" class="otp-link-button email-link">
 
-                    <span aria-hidden="true">
-                        ✉
-                    </span>
+                        <span aria-hidden="true">
+                            {% if other_channel == "email" %}✉{% else %}✆{% endif %}
+                        </span>
 
-                    Send via Email instead
+                        {% if other_channel == "email" %}Send via Email instead{% else %}Send via SMS instead{% endif %}
 
-                </a>
+                    </button>
+                </form>
+
+
+                <a href="{% url 'signup' %}" class="otp-back-link">Wrong details? Go back</a>
 
             </div>
 

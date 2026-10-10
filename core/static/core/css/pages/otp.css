@@ -414,6 +414,72 @@
 }
 
 
+/* Resend / switch buttons look like the links around them */
+.otp-options form {
+    margin: 0;
+}
+
+.otp-link-button {
+
+    padding: 0;
+
+    border: 0;
+
+    background: none;
+
+    color: var(--navy);
+
+    font: inherit;
+    font-weight: 700;
+
+    text-decoration: underline;
+    text-underline-offset: 2px;
+
+    cursor: pointer;
+}
+
+.otp-link-button.email-link {
+    font-weight: 600;
+}
+
+.otp-link-button:disabled {
+
+    color: var(--text-secondary);
+
+    text-decoration: none;
+
+    cursor: default;
+}
+
+
+.otp-back-link {
+
+    margin-top: 2px;
+
+    font-size: 11px;
+    font-weight: 600 !important;
+}
+
+
+/* Wrong code / wait / sent messages */
+.otp-message {
+
+    margin: 0 0 12px;
+
+    font-size: 12px;
+
+    text-align: center;
+}
+
+.otp-message--error {
+    color: #c0392b;
+}
+
+.otp-message--success {
+    color: #2f8a52;
+}
+
+
 /* =========================================================
    RESPONSIVE
 ========================================================= */

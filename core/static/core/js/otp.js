@@ -178,21 +178,25 @@ otpForm.addEventListener('submit', (event) => {
 
 /* =========================================================
    COUNTDOWN
+   How long the code still works (seconds come from the server).
 ========================================================= */
-
-let remainingTime = 59;
 
 const timer = document.getElementById('timer');
 
+let remainingTime = parseInt(timer.dataset.seconds, 10) || 0;
+
+
+function formatTime(totalSeconds) {
+
+    const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+
+    const seconds = String(totalSeconds % 60).padStart(2, '0');
+
+    return `${minutes}:${seconds}s`;
+}
+
 
 function updateTimer() {
-
-    const seconds = String(remainingTime)
-        .padStart(2, '0');
-
-
-    timer.textContent = `00:${seconds}s`;
-
 
     if (remainingTime <= 0) {
 
@@ -213,18 +217,66 @@ function updateTimer() {
     }
 
 
+    timer.textContent = formatTime(remainingTime);
+
     remainingTime--;
 
 }
-
-
-updateTimer();
 
 
 const countdown = setInterval(
     updateTimer,
     1000
 );
+
+updateTimer();
+
+
+/* =========================================================
+   RESEND
+   Locked for 60 s after a code is sent ("Resend in 42s").
+========================================================= */
+
+const resendButton = document.getElementById('resendLink');
+
+let resendWait = parseInt(resendButton?.dataset.seconds, 10) || 0;
+
+
+function updateResend() {
+
+    if (!resendButton) {
+        return;
+    }
+
+
+    if (resendWait <= 0) {
+
+        clearInterval(resendCountdown);
+
+        resendButton.disabled = false;
+
+        resendButton.textContent = 'Resend';
+
+        return;
+
+    }
+
+
+    resendButton.disabled = true;
+
+    resendButton.textContent = `Resend in ${resendWait}s`;
+
+    resendWait--;
+
+}
+
+
+const resendCountdown = setInterval(
+    updateResend,
+    1000
+);
+
+updateResend();
 
 
 /* =========================================================
