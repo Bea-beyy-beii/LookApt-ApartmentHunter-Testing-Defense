@@ -200,6 +200,8 @@
 
 .google-button {
 
+    text-decoration: none;         
+
     width: 300px;
     max-width: 100%;
     height: 33px;

@@ -14,9 +14,13 @@ EMAIL_HOST they're printed in the runserver terminal instead).
 import math
 import secrets
 from datetime import timedelta
+from email.message import MIMEPart
+from functools import cache
 
 from django.conf import settings
-from django.core.mail import send_mail
+from django.contrib.staticfiles import finders
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
 from django.db.models import F
 from django.utils import timezone
 from django.utils.crypto import constant_time_compare, salted_hmac
@@ -101,6 +105,29 @@ def send_code(purpose, email, name=''):
     return otp
 
 
+LOGO = 'core/images/logo2.png'          # the house logo in the email's signature
+
+
+@cache
+def _logo_bytes():
+    path = finders.find(LOGO)
+    if not path:
+        return None
+    with open(path, 'rb') as f:
+        return f.read()
+
+
+def _logo():
+    """The logo as an inline image part (cid:lookapt-logo), or None if the file is missing."""
+    data = _logo_bytes()
+    if data is None:
+        return None
+    part = MIMEPart()
+    part.set_content(data, maintype='image', subtype='png', disposition='inline',
+                     filename='lookapt-logo.png', cid='<lookapt-logo>')
+    return part
+
+
 def deliver(email, code, purpose=Purpose.SIGNUP, name=''):
     minutes = int(CODE_LIFETIME.total_seconds() // 60)
     greeting = f"Hello, {name}!" if name else "Hello!"
@@ -111,10 +138,22 @@ def deliver(email, code, purpose=Purpose.SIGNUP, name=''):
     text = (
         f"{greeting}\n\n"
         f"{intro} {code}\n"
-        f"It expires in {minutes} minutes. Don't share it with anyone.\n"
+        f"It expires in {minutes} minutes. Don't share it with anyone. "
         f"If you didn't ask for this, you can ignore this email."
+        f"\n\nBest,\nLookApt"
     )
-    send_mail("Your LookApt verification code", text, settings.DEFAULT_FROM_EMAIL, [email])
+
+    
+    html = render_to_string('core_accounts/emails/otp_code.html', {
+        'greeting': greeting, 'intro': intro, 'code': code, 'minutes': minutes,
+    })
+
+    message = EmailMultiAlternatives("Your LookApt verification code", text, settings.DEFAULT_FROM_EMAIL, [email])
+    message.attach_alternative(html, 'text/html')
+    logo = _logo()
+    if logo is not None:
+        message.attach(logo)
+    message.send()
 
 
 # ------------------------------------------------------------------ checking

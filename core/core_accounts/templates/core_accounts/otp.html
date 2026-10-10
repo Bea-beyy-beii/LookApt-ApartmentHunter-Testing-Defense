@@ -234,7 +234,7 @@
             <div class="otp-options">
 
                 <!-- Resend: a new code by email (unlocks after 60 s) -->
-                <form method="POST" action="{% url 'otp_resend' %}">
+                <form method="POST" action="{{ resend_url|default:signup_resend_url }}">
                     {% csrf_token %}
                     <p>
                         Didn't receive the code?

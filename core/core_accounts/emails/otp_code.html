@@ -1,0 +1,64 @@
+{% comment %}
+    The HTML version of the code email (core_accounts/otp.py: deliver).
+    Emails need tables + inline styles: Gmail / Outlook ignore most CSS.
+    cid:lookapt-logo is the logo attached to the email itself.
+{% endcomment %}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your LookApt verification code</title>
+</head>
+<body style="margin:0; padding:0; background:#fffaf0;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fffaf0; padding:32px 12px;">
+    <tr>
+        <td align="center">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                   style="max-width:480px; background:#ffffff; border:1px solid #ece3d0; border-radius:16px; font-family:Arial, Helvetica, sans-serif; color:#263a5c;">
+
+                <!-- Message -->
+                <tr>
+                    <td style="padding:32px 32px 8px;">
+                        <p style="margin:0 0 14px; font-size:18px; font-weight:bold; color:#203a68;">{{ greeting }}</p>
+                        <p style="margin:0; font-size:15px; line-height:1.6;">{{ intro }}</p>
+                    </td>
+                </tr>
+
+                <!-- The code: centered, big, bold -->
+                <tr>
+                    <td align="center" style="padding:22px 32px;">
+                        <div style="display:inline-block; padding:14px 26px; background:#fff6e3; border:1px solid #f5b94c; border-radius:12px;
+                                    font-family:'Courier New', Courier, monospace; font-size:32px; font-weight:bold; letter-spacing:8px; color:#203a68;">{{ code }}</div>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td style="padding:0 32px 26px; font-size:14px; line-height:1.6; color:#69758a;">
+                        It expires in <strong style="color:#263a5c;">{{ minutes }} minutes</strong>. Don&rsquo;t share it with anyone.<br>
+                        If you didn&rsquo;t ask for this, you can ignore this email.
+                    </td>
+                </tr>
+
+                <!-- Signature -->
+                <tr>
+                    <td style="padding:20px 32px 26px; border-top:1px solid #f0e9da;">
+                        <table role="presentation" cellpadding="0" cellspacing="0">
+                            <tr>
+                                <td style="padding-right:12px; vertical-align:middle;">
+                                    <img src="cid:lookapt-logo" width="56" alt="LookApt" style="display:block; width:56px; height:auto; border:0;">
+                                </td>
+                                <td style="vertical-align:middle; font-size:13px; line-height:1.5; color:#69758a;">
+                                    <span style="font-size:18px; font-weight:bold; color:#203a68;">Look<span style="color:#f5b94c;">Apt</span></span><br>
+                                    Your next home, <span style="color:#e9a21f;">in a tap.</span>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>

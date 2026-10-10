@@ -319,6 +319,11 @@ class OTPEmailTests(TestCase):
         self.assertEqual(mail.outbox[0].subject, 'Your LookApt verification code')
         self.assertIn('123456', mail.outbox[0].body)
 
+    def test_email_greets_by_first_name(self):
+        otp.deliver('bea@example.com', '123456', otp.Purpose.SIGNUP, 'Bea')
+        self.assertTrue(mail.outbox[0].body.startswith('Hello, Bea!'))
+        self.assertIn('Welcome to LookApt!', mail.outbox[0].body)
+
 
 class OTPPageTests(TestCase):
     """Sign-up step 5: the OTP page (code by email)."""
@@ -339,6 +344,7 @@ class OTPPageTests(TestCase):
     def test_create_account_emails_a_code_and_shows_the_masked_email(self):
         self.client.post(reverse('signup'), self.DATA)
         self.assertEqual(self.deliver.call_args.args[0], 'bea.santos@example.com')
+        self.assertEqual(self.deliver.call_args.args[3], 'Bea')          # greeting uses the first name
         page = self.client.get(reverse('otp'))
         self.assertContains(page, 'be********@example.com')
         self.assertNotContains(page, 'SMS')
@@ -367,3 +373,98 @@ class OTPPageTests(TestCase):
         self.client.post(reverse('signup'), self.DATA)
         response = self.client.post(reverse('otp_resend'), follow=True)
         self.assertContains(response, 'Please wait')
+
+
+class ForgotPasswordTests(TestCase):
+    """Forgot password: account -> emailed code -> new password."""
+
+    def setUp(self):
+        patcher = mock.patch('core.core_accounts.otp.deliver')
+        self.deliver = patcher.start()
+        self.addCleanup(patcher.stop)
+        self.user = make_user('bea', 'renter', '09175550123', email='bea.santos@example.com')
+
+    def start(self, identifier='bea.santos@example.com'):
+        return self.client.post(reverse('forgot_password'), {'identifier': identifier})
+
+    def code(self):
+        return self.deliver.call_args.args[1]
+
+    def verify(self):
+        self.start()
+        return self.client.post(reverse('forgot_password_code'), {'code': self.code()})
+
+    def test_login_page_links_to_it(self):
+        self.assertContains(self.client.get(reverse('login')), reverse('forgot_password'))
+
+    def test_email_or_phone_sends_a_reset_code(self):
+        for identifier in ('Bea.Santos@Example.com', '09175550123'):
+            OTPCode.objects.all().delete()
+            response = self.start(identifier)
+            self.assertRedirects(response, reverse('forgot_password_code'), fetch_redirect_response=False)
+            self.assertEqual(self.deliver.call_args.args[:4],
+                             ('bea.santos@example.com', self.code(), otp.Purpose.RESET, 'Bea'))
+
+    def test_unknown_account(self):
+        response = self.start('nobody@example.com')
+        self.assertContains(response, "couldn&#x27;t find an account")
+        self.deliver.assert_not_called()
+
+    def test_code_page_uses_the_otp_screen_with_reset_wording(self):
+        self.start()
+        page = self.client.get(reverse('forgot_password_code'))
+        self.assertContains(page, 'RESET PASSWORD')
+        self.assertContains(page, 'be********@example.com')
+        self.assertContains(page, reverse('forgot_password_resend'))
+        self.assertNotContains(page, 'Go back')                       # no "Wrong details? Go back" here
+
+    def test_wrong_code_stays(self):
+        self.start()
+        wrong = '000000' if self.code() != '000000' else '111111'
+        response = self.client.post(reverse('forgot_password_code'), {'code': wrong}, follow=True)
+        self.assertContains(response, 'That code is incorrect. 4 tries left.')
+
+    def test_new_password_needs_a_verified_code(self):
+        self.start()
+        self.assertRedirects(self.client.get(reverse('forgot_password_new')), reverse('forgot_password'))
+
+    def test_full_reset(self):
+        self.assertRedirects(self.verify(), reverse('forgot_password_new'))
+        response = self.client.post(reverse('forgot_password_new'),
+                                    {'password': 'Mango-Breeze-77', 'confirm_password': 'Mango-Breeze-77'}, follow=True)
+        self.assertRedirects(response, reverse('login'))
+        self.assertContains(response, 'Your password has been updated.')
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('Mango-Breeze-77'))
+        self.assertNotIn('password_reset', self.client.session)
+        # one use only
+        self.assertRedirects(self.client.get(reverse('forgot_password_new')), reverse('forgot_password'))
+
+    def test_new_password_rules(self):
+        self.verify()
+        post = lambda p, c: self.client.post(reverse('forgot_password_new'), {'password': p, 'confirm_password': c})
+        self.assertContains(post('pw-12345!', 'pw-12345!'), 'current password')
+        self.assertContains(post('password', 'password'), 'too common')
+        self.assertContains(post('Mango-Breeze-77', 'Mango-Breeze-78'), 'Passwords do not match.')
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('pw-12345!'))
+
+    def test_new_password_window_closes_after_ten_minutes(self):
+        self.verify()
+        with mock.patch('django.utils.timezone.now', return_value=timezone.now() + timedelta(minutes=11)):
+            response = self.client.get(reverse('forgot_password_new'), follow=True)
+        self.assertContains(response, 'That took too long.')
+
+    def test_resend_after_the_code_expires_stays_in_the_reset(self):
+        self.start()
+        with mock.patch('django.utils.timezone.now', return_value=timezone.now() + timedelta(minutes=6)):
+            response = self.client.post(reverse('forgot_password_resend'), follow=True)
+        self.assertRedirects(response, reverse('forgot_password_code'))      # not the sign-up page
+        self.assertContains(response, 'We sent a new code to your email.')
+        self.assertContains(response, 'RESET PASSWORD')
+        self.assertEqual(self.deliver.call_count, 2)
+
+    def test_signup_and_reset_codes_are_separate(self):
+        self.start()
+        with self.assertRaises(otp.OTPError):
+            otp.verify_code(otp.Purpose.SIGNUP, 'bea.santos@example.com', self.code())
