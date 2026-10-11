@@ -1,0 +1,133 @@
+{% load static %}
+<!DOCTYPE html>
+{# Admin panel (core_admin). Same frame as the landlord / renter dashboards: sidebar, top bar, dark mode. #}
+<html lang="en" data-theme="{{ request.user.theme|default:'light' }}">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}LookApt Admin{% endblock %}</title>
+
+    <link rel="stylesheet" href="{% static 'core/css/base/reset.css' %}">
+    <link rel="stylesheet" href="{% static 'core/css/base/colors.css' %}">
+    <link rel="stylesheet" href="{% static 'core/css/base/typography.css' %}">
+    <link rel="stylesheet" href="{% static 'core/css/components/branding.css' %}">
+    <link rel="stylesheet" href="{% static 'core/css/components/buttons.css' %}">
+    <link rel="stylesheet" href="{% static 'core/css/components/sidebar.css' %}">
+    <link rel="stylesheet" href="{% static 'core/css/pages/landlord_dashboard.css' %}">
+    <link rel="stylesheet" href="{% static 'core/css/components/topbar_menus.css' %}">
+    <link rel="stylesheet" href="{% static 'core/css/components/toasts.css' %}">
+    <link rel="stylesheet" href="{% static 'core_listings/css/photo_upload.css' %}">   {# .photo-lightbox #}
+    <link rel="stylesheet" href="{% static 'core_admin/admin_panel.css' %}">
+    {% block extra_css %}{% endblock %}
+
+    {# Dark mode (html[data-theme="dark"]); loaded last so it wins #}
+    <link rel="stylesheet" href="{% static 'core/css/theme/dark_auto.css' %}">
+    <link rel="stylesheet" href="{% static 'core/css/theme/dark.css' %}">
+</head>
+
+<body data-tab="">
+<div class="dashboard">
+
+    <aside class="sidebar">
+        <a href="{% url 'core_admin:overview' %}" class="brand brand--dashboard">
+            <img src="{% static 'core/images/logo2.png' %}" alt="LookApt" class="brand-logo">
+            <div class="sidebar-brand-text">
+                <div class="brand-name">Look<span>Apt</span></div>
+                <p class="brand-tagline">Admin panel</p>
+            </div>
+        </a>
+
+        <nav class="sidebar-nav" aria-label="Admin navigation">
+            <a href="{% url 'core_admin:overview' %}" class="sidebar-link {% if section == 'overview' %}active{% endif %}">
+                <span class="sidebar-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="4" rx="1.5"/><rect x="13" y="10" width="7" height="10" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/></svg>
+                </span>
+                <span class="sidebar-label">Overview</span>
+            </a>
+            <a href="{% url 'core_admin:verification_list' %}" class="sidebar-link {% if section == 'verification' %}active{% endif %}">
+                <span class="sidebar-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3 5 6v5.5c0 4.3 3 8 7 9.5 4-1.5 7-5.2 7-9.5V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+                </span>
+                <span class="sidebar-label">Verification</span>
+                {% if badges.verification %}<span class="ap-badge" aria-label="{{ badges.verification }} waiting">{{ badges.verification }}</span>{% endif %}
+            </a>
+            <a href="{% url 'core_admin:user_list' %}" class="sidebar-link {% if section == 'users' %}active{% endif %}">
+                <span class="sidebar-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1M16 4a3 3 0 0 1 0 6M18 14a4 4 0 0 1 3 4v2"/></svg>
+                </span>
+                <span class="sidebar-label">Users</span>
+            </a>
+            <a href="{% url 'core_admin:report_list' %}" class="sidebar-link {% if section == 'reports' %}active{% endif %}">
+                <span class="sidebar-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 3.8h10l4 4V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4.8a1 1 0 0 1 1-1Z"/><path d="M14 3.8v5h5M8 13h8M8 17h5"/></svg>
+                </span>
+                <span class="sidebar-label">Reports</span>
+                {% if badges.reports %}<span class="ap-badge" aria-label="{{ badges.reports }} open">{{ badges.reports }}</span>{% endif %}
+            </a>
+
+            <a href="{% url 'logout' %}" class="sidebar-link sidebar-logout">
+                <span class="sidebar-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h5"/><path d="m15 8 4 4-4 4M8 12h11"/></svg>
+                </span>
+                <span class="sidebar-label">Log Out</span>
+            </a>
+        </nav>
+    </aside>
+
+    <main class="landlord-dashboard ap-main">
+        <header class="dashboard-topbar">
+            {% block breadcrumbs %}<span></span>{% endblock %}
+
+            <div class="topbar-right" data-csrf="{{ csrf_token }}">
+                {# Dark mode switch (saved on the account, like the other dashboards) #}
+                <button type="button" class="theme-switch" role="switch" data-theme-switch
+                        data-url="{% url 'account_theme' %}"
+                        aria-checked="{% if request.user.theme == 'dark' %}true{% else %}false{% endif %}" aria-label="Dark mode">
+                    <span class="theme-switch-thumb" aria-hidden="true">
+                        <svg class="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+                        <svg class="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg>
+                    </span>
+                </button>
+
+                <div class="topbar-menu-wrap">
+                    <button type="button" class="profile-overview profile-toggle" data-topbar-toggle aria-haspopup="true" aria-expanded="false">
+                        <img src="{% static 'core/images/looka.png' %}" alt="" class="profile-picture">
+                        <span class="profile-display-name">{{ request.user.display_name }}</span>
+                        <svg class="profile-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                    </button>
+                    <div class="topbar-menu topbar-menu--profile" hidden>
+                        <div class="topbar-profile">
+                            <strong>{{ request.user.display_name }}</strong>
+                            <small>@{{ request.user.username }}</small>
+                            <span class="topbar-profile-tags"><span class="topbar-role">Admin</span></span>
+                        </div>
+                        <a class="topbar-menu-item" href="{% url 'admin:index' %}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/></svg>Django admin (raw data)
+                        </a>
+                        <a class="topbar-menu-item topbar-menu-item--danger" href="{% url 'logout' %}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h5"/><path d="m15 8 4 4-4 4M8 12h11"/></svg>Log Out
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+{# Full-size viewer for documents and evidence (admin_panel.js) #}
+<dialog class="photo-lightbox" data-ap-lightbox>
+    <button type="button" class="photo-lightbox-close" aria-label="Close">×</button>
+    <img src="" alt="">
+    <video controls playsinline hidden></video>
+</dialog>
+
+{% include "core/partials/toasts.html" %}
+<script src="{% static 'core/js/csrf_sync.js' %}"></script>
+<script src="{% static 'core/js/topbar_menus.js' %}"></script>
+<script src="{% static 'core_admin/admin_panel.js' %}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,139 @@
+{% extends "core_admin/base.html" %}
+
+{% block title %}LookApt Admin — Report about {{ reported.display_name }}{% endblock %}
+
+{% block breadcrumbs %}<a class="ap-back" href="{% url 'core_admin:report_list' %}?status={{ report.status }}">← Reports</a>{% endblock %}
+
+{% block content %}
+<div class="ap-page-head">
+    <div>
+        <h1>Report about {{ reported.display_name }}</h1>
+        <p>Filed {{ report.created_at|date:"M j, Y, g:i A" }} by {{ report.reporter.display_name }} ·
+            <span class="ap-pill ap-pill--{{ report.status }}">{{ report.get_status_display }}</span>
+            {% if report.handled_by %} · last handled by {{ report.handled_by.display_name }}{% endif %}</p>
+    </div>
+</div>
+
+<div class="ap-detail">
+    <div class="ap-detail-main">
+        <section class="ap-card">
+            <header class="ap-card-head"><div>
+                <h2>{% if report.category == "others" and report.other_category_text %}{{ report.other_category_text }}{% else %}{{ report.get_category_display }}{% endif %}</h2>
+            </div></header>
+            <p class="ap-body-text">{{ report.description|linebreaksbr }}</p>
+
+            {% with files=report.evidence.all %}
+            {% if files %}
+                <h3 class="ap-subhead">Evidence ({{ files|length }})</h3>
+                <div class="ap-docs">
+                    {% for e in files %}
+                        <figure class="ap-doc">
+                            {% if e.kind == "image" %}
+                                <button type="button" class="ap-doc-thumb" data-ap-view="{{ e.file.url }}" aria-label="View {{ e.name }}">
+                                    <img src="{{ e.file.url }}" alt="{{ e.name }}" loading="lazy">
+                                </button>
+                            {% elif e.kind == "video" %}
+                                <button type="button" class="ap-doc-thumb ap-doc-thumb--file" data-ap-view="{{ e.file.url }}" data-ap-kind="video" aria-label="Play {{ e.name }}">▶ Video</button>
+                            {% else %}
+                                <a class="ap-doc-thumb ap-doc-thumb--file" href="{{ e.file.url }}" target="_blank" rel="noopener">Open file ↗</a>
+                            {% endif %}
+                            <figcaption><span>{{ e.name|default:"Attachment"|truncatechars:30 }}</span></figcaption>
+                        </figure>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            {% endwith %}
+
+            {% if report.admin_note %}<p class="ap-quote">Note sent to the reporter: {{ report.admin_note }}</p>{% endif %}
+        </section>
+
+        <div class="ap-two-col">
+            <section class="ap-card">
+                <header class="ap-card-head"><div><h2>Reported</h2></div></header>
+                <a class="ap-person" href="{% url 'core_admin:user_detail' reported.pk %}">
+                    <span class="ap-avatar ap-avatar--red" aria-hidden="true">{{ reported.first_name|first|upper }}{{ reported.last_name|first|upper }}</span>
+                    <span><strong>{{ reported.display_name }}</strong><small>{{ reported.get_role_display }}{% if not reported.is_active %} · suspended{% endif %}</small></span>
+                </a>
+                <p class="ap-muted ap-gap">{% if reported_count >= 2 %}<span class="ap-flag">⚠ {{ reported_count }} reports received</span>{% else %}First report about them{% endif %}</p>
+            </section>
+            <section class="ap-card">
+                <header class="ap-card-head"><div><h2>Filed by</h2></div></header>
+                <a class="ap-person" href="{% url 'core_admin:user_detail' report.reporter.pk %}">
+                    <span class="ap-avatar" aria-hidden="true">{{ report.reporter.first_name|first|upper }}{{ report.reporter.last_name|first|upper }}</span>
+                    <span><strong>{{ report.reporter.display_name }}</strong><small>{{ report.reporter.get_role_display }}</small></span>
+                </a>
+                <p class="ap-muted ap-gap">{% if reporter_count %}They've been reported {{ reporter_count }} time{{ reporter_count|pluralize }} themselves{% else %}Never reported themselves{% endif %}</p>
+            </section>
+        </div>
+
+        {% if other_reports %}
+        <section class="ap-card">
+            <header class="ap-card-head"><div><h2>Other reports about {{ reported.first_name|title }}</h2></div></header>
+            <ul class="ap-rows">
+                {% for r in other_reports %}
+                    <li><a class="ap-row" href="{% url 'core_admin:report_detail' r.pk %}">
+                        <span class="ap-row-main"><strong>{{ r.get_category_display }}</strong><small>by {{ r.reporter.display_name }} · {{ r.created_at|date:"M j, Y" }}</small></span>
+                        <span class="ap-pill ap-pill--{{ r.status }}">{{ r.get_status_display }}</span>
+                    </a></li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endif %}
+    </div>
+
+    <aside class="ap-detail-side">
+        <section class="ap-card">
+            <header class="ap-card-head"><div><h2>Status</h2><p>{{ report.reporter.display_name }} is notified by bell and email.</p></div></header>
+            <form method="post" class="ap-form">
+                {% csrf_token %}<input type="hidden" name="action" value="status">
+                <select name="status" class="ap-select" aria-label="Status" data-ap-report-status>
+                    {% for value, label in statuses %}
+                        <option value="{{ value }}" {% if value == report.status %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <textarea name="note" class="ap-textarea" rows="3" placeholder="Note for the reporter (needed for Resolved / Closed)">{{ report.admin_note }}</textarea>
+                <button type="submit" class="ap-btn ap-btn--primary">Update status</button>
+            </form>
+        </section>
+
+        {% if reported.role != "admin" %}
+        <section class="ap-card">
+            <header class="ap-card-head"><div><h2>Act on {{ reported.first_name|title }}</h2><p>They're notified by email{% if reported.is_active %} and bell{% endif %}.</p></div></header>
+            <div class="ap-actions">
+                <details class="ap-action">
+                    <summary class="ap-btn ap-btn--ghost ap-btn--block">Send a warning</summary>
+                    <form method="post" class="ap-form">{% csrf_token %}<input type="hidden" name="action" value="warn">
+                        <textarea name="message" class="ap-textarea" rows="3" required placeholder="What they did, and what happens if it continues"></textarea>
+                        <button type="submit" class="ap-btn ap-btn--primary">Send warning</button>
+                    </form>
+                </details>
+
+                {% if reported.role == "landlord" %}
+                <details class="ap-action">
+                    <summary class="ap-btn ap-btn--ghost ap-btn--block">Unpublish their listings</summary>
+                    <form method="post" class="ap-form" data-ap-confirm="Unpublish all of {{ reported.display_name }}'s listings?">
+                        {% csrf_token %}<input type="hidden" name="action" value="unpublish">
+                        <textarea name="reason" class="ap-textarea" rows="3" required placeholder="Reason (sent to the landlord)"></textarea>
+                        <button type="submit" class="ap-btn ap-btn--danger">Unpublish listings</button>
+                    </form>
+                </details>
+                {% endif %}
+
+                {% if reported.is_active %}
+                <details class="ap-action">
+                    <summary class="ap-btn ap-btn--danger ap-btn--block">Suspend account</summary>
+                    <form method="post" class="ap-form" data-ap-confirm="Suspend {{ reported.display_name }}?">
+                        {% csrf_token %}<input type="hidden" name="action" value="suspend">
+                        <textarea name="reason" class="ap-textarea" rows="3" required placeholder="Reason (sent to them by email)"></textarea>
+                        <button type="submit" class="ap-btn ap-btn--danger">Suspend</button>
+                    </form>
+                </details>
+                {% else %}
+                    <p class="ap-muted">This account is suspended. Reactivate it from <a class="ap-link" href="{% url 'core_admin:user_detail' reported.pk %}">their profile</a>.</p>
+                {% endif %}
+            </div>
+        </section>
+        {% endif %}
+    </aside>
+</div>
+{% endblock %}

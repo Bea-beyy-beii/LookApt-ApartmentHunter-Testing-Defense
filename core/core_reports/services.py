@@ -26,7 +26,7 @@ MAX_DESCRIPTION = 500
 MAX_OTHER = 200
 MAX_FILES = 5
 MAX_FILE_MB = 10
-SUPPORT_EMAIL = "support@lookapt.com"     # "Contact Support" (change to the real address)
+SUPPORT_EMAIL = "lookapt.support@gmail.com"     # every "Contact Support" link and email uses this
 
 # extension -> kind, and how the file's first bytes must look
 EVIDENCE_TYPES = {

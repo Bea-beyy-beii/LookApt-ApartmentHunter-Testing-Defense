@@ -86,6 +86,9 @@
                         </button>
                         <div class="rp-item-body" hidden>
                             <p class="rp-desc">{{ r.description|linebreaksbr }}</p>
+                            {% if r.admin_note %}
+                                <p class="rp-admin-note"><strong>Note from LookApt:</strong> {{ r.admin_note|linebreaksbr }}</p>
+                            {% endif %}
                             {% if r.evidence.all %}
                                 <div class="rp-evidence">
                                     {% for e in r.evidence.all %}

@@ -1,0 +1,159 @@
+{% extends "core_admin/base.html" %}
+
+{% block title %}LookApt Admin — {{ account.display_name }}{% endblock %}
+
+{% block breadcrumbs %}<a class="ap-back" href="{% url 'core_admin:user_list' %}">← Users</a>{% endblock %}
+
+{% block content %}
+<div class="ap-page-head">
+    <div class="ap-person ap-person--big">
+        <span class="ap-avatar" aria-hidden="true">{{ account.first_name|first|upper }}{{ account.last_name|first|upper }}</span>
+        <span>
+            <h1>{{ account.display_name }}</h1>
+            <p>{{ account.get_role_display }} · @{{ account.username }} · joined {{ account.date_joined|date:"M j, Y" }}
+                {% if account.role == "landlord" %} · {% if account.is_verified %}<span class="ap-pill ap-pill--approved">Verified</span>{% else %}<span class="ap-pill ap-pill--review">Not verified</span>{% endif %}{% endif %}
+                {% if not account.is_active %} · <span class="ap-pill ap-pill--rejected">Suspended</span>{% endif %}
+            </p>
+        </span>
+    </div>
+</div>
+
+{% if not account.is_active %}
+    <p class="ap-alert">Suspended {{ account.suspended_at|date:"M j, Y" }}: {{ account.suspension_reason|default:"no reason given" }}</p>
+{% endif %}
+
+<div class="ap-detail">
+    <div class="ap-detail-main">
+        {% if account.role == "landlord" %}
+        <section class="ap-card">
+            <header class="ap-card-head"><div><h2>Listings</h2><p>{{ listings|length }} complex{{ listings|length|pluralize:"es" }}</p></div></header>
+            {% if listings %}
+                <table class="ap-table">
+                    <thead><tr><th>Complex</th><th>Units</th><th>Status</th><th>Created</th></tr></thead>
+                    <tbody>
+                        {% for c in listings %}
+                            <tr><td><strong>{{ c.complex_name }}</strong><br><small class="ap-muted">{{ c.address }}</small></td>
+                                <td>{{ c.units_count }}</td>
+                                <td><span class="ap-pill ap-pill--{% if c.status == 'active' %}approved{% else %}review{% endif %}">{{ c.get_status_display }}</span></td>
+                                <td>{{ c.created_at|date:"M j, Y" }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}<p class="ap-empty">No listings yet.</p>{% endif %}
+        </section>
+
+        <section class="ap-card">
+            <header class="ap-card-head"><div><h2>Verification history</h2></div></header>
+            {% if verifications %}
+                <ul class="ap-rows">
+                    {% for v in verifications %}
+                        <li><a class="ap-row" href="{% url 'core_admin:verification_detail' v.pk %}">
+                            <span class="ap-row-main"><strong>{{ v.created_at|date:"M j, Y" }}</strong><small>{{ v.get_id_type_display }} · {{ v.get_ownership_type_display }}</small></span>
+                            <span class="ap-pill ap-pill--{{ v.status }}">{{ v.get_status_display }}</span>
+                        </a></li>
+                    {% endfor %}
+                </ul>
+            {% else %}<p class="ap-empty">No documents sent yet.</p>{% endif %}
+        </section>
+        {% endif %}
+
+        <section class="ap-card">
+            <header class="ap-card-head"><div><h2>Reports about {{ account.first_name|title }}</h2><p>{{ reports_received|length }} received</p></div></header>
+            {% if reports_received %}
+                <ul class="ap-rows">
+                    {% for r in reports_received %}
+                        <li><a class="ap-row" href="{% url 'core_admin:report_detail' r.pk %}">
+                            <span class="ap-row-main"><strong>{{ r.get_category_display }}</strong><small>by {{ r.reporter.display_name }} · {{ r.created_at|date:"M j, Y" }}</small></span>
+                            <span class="ap-pill ap-pill--{{ r.status }}">{{ r.get_status_display }}</span>
+                        </a></li>
+                    {% endfor %}
+                </ul>
+            {% else %}<p class="ap-empty">None.</p>{% endif %}
+        </section>
+
+        <section class="ap-card">
+            <header class="ap-card-head"><div><h2>Reports filed by {{ account.first_name|title }}</h2></div></header>
+            {% if reports_filed %}
+                <ul class="ap-rows">
+                    {% for r in reports_filed %}
+                        <li><a class="ap-row" href="{% url 'core_admin:report_detail' r.pk %}">
+                            <span class="ap-row-main"><strong>About {{ r.reported_user.display_name }}</strong><small>{{ r.get_category_display }} · {{ r.created_at|date:"M j, Y" }}</small></span>
+                            <span class="ap-pill ap-pill--{{ r.status }}">{{ r.get_status_display }}</span>
+                        </a></li>
+                    {% endfor %}
+                </ul>
+            {% else %}<p class="ap-empty">None.</p>{% endif %}
+        </section>
+
+        <section class="ap-card">
+            <header class="ap-card-head"><div><h2>Rentals</h2>
+                {% if account.role == "renter" %}<p>{{ applications_count }} application{{ applications_count|pluralize }} sent</p>{% endif %}</div></header>
+            {% if tenancies %}
+                <table class="ap-table">
+                    <thead><tr><th>Unit</th><th>{% if account.role == "landlord" %}Tenant{% else %}Landlord{% endif %}</th><th>Since</th><th>Status</th></tr></thead>
+                    <tbody>
+                        {% for t in tenancies %}
+                            <tr><td>{{ t.unit.unit_name }} · {{ t.unit.complex.complex_name }}</td>
+                                <td>{% if account.role == "landlord" %}{{ t.tenant_name|default:"—" }}{% else %}{{ t.unit.complex.landlord.user.display_name }}{% endif %}</td>
+                                <td>{{ t.start_date|date:"M j, Y" }}</td>
+                                <td>{{ t.get_status_display }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}<p class="ap-empty">No rentals.</p>{% endif %}
+        </section>
+    </div>
+
+    <aside class="ap-detail-side">
+        <section class="ap-card">
+            <header class="ap-card-head"><div><h2>Details</h2></div></header>
+            <form method="post" class="ap-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="edit">
+                {% for field in form %}
+                    <label class="ap-field">
+                        <span>{{ field.label }}</span>
+                        <input class="ap-input" type="{% if field.name == 'email' %}email{% else %}text{% endif %}" name="{{ field.html_name }}" value="{{ field.value|default:'' }}">
+                        {% for e in field.errors %}<small class="ap-error">{{ e }}</small>{% endfor %}
+                    </label>
+                {% endfor %}
+                <button type="submit" class="ap-btn ap-btn--primary">Save details</button>
+            </form>
+        </section>
+
+        <section class="ap-card">
+            <header class="ap-card-head"><div><h2>Actions</h2><p>The user is notified by bell and email.</p></div></header>
+            <div class="ap-actions">
+                {% if account.email %}
+                <form method="post">{% csrf_token %}<input type="hidden" name="action" value="password">
+                    <button type="submit" class="ap-btn ap-btn--ghost ap-btn--block">Email password reset steps</button>
+                </form>
+                {% endif %}
+
+                <details class="ap-action">
+                    <summary class="ap-btn ap-btn--ghost ap-btn--block">Send a warning</summary>
+                    <form method="post" class="ap-form">{% csrf_token %}<input type="hidden" name="action" value="warn">
+                        <textarea name="message" class="ap-textarea" rows="3" required placeholder="What they did, and what happens if it continues"></textarea>
+                        <button type="submit" class="ap-btn ap-btn--primary">Send warning</button>
+                    </form>
+                </details>
+
+                {% if account.is_active %}
+                <details class="ap-action">
+                    <summary class="ap-btn ap-btn--danger ap-btn--block">Suspend account</summary>
+                    <form method="post" class="ap-form" data-ap-confirm="Suspend {{ account.display_name }}? They'll be logged out{% if account.role == 'landlord' %} and their listings hidden{% endif %}.">
+                        {% csrf_token %}<input type="hidden" name="action" value="suspend">
+                        <textarea name="reason" class="ap-textarea" rows="3" required placeholder="Reason (sent to them by email)"></textarea>
+                        <button type="submit" class="ap-btn ap-btn--danger">Suspend</button>
+                    </form>
+                </details>
+                {% else %}
+                <form method="post" data-ap-confirm="Reactivate {{ account.display_name }}?">{% csrf_token %}<input type="hidden" name="action" value="reactivate">
+                    <button type="submit" class="ap-btn ap-btn--primary ap-btn--block">Reactivate account</button>
+                </form>
+                {% endif %}
+            </div>
+        </section>
+    </aside>
+</div>
+{% endblock %}

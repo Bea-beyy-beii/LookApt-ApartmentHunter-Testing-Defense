@@ -578,6 +578,12 @@ def _notifications(user, conversations, applications):
                                        f"Your site visit for {where} ({a.visit_label}) was {a.get_site_visit_status_display().lower()}.",
                                        a.updated_at, GREEN if confirmed else RED, type_="site_visit"))
 
+    # Messages from LookApt itself (verification results, report updates ...: core_admin/notify.py)
+    from core.core_admin.models import Notice
+    for notice in Notice.objects.filter(user=user)[:MAX_NOTIFICATIONS]:
+        items.append(_notification(f"n-{notice.pk}", notice.title, notice.message, notice.created_at,
+                                   notice.tone, type_="account"))
+
     items.sort(key=lambda item: item["created_at"], reverse=True)
     return items[:MAX_NOTIFICATIONS]
 

@@ -1,0 +1,62 @@
+{% extends "core_admin/base.html" %}
+
+{% block title %}LookApt Admin — Reports{% endblock %}
+
+{% block content %}
+<div class="ap-page-head">
+    <div>
+        <h1>Reports</h1>
+        <p>Reports filed by renters and landlords. ⚠ marks someone reported more than once.</p>
+    </div>
+</div>
+
+<div class="ap-toolbar">
+    <nav class="ap-tabs" aria-label="Status">
+        {% for tab in tabs %}
+            <a class="status-filter ap-tab {% if tab.value == status %}active{% endif %}"
+               href="?status={{ tab.value }}{% if category %}&category={{ category }}{% endif %}{% if query %}&q={{ query|urlencode }}{% endif %}">
+                {{ tab.label }} <span class="ap-tab-count">{{ tab.count }}</span>
+            </a>
+        {% endfor %}
+    </nav>
+    <form class="ap-filters" method="get">
+        <input type="hidden" name="status" value="{{ status }}">
+        <select class="ap-select" name="category" aria-label="Category" onchange="this.form.submit()">
+            <option value="">All categories</option>
+            {% for value, label in categories %}
+                <option value="{{ value }}" {% if value == category %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <input type="search" class="ap-search-input" name="q" value="{{ query }}" placeholder="Search names or details" aria-label="Search reports">
+    </form>
+</div>
+
+<section class="ap-card ap-card--flush">
+    {% if page.object_list %}
+        <table class="ap-table">
+            <thead><tr><th>Reported</th><th>Reason</th><th>Filed by</th><th>Filed</th><th>Status</th></tr></thead>
+            <tbody>
+                {% for r in page %}
+                    <tr>
+                        <td>
+                            <a class="ap-person" href="{% url 'core_admin:report_detail' r.pk %}">
+                                <span class="ap-avatar ap-avatar--red" aria-hidden="true">{{ r.reported_user.first_name|first|upper }}{{ r.reported_user.last_name|first|upper }}</span>
+                                <span><strong>{{ r.reported_user.display_name }}
+                                    {% if r.repeat_count >= 2 %}<span class="ap-flag" title="{{ r.repeat_count }} reports received">⚠ {{ r.repeat_count }}</span>{% endif %}</strong>
+                                    <small>{{ r.reported_user.get_role_display }}</small></span>
+                            </a>
+                        </td>
+                        <td>{% if r.category == "others" and r.other_category_text %}{{ r.other_category_text }}{% else %}{{ r.get_category_display }}{% endif %}</td>
+                        <td>{{ r.reporter.display_name }}</td>
+                        <td><time datetime="{{ r.created_at|date:'c' }}" title="{{ r.created_at|date:'M j, Y, g:i A' }}">{{ r.created_at|date:"M j, Y" }}</time></td>
+                        <td><span class="ap-pill ap-pill--{{ r.status }}">{{ r.get_status_display }}</span></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="ap-empty">No reports here.</p>
+    {% endif %}
+</section>
+{% include "core_admin/partials/pagination.html" %}
+{% endblock %}

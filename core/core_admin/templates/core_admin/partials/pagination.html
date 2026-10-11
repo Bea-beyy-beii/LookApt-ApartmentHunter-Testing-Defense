@@ -1,0 +1,12 @@
+{# Previous / next for a Paginator page (keeps the current filters) #}
+{% if page.paginator.num_pages > 1 %}
+<nav class="ap-pagination" aria-label="Pages">
+    {% if page.has_previous %}
+        <a class="ap-btn ap-btn--ghost" href="?{{ request.GET.urlencode|default:'' }}&page={{ page.previous_page_number }}">← Previous</a>
+    {% endif %}
+    <span>Page {{ page.number }} of {{ page.paginator.num_pages }} · {{ page.paginator.count }} total</span>
+    {% if page.has_next %}
+        <a class="ap-btn ap-btn--ghost" href="?{{ request.GET.urlencode|default:'' }}&page={{ page.next_page_number }}">Next →</a>
+    {% endif %}
+</nav>
+{% endif %}

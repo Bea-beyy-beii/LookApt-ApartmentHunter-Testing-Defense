@@ -235,6 +235,9 @@ else:
 
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='LookApt <no-reply@lookapt.com>')
 
+# The site's address, for links inside emails (e.g. https://lookapt.onrender.com)
+SITE_URL = env('SITE_URL', default='http://127.0.0.1:8000')
+
 # Logo in the OTP email: empty = embedded in the email (works everywhere).
 # Set to a full public https:// URL of a PNG to link to it instead.
 EMAIL_LOGO_URL = env('EMAIL_LOGO_URL', default='')
