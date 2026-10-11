@@ -325,8 +325,9 @@ def get_rentals_context(user):
         .prefetch_related("pictures", active)
         .order_by("identifier")
     )
+    # Only published complexes; an unpublished one (and its units) stays out of Manage Rentals
     complexes = (
-        Complex.objects.filter(landlord__user=user)
+        Complex.objects.filter(landlord__user=user, status=Complex.ComplexStatus.ACTIVE)
         .prefetch_related("pictures", Prefetch("units", queryset=units_qs))
         .order_by("complex_name")
     )

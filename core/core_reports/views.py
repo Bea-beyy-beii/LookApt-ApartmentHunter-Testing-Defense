@@ -6,6 +6,8 @@ from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 
+from core.core_verification.services import NOT_VERIFIED_TO_POST, landlord_must_verify
+
 from . import services
 
 
@@ -14,6 +16,8 @@ from . import services
 def create_report(request):
     if request.user.role not in ("renter", "landlord"):
         return JsonResponse({"errors": {"__all__": "Only renters and landlords can file reports."}}, status=403)
+    if landlord_must_verify(request.user):
+        return JsonResponse({"errors": {"__all__": NOT_VERIFIED_TO_POST}}, status=403)
     data = request.POST
     try:
         report = services.file_report(

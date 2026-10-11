@@ -3,9 +3,12 @@
 {% with photo_count=pictures|length video_count=videos|length %}
 {% with media_count=photo_count|add:video_count %}
 
+{# data-availability = what the card shows (unpublished while the complex is unpublished), #}
+{# data-own-availability = the unit's own status, shown again once the complex is published #}
 <article class="unit-card"
          data-unit-card
-         data-availability="{{ unit.availability }}"
+         data-availability="{{ unit.listed_availability }}"
+         data-own-availability="{{ unit.availability }}"
          data-unit-name="Unit {{ unit.identifier }}"
          data-delete-url="{% url 'core_listings:unit_delete' unit.pk %}"
          data-availability-url="{% url 'core_listings:unit_set_availability' unit.pk %}">
@@ -105,8 +108,9 @@
 
     <!-- Status -->
     <div class="unit-status-cell">
-        <span class="unit-status unit-status--{{ unit.availability }}" data-unit-status>
-            {{ unit.get_availability_display }}
+        <span class="unit-status unit-status--{{ unit.listed_availability }}" data-unit-status
+              {% if unit.complex_unpublished %}title="Hidden because the complex is unpublished"{% endif %}>
+            {{ unit.get_listed_availability_display }}
         </span>
     </div>
 
@@ -140,21 +144,25 @@
 
                 <hr>
 
+                <p class="property-menu-note" data-unit-locked {% if not unit.complex_unpublished %}hidden{% endif %}>
+                    Publish the complex to change this unit's status.
+                </p>
+
                 <button type="button" role="menuitem" class="property-menu-item"
                         data-action="unit-availability" data-availability="available"
-                        {% if unit.availability == "available" %}hidden{% endif %}>
+                        {% if unit.availability == "available" or unit.complex_unpublished %}hidden{% endif %}>
                     <span class="status-dot status-dot--active"></span> Set as Available
                 </button>
 
                 <button type="button" role="menuitem" class="property-menu-item"
                         data-action="unit-availability" data-availability="occupied"
-                        {% if unit.availability == "occupied" %}hidden{% endif %}>
+                        {% if unit.availability == "occupied" or unit.complex_unpublished %}hidden{% endif %}>
                     <span class="status-dot status-dot--occupied"></span> Set as Occupied
                 </button>
 
                 <button type="button" role="menuitem" class="property-menu-item"
                         data-action="unit-availability" data-availability="unpublished"
-                        {% if unit.availability == "unpublished" %}hidden{% endif %}>
+                        {% if unit.availability == "unpublished" or unit.complex_unpublished %}hidden{% endif %}>
                     <span class="status-dot status-dot--pending"></span> Set as Unpublished
                 </button>
 

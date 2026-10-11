@@ -7,6 +7,7 @@ from django.urls import reverse
 
 from core.core_accounts.decorators import role_required
 from core.core_maps.maps.services import resolve_area, save_complex_landmarks
+from core.core_verification.services import can_publish
 
 from .models import Complex, ComplexPicture, Unit, UnitPicture
 from .forms import ComplexForm, UnitForm
@@ -25,6 +26,9 @@ from .detail_services import (
     complex_detail_context, get_renter_complex, get_renter_unit, record_view, unit_detail_context,
 )
 
+NOT_VERIFIED = "Verify your account first: listings can be published once you're approved."
+
+COMPLEX_UNPUBLISHED = "This complex is unpublished. Publish it first to change its units' status."
 
 def _my_listings_url(saved=False):
     # The listings page lives inside the landlord dashboard.
@@ -40,7 +44,10 @@ def _save_property(form, landlord):
     property_obj.landlord = landlord
 
     # Which create button was clicked: "unpublished" or "active"
+    # (landlords who aren't verified yet can only save it unpublished)
     visibility = form.data.get("visibility")
+    if visibility == Complex.ComplexStatus.ACTIVE and not can_publish(landlord.user):
+        visibility = Complex.ComplexStatus.UNPUBLISHED
     if visibility in Complex.ComplexStatus.values:
         property_obj.status = visibility
 
@@ -91,6 +98,12 @@ def listings(request):
     )
 
 
+def _warn_if_not_verified(request, form):
+    if form.data.get("visibility") == Complex.ComplexStatus.ACTIVE and not can_publish(request.user):
+        messages.warning(request, f"It was saved as unpublished. {NOT_VERIFIED}")
+
+
+
 @role_required("landlord")
 def property_create(request):
     if request.method == "POST":
@@ -99,6 +112,7 @@ def property_create(request):
         if form.is_valid():
             saved = _save_property(form, request.user.landlord)
             messages.success(request, f"{saved.complex_name} was created.")
+            _warn_if_not_verified(request, form)
             return redirect(_my_listings_url(saved=True))
     else:
         form = ComplexForm()
@@ -146,6 +160,7 @@ def property_edit(request, pk):
         if form.is_valid():
             _save_property(form, property_obj.landlord)
             messages.success(request, f"{property_obj.complex_name} was saved.")
+            _warn_if_not_verified(request, form)
             return redirect(_my_listings_url(saved=True))
     else:
         form = ComplexForm(instance=property_obj)
@@ -232,9 +247,11 @@ def property_set_visibility(request, pk):
     property_obj = _own_property(request, pk)
     visibility = request.POST.get("visibility")
 
-    if visibility not in Complex.ComplexStatus.values:
+
+    if visibility == Complex.ComplexStatus.ACTIVE and not can_publish(request.user):
         if _wants_json(request):
-            return JsonResponse({"error": "Invalid visibility."}, status=400)
+            return JsonResponse({"error": NOT_VERIFIED}, status=403)
+        messages.error(request, NOT_VERIFIED)
         return redirect(_my_listings_url())
 
     property_obj.status = visibility
@@ -351,6 +368,13 @@ def unit_set_availability(request, pk):
         if _wants_json(request):
             return JsonResponse({"error": "Invalid status."}, status=400)
         return redirect(_my_listings_url())
+
+    if unit.complex_unpublished:
+        if _wants_json(request):
+            return JsonResponse({"error": COMPLEX_UNPUBLISHED}, status=400)
+        messages.error(request, COMPLEX_UNPUBLISHED)
+        return redirect(_my_listings_url())
+
 
     unit.availability = availability
     unit.save(update_fields=["availability", "updated_at"])
