@@ -63,6 +63,13 @@ class Report(models.Model):
         max_length=20, choices=Status.choices, default=Status.WAITING
     )
 
+    # Admin side (core_admin): the note the reporter sees, and who handled it
+    admin_note = models.TextField(blank=True)
+    handled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
+    )
+    handled_at = models.DateTimeField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

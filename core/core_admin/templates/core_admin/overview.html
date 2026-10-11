@@ -1,0 +1,119 @@
+{% extends "core_admin/base.html" %}
+
+{% block title %}LookApt Admin — Overview{% endblock %}
+
+{% block content %}
+<div class="ap-page-head">
+    <div>
+        <h1>Overview</h1>
+        <p>What's happening on LookApt, and what's waiting for you.</p>
+    </div>
+</div>
+
+{# Headline numbers #}
+<section class="ap-stats" aria-label="Key numbers">
+    <a class="ap-stat {% if stats.to_verify %}ap-stat--attention{% endif %}" href="{% url 'core_admin:verification_list' %}">
+        <small>Landlords to review</small>
+        <strong>{{ stats.to_verify }}</strong>
+        <span>{{ stats.verified }} verified so far</span>
+    </a>
+    <a class="ap-stat {% if stats.open_reports %}ap-stat--attention{% endif %}" href="{% url 'core_admin:report_list' %}">
+        <small>Open reports</small>
+        <strong>{{ stats.open_reports }}</strong>
+        <span>Pending or under review</span>
+    </a>
+    <a class="ap-stat" href="{% url 'core_admin:user_list' %}">
+        <small>New users this week</small>
+        <strong>{{ stats.new_week }}</strong>
+        <span>{{ stats.renters }} renters · {{ stats.landlords }} landlords</span>
+    </a>
+    <div class="ap-stat">
+        <small>Active listings</small>
+        <strong>{{ stats.active_listings }}</strong>
+        <span>{{ stats.active_tenancies }} active rental{{ stats.active_tenancies|pluralize }}</span>
+    </div>
+    <a class="ap-stat" href="{% url 'core_admin:user_list' %}?status=suspended">
+        <small>Suspended accounts</small>
+        <strong>{{ stats.suspended }}</strong>
+        <span>Can't log in</span>
+    </a>
+</section>
+
+{# Activity over time (admin_panel.js draws it from core_admin:activity_data) #}
+<section class="ap-card ap-chart-card" data-ap-chart data-url="{% url 'core_admin:activity_data' %}">
+    <header class="ap-card-head">
+        <div>
+            <h2>Activity</h2>
+            <p>New users, new listings and reports filed per day.</p>
+        </div>
+        <label class="ap-select-wrap">
+            <span class="ap-visually-hidden">Period</span>
+            <select class="ap-select" data-ap-chart-days>
+                {% for days in chart_periods %}
+                    <option value="{{ days }}" {% if days == 30 %}selected{% endif %}>Last {{ days }} days</option>
+                {% endfor %}
+            </select>
+        </label>
+    </header>
+    <ul class="ap-legend" data-ap-legend aria-label="Legend"></ul>
+    <div class="ap-chart" data-ap-chart-plot role="img" aria-label="Activity chart"></div>
+    <div class="ap-chart-tip" data-ap-chart-tip hidden></div>
+    <details class="ap-chart-table">
+        <summary>Show as a table</summary>
+        <div data-ap-chart-table></div>
+    </details>
+</section>
+
+{# Oldest things waiting #}
+<div class="ap-two-col">
+    <section class="ap-card">
+        <header class="ap-card-head">
+            <div><h2>Landlords waiting for review</h2><p>Oldest first.</p></div>
+            <a class="ap-link" href="{% url 'core_admin:verification_list' %}">See all →</a>
+        </header>
+        {% if waiting_verifications %}
+            <ul class="ap-rows">
+                {% for v in waiting_verifications %}
+                    <li>
+                        <a class="ap-row" href="{% url 'core_admin:verification_detail' v.pk %}">
+                            <span class="ap-avatar" aria-hidden="true">{{ v.landlord.user.first_name|first|upper }}{{ v.landlord.user.last_name|first|upper }}</span>
+                            <span class="ap-row-main">
+                                <strong>{{ v.landlord.user.display_name }}</strong>
+                                <small>{{ v.get_id_type_display }} · {{ v.get_ownership_type_display }}</small>
+                            </span>
+                            <time datetime="{{ v.created_at|date:'c' }}">{{ v.created_at|timesince }} ago</time>
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="ap-empty">No one is waiting. 🎉</p>
+        {% endif %}
+    </section>
+
+    <section class="ap-card">
+        <header class="ap-card-head">
+            <div><h2>Open reports</h2><p>Oldest first.</p></div>
+            <a class="ap-link" href="{% url 'core_admin:report_list' %}">See all →</a>
+        </header>
+        {% if waiting_reports %}
+            <ul class="ap-rows">
+                {% for r in waiting_reports %}
+                    <li>
+                        <a class="ap-row" href="{% url 'core_admin:report_detail' r.pk %}">
+                            <span class="ap-avatar ap-avatar--red" aria-hidden="true">!</span>
+                            <span class="ap-row-main">
+                                <strong>{{ r.reported_user.display_name }}</strong>
+                                <small>{{ r.get_category_display }} · by {{ r.reporter.display_name }}</small>
+                            </span>
+                            <span class="ap-pill ap-pill--{{ r.status }}">{{ r.get_status_display }}</span>
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="ap-empty">No open reports.</p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

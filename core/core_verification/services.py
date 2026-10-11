@@ -163,6 +163,20 @@ def apply_result(request, result):
         request.status = status
         request.message = message
         request.save(update_fields=["status", "message", "ai_result", "ai_summary"])
+        if status == Status.RESUBMIT:
+            _notify_landlord(request)
+
+
+def _notify_landlord(request):
+    """Bell notice + email about the decision (core_admin/notify.py)."""
+    from core.core_admin import notify     # core_admin imports this app's services
+    user = request.landlord.user
+    if request.status == Status.APPROVED:
+        notify.verified(user)
+    elif request.status == Status.RESUBMIT:
+        notify.new_documents_needed(user, request.message)
+    elif request.status == Status.REJECTED:
+        notify.verification_rejected(user, request.message)
 
 
 # ------------------------------------------------------------------ admin decisions
@@ -176,6 +190,7 @@ def _decide(request, status, reviewer, message=""):
     user = request.landlord.user
     user.is_verified = status == Status.APPROVED
     user.save(update_fields=["is_verified"])
+    _notify_landlord(request)
 
 
 @transaction.atomic

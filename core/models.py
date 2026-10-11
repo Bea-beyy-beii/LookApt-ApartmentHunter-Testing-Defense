@@ -46,6 +46,11 @@ class User(AbstractUser):
     theme = models.CharField(max_length=5, choices=THEME_CHOICES, default='light')   # dark mode switch
     notifications_seen_at = models.DateTimeField(null=True, blank=True)              # last time the bell was opened
 
+    # Suspended by an admin (core_admin): is_active is False, so they can't log in,
+    # and a suspended landlord's listings are hidden from renters
+    suspended_at = models.DateTimeField(null=True, blank=True)
+    suspension_reason = models.TextField(blank=True)
+
 # ----------------------------------------------------------- TRIGGER FOR USERNAMES
 # ------------------------------- USERNAME FORMAT: firstname.lastname
 

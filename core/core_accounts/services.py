@@ -149,6 +149,18 @@ class AccountService:
         del request.session[PENDING_SIGNUP]
         return user
 
+    @staticmethod
+    def is_suspended(identifier, password):
+        """For the login page: the right password, but an admin suspended the account."""
+        identifier = (identifier or '').strip()
+        if not identifier or not password:
+            return False
+        user = User.objects.filter(
+            Q(username__iexact=identifier) | Q(phone_number=identifier) | Q(email__iexact=identifier),
+            is_active=False, suspended_at__isnull=False,
+        ).first()
+        return bool(user and user.check_password(password))
+
     # ------------------------------------------------------------------ forgot password
 
     @staticmethod

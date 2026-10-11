@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 
+from core.core_admin import notify
 from core.core_verification.services import NOT_VERIFIED_TO_POST, landlord_must_verify
 
 from . import services
@@ -30,6 +31,7 @@ def create_report(request):
         )
     except ValidationError as error:
         return JsonResponse({"errors": {f: " ".join(m) for f, m in error.message_dict.items()}}, status=400)
+    notify.report_received(report)
     return JsonResponse({
         "message": f"Your report about {report.reported_user.display_name} was sent. We'll review it soon.",
     }, status=201)

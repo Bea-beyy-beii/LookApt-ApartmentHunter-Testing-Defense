@@ -16,6 +16,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 from core.core_inquiries.services import notifications_for
 from core.core_reports.services import SUPPORT_EMAIL
+from core.core_admin import notify
+
 from . import otp
 from .services import AccountService
 
@@ -23,7 +25,7 @@ from .services import AccountService
 ROLE_HOME = {
     'renter': 'core_renters:dashboard',
     'landlord': 'core_landlords:dashboard',
-    'admin': 'admin:index',
+    'admin': 'core_admin:overview',
 }
 
 SIGNUP_FIELDS = ('first_name', 'last_name', 'phone_number', 'email', 'sex', 'role')
@@ -62,6 +64,7 @@ def finish_signup(request):
     except ValidationError as e:
         messages.error(request, "; ".join(e.messages))
         return redirect('signup')
+    notify.welcome(user)
     login(request, user)
     return redirect(ROLE_HOME[user.role])
 
@@ -94,7 +97,10 @@ def login_view(request):
         if user:
             login(request, user)
             return redirect(ROLE_HOME[user.role])
-        messages.error(request, "Invalid phone/username or password.")
+        if AccountService.is_suspended(request.POST.get('identifier', ''), request.POST.get('password', '')):
+            messages.error(request, f"Your account is suspended. Please contact {SUPPORT_EMAIL}.")
+        else:
+            messages.error(request, "Invalid phone/username or password.")
     return render(request, 'core_accounts/login.html')
 
 def logout_view(request):

@@ -11,7 +11,8 @@ def renter_visible_complexes():
     TEMPORARY: while settings.LISTINGS_REQUIRE_APPROVAL is False, every
     active complex is shown right away (no admin approval yet).
     """
-    complexes = Complex.objects.filter(status=Complex.ComplexStatus.ACTIVE)
+    # Suspended landlords' listings are hidden too (core_admin)
+    complexes = Complex.objects.filter(status=Complex.ComplexStatus.ACTIVE, landlord__user__is_active=True)
     if getattr(settings, "LISTINGS_REQUIRE_APPROVAL", True):
         complexes = complexes.filter(approval_status=Complex.Approval.APPROVED)
     return complexes
