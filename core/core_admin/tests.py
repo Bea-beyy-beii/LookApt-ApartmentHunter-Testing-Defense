@@ -147,6 +147,26 @@ class UserTests(Base):
         self.assertNotContains(response, "Liza Test")
         self.assertNotContains(response, reverse("core_admin:user_detail", args=[self.admin.pk]))   # admins aren't listed
 
+    def test_date_joined_filter(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        User.objects.filter(pk=self.renter.pk).update(date_joined=timezone.now() - timedelta(days=40))
+        url = reverse("core_admin:user_list")
+        self.assertNotContains(self.client.get(url + "?joined=30"), "Arem Test")
+        self.assertContains(self.client.get(url + "?joined=90"), "Arem Test")
+        old = (timezone.localdate() - timedelta(days=40)).isoformat()
+        response = self.client.get(url + f"?joined=custom&joined_from={old}&joined_to={old}")
+        self.assertContains(response, "Arem Test")
+        self.assertNotContains(response, "Liza Test")
+        # A broken date is ignored instead of crashing
+        self.assertEqual(self.client.get(url + "?joined=custom&joined_from=nope").status_code, 200)
+
+    def test_live_filters_get_only_the_results(self):
+        response = self.client.get(reverse("core_admin:user_list") + "?q=arem", HTTP_X_REQUESTED_WITH="ap-live")
+        self.assertContains(response, "Arem Test")
+        self.assertNotContains(response, "<html")            # just the table, not the whole page
+        self.assertNotContains(response, "Liza Test")
+
     def test_suspend_hides_listings_blocks_login_and_emails(self):
         self.post("user_detail", self.landlord.pk, {"action": "suspend", "reason": "Scamming renters."})
         self.landlord.refresh_from_db()
@@ -230,7 +250,7 @@ class ReportTests(Base):
     def test_repeat_flag(self):
         self.make_report()
         self.make_report()
-        self.assertContains(self.client.get(reverse("core_admin:report_list")), "⚠ 2")
+        self.assertContains(self.client.get(reverse("core_admin:report_list")), 'title="2 reports received"')
 
 
 @override_settings(**TEST_SETTINGS)

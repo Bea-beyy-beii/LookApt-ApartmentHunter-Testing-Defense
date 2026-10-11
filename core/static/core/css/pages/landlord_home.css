@@ -238,6 +238,21 @@ button.lh-card:hover,
 .lh-grid-line { stroke: #edf0f3; stroke-width: 1; }
 .lh-axis { fill: #8a95a5; font-size: 10.5px; font-family: inherit; }
 
+/* Hover: line on the nearest day + the day's numbers (landlord_home.js) */
+.lh-performance { position: relative; }
+.lh-crosshair { stroke: #a9afb6; stroke-width: 1; stroke-dasharray: 3 3; }
+.lh-dot { stroke: var(--white); stroke-width: 2; }
+.lh-chart-tip {
+    position: absolute; z-index: 3; display: grid; gap: 4px; min-width: 150px;
+    padding: 10px 12px; pointer-events: none;
+    border: 1px solid var(--border-light); border-radius: 10px; background: var(--white); box-shadow: var(--shadow-card);
+    color: var(--text-primary); font-size: 13px;
+}
+.lh-chart-tip[hidden] { display: none; }
+.lh-chart-tip span { display: flex; align-items: center; gap: 6px; color: var(--text-secondary); }
+.lh-chart-tip i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
+.lh-chart-tip b { margin-left: auto; padding-left: 12px; color: var(--text-primary); }
+
 /* Lists (attention + properties): scroll inside the panel */
 .lh-list { flex: 1; min-height: 0; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
 .lh-list > li + li { border-top: 1px solid #f0f2f5; }

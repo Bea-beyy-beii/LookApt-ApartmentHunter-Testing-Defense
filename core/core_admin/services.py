@@ -11,6 +11,7 @@ Every decision tells the user through core_admin/notify.py (bell + email).
 from collections import Counter
 from datetime import timedelta
 
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import transaction
@@ -56,12 +57,24 @@ def _page(queryset, number):
 # OVERVIEW
 # =========================================================
 
+BADGES_KEY = "core_admin:badges"
+
+
 def badge_counts():
-    """The sidebar's red counts."""
-    return {
-        "verification": VerificationRequest.objects.filter(status=VStatus.REVIEW).count(),
-        "reports": Report.objects.filter(status__in=Report.OPEN_STATUSES).count(),
-    }
+    """The sidebar's red counts. Kept for a minute so switching pages doesn't
+    ask the database again; any admin decision clears it (forget_badges)."""
+    counts = cache.get(BADGES_KEY)
+    if counts is None:
+        counts = {
+            "verification": VerificationRequest.objects.filter(status=VStatus.REVIEW).count(),
+            "reports": Report.objects.filter(status__in=Report.OPEN_STATUSES).count(),
+        }
+        cache.set(BADGES_KEY, counts, 60)
+    return counts
+
+
+def forget_badges():
+    cache.delete(BADGES_KEY)
 
 
 def activity_series(days):
@@ -88,6 +101,7 @@ def activity_series(days):
 
 
 def overview_context():
+    badges = badge_counts()
     week_ago = timezone.now() - timedelta(days=7)
     users = User.objects.filter(role__in=("renter", "landlord"))
     counts = users.aggregate(
@@ -100,8 +114,8 @@ def overview_context():
     return {
         "stats": {
             **counts,
-            "to_verify": VerificationRequest.objects.filter(status=VStatus.REVIEW).count(),
-            "open_reports": Report.objects.filter(status__in=Report.OPEN_STATUSES).count(),
+            "to_verify": badges["verification"],
+            "open_reports": badges["reports"],
             "active_listings": Complex.objects.filter(status=Complex.ComplexStatus.ACTIVE).count(),
             "active_tenancies": Tenancy.objects.filter(status=Tenancy.Status.ACTIVE).count(),
         },
@@ -110,6 +124,7 @@ def overview_context():
         "waiting_reports": Report.objects.filter(status__in=Report.OPEN_STATUSES)
                            .select_related("reporter", "reported_user").order_by("created_at")[:5],
         "chart_periods": CHART_PERIODS,
+        "chart_data": activity_series(30),     # in the page, so the chart draws without a second request
     }
 
 
@@ -167,6 +182,7 @@ def ai_checks(result):
 
 def decide_verification(request, admin, action, reason):
     """action: approve | resubmit | reject (also takes back an approval)."""
+    forget_badges()
     reason = (reason or "").strip()
     if action == "approve":
         verification.approve(request, admin)
@@ -182,8 +198,41 @@ def decide_verification(request, admin, action, reason):
 # USERS
 # =========================================================
 
-def user_list(role, verified, status, query, page):
+JOINED_OPTIONS = [
+    ("", "Joined any time"), ("today", "Joined today"), ("7", "Last 7 days"), ("30", "Last 30 days"),
+    ("90", "Last 90 days"), ("year", "This year"), ("custom", "Custom dates…"),
+]
+
+
+def _date(value):
+    from datetime import date
+    try:
+        return date.fromisoformat(value) if value else None
+    except ValueError:
+        return None
+
+
+def joined_filter(users, joined, joined_from="", joined_to=""):
+    """Date joined: a preset (today / 7 / 30 / 90 days / this year) or custom from–to dates."""
+    today = timezone.localdate()
+    if joined == "today":
+        return users.filter(date_joined__date=today)
+    if joined in ("7", "30", "90"):
+        return users.filter(date_joined__date__gt=today - timedelta(days=int(joined)))
+    if joined == "year":
+        return users.filter(date_joined__year=today.year)
+    if joined == "custom":
+        start, end = _date(joined_from), _date(joined_to)
+        if start:
+            users = users.filter(date_joined__date__gte=start)
+        if end:
+            users = users.filter(date_joined__date__lte=end)
+    return users
+
+
+def user_list(role, verified, status, query, page, joined="", joined_from="", joined_to=""):
     users = User.objects.exclude(role="admin").order_by("-date_joined")
+    users = joined_filter(users, joined, joined_from, joined_to)
     if role in ("renter", "landlord"):
         users = users.filter(role=role)
     if verified == "yes":
@@ -307,6 +356,7 @@ def set_report_status(report, admin, status, note=""):
     note = (note or "").strip()
     if status in (RStatus.RESOLVED, RStatus.DISMISSED) and not note:
         raise ValidationError("Write a short note for the person who filed the report.")
+    forget_badges()
     report.status = status
     report.admin_note = note or report.admin_note
     report.handled_by = admin

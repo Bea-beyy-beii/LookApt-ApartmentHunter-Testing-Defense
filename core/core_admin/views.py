@@ -21,6 +21,13 @@ def _render(request, template, section, context=None):
     return render(request, template, {"section": section, "badges": services.badge_counts(), **(context or {})})
 
 
+def _render_list(request, template, results, section, context):
+    """A list page, or only its results when the live filters ask (admin_panel.js)."""
+    if request.headers.get("X-Requested-With") == "ap-live":
+        return render(request, results, context)
+    return _render(request, template, section, context)
+
+
 def _error(request, error):
     messages.error(request, " ".join(error.messages))
 
@@ -51,7 +58,7 @@ def activity_data(request):
 def verification_list(request):
     status = request.GET.get("status") or VerificationRequest.Status.REVIEW
     query = request.GET.get("q", "").strip()
-    return _render(request, "core_admin/verification_list.html", "verification", {
+    return _render_list(request, "core_admin/verification_list.html", "core_admin/partials/verification_results.html", "verification", {
         "status": status, "query": query,
         **services.verification_queue(status, query, request.GET.get("page")),
     })
@@ -85,11 +92,12 @@ def verification_detail(request, pk):
 @admin_only
 def user_list(request):
     g = request.GET
-    filters = {k: g.get(k, "") for k in ("role", "verified", "status")}
+    filters = {k: g.get(k, "") for k in ("role", "verified", "status", "joined", "joined_from", "joined_to")}
     query = g.get("q", "").strip()
-    return _render(request, "core_admin/user_list.html", "users", {
-        "filters": filters, "query": query,
-        "page": services.user_list(filters["role"], filters["verified"], filters["status"], query, g.get("page")),
+    return _render_list(request, "core_admin/user_list.html", "core_admin/partials/user_results.html", "users", {
+        "filters": filters, "query": query, "joined_options": services.JOINED_OPTIONS,
+        "page": services.user_list(filters["role"], filters["verified"], filters["status"], query, g.get("page"),
+                                   filters["joined"], filters["joined_from"], filters["joined_to"]),
     })
 
 
@@ -143,7 +151,7 @@ def report_list(request):
     status = g.get("status") or Report.Status.WAITING
     category = g.get("category", "")
     query = g.get("q", "").strip()
-    return _render(request, "core_admin/report_list.html", "reports", {
+    return _render_list(request, "core_admin/report_list.html", "core_admin/partials/report_results.html", "reports", {
         "status": status, "category": category, "query": query, "categories": ALL_CATEGORIES,
         **services.report_list(status, category, query, g.get("page")),
     })

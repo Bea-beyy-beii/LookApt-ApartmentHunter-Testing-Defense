@@ -86,9 +86,28 @@
         button.setAttribute("aria-expanded", String(willOpen));
 
         if (willOpen) {
+            placeMenu(menu, button);
             const first = menu.querySelector(".property-menu-item:not([hidden])");
-            if (first) first.focus();
+            if (first) first.focus({ preventScroll: true });
         }
+    }
+
+    // Open the ⋮ menu where it fits: above the button when there isn't room below
+    // (e.g. the last unit card at the bottom of the page), never past the window's edges
+    function placeMenu(menu, button) {
+        const gap = 6, edge = 8;
+        menu.classList.remove("is-up", "is-left");
+        menu.style.maxHeight = "";
+        const toggle = button.getBoundingClientRect();
+        const below = window.innerHeight - toggle.bottom - gap - edge;
+        const above = toggle.top - gap - edge;
+        const height = menu.scrollHeight;
+        if (height > below && above > below) menu.classList.add("is-up");
+        const room = menu.classList.contains("is-up") ? above : below;
+        // The page is drawn at --ui-zoom: measurements are screen pixels, max-height is applied before the zoom
+        const zoom = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+        if (height > room) menu.style.maxHeight = `${Math.max(160, room) / zoom}px`;     // scroll inside instead of running off
+        if (menu.getBoundingClientRect().left < edge) menu.classList.add("is-left");
     }
 
 

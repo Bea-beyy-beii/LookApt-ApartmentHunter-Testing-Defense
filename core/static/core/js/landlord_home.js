@@ -226,7 +226,71 @@
                 if (n === 1) svg.append(svgEl("circle", { cx: x(0), cy: y(s.values[0]), r: 3.5, fill: COLORS[s.key] }));
             });
 
+            if (n && visible.length) addHover(svg, { width, height, pad, n, x, y, visible });
             chart.replaceChildren(svg);
+        }
+
+        // Hover: a line on the nearest day, a dot on each line, and the day's numbers
+        // (same as the admin Overview chart)
+        const tip = document.createElement("div");
+        tip.className = "lh-chart-tip";
+        tip.hidden = true;
+        chart.after(tip);
+
+        function addHover(svg, { width, height, pad, n, x, y, visible }) {
+            const cross = svgEl("line", { y1: pad.top, y2: height - pad.bottom, class: "lh-crosshair", visibility: "hidden" });
+            svg.append(cross);
+            const dots = visible.map(s => {
+                const dot = svgEl("circle", { r: 4.5, fill: COLORS[s.key], class: "lh-dot", visibility: "hidden" });
+                svg.append(dot);
+                return dot;
+            });
+            const hit = svgEl("rect", { x: pad.left, y: pad.top, width: width - pad.left - pad.right,
+                                        height: height - pad.top - pad.bottom, fill: "transparent" });
+            svg.append(hit);
+
+            function show(clientX) {
+                const box = svg.getBoundingClientRect();
+                const px = (clientX - box.left) * width / box.width;
+                const step = n > 1 ? (width - pad.left - pad.right) / (n - 1) : 1;
+                const i = Math.max(0, Math.min(n - 1, Math.round((px - pad.left) / step)));
+                cross.setAttribute("x1", x(i));
+                cross.setAttribute("x2", x(i));
+                cross.setAttribute("visibility", "visible");
+                visible.forEach((s, k) => {
+                    dots[k].setAttribute("cx", x(i));
+                    dots[k].setAttribute("cy", y(s.values[i]));
+                    dots[k].setAttribute("visibility", "visible");
+                });
+                tip.replaceChildren();
+                const day = document.createElement("strong");
+                day.textContent = data.days[i];
+                tip.append(day);
+                visible.forEach(s => {
+                    const row = document.createElement("span");
+                    const swatch = document.createElement("i");
+                    swatch.style.background = COLORS[s.key];
+                    const value = document.createElement("b");
+                    value.textContent = s.values[i].toLocaleString();
+                    row.append(swatch, s.label, value);
+                    tip.append(row);
+                });
+                tip.hidden = false;
+                // CSS pixels (the page is zoomed, so not the screen pixels getBoundingClientRect gives);
+                // flip to the left of the line when it would run past the chart's edge
+                let left = chart.offsetLeft + x(i) + 14;
+                if (left + tip.offsetWidth > chart.offsetLeft + chart.clientWidth) left = chart.offsetLeft + x(i) - tip.offsetWidth - 14;
+                tip.style.left = `${Math.max(chart.offsetLeft, left)}px`;
+                tip.style.top = `${chart.offsetTop + 6}px`;
+            }
+            function hide() {
+                cross.setAttribute("visibility", "hidden");
+                dots.forEach(dot => dot.setAttribute("visibility", "hidden"));
+                tip.hidden = true;
+            }
+            hit.addEventListener("pointermove", event => show(event.clientX));
+            hit.addEventListener("pointerdown", event => show(event.clientX));     // touch: tap to see a day
+            hit.addEventListener("pointerleave", hide);
         }
 
         select.addEventListener("change", async () => {
