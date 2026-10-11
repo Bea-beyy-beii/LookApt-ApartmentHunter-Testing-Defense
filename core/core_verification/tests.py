@@ -145,6 +145,14 @@ class SubmitTests(Base):
         self.assertEqual(set(response.json()["errors"]), {"id_photo", "selfie", "ownership_type"})
         self.assertFalse(VerificationRequest.objects.exists())
 
+    def test_senior_citizen_id_is_accepted_and_other_is_gone(self):
+        with mock.patch.object(services, "start_check"):
+            self.assertEqual(self.submit(id_type="senior_citizen").status_code, 200)
+        VerificationRequest.objects.all().delete()
+        response = self.submit(id_type="other")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("id_type", response.json()["errors"])
+
     def test_pdf_is_not_accepted_as_an_id(self):
         response = self.submit(id_photo=pdf("id.pdf"))
         self.assertEqual(response.status_code, 400)
@@ -294,7 +302,7 @@ class DashboardTests(Base):
     def test_new_landlord_gets_the_pop_up(self):
         response = self.dashboard()
         self.assertContains(response, "data-auto-open")
-        self.assertContains(response, "Verify your account to publish listings.")
+        self.assertContains(response, "Verify your account to publish listings, post bulletins and file reports.")
 
     def test_waiting_landlord_sees_the_banner_only(self):
         self.make_request(Status.REVIEW)
@@ -307,6 +315,23 @@ class DashboardTests(Base):
         response = self.dashboard()
         self.assertContains(response, "data-auto-open")
         self.assertContains(response, "Your selfie is too dark.")
+
+    def test_submitted_documents_can_be_viewed(self):
+        request = self.make_request(Status.REVIEW)
+        response = self.dashboard()
+        self.assertContains(response, "data-verify-docs-open")
+        self.assertContains(response, "Your submitted documents")
+        self.assertContains(response, f'data-lightbox-src="{request.id_photo.url}"')
+        self.assertContains(response, "data-verify-lightbox")
+
+    def test_no_documents_button_before_submitting(self):
+        self.assertNotContains(self.dashboard(), "data-verify-docs-open")
+
+    def test_bulletin_and_report_buttons_need_verification(self):
+        self.assertContains(self.dashboard(), "data-verify-required", count=4)    # bulletin x2, report x2
+        self.landlord.is_verified = True
+        self.landlord.save()
+        self.assertNotContains(self.dashboard(), "data-verify-required")
 
     def test_welcome_once_after_approval(self):
         request = self.make_request(Status.REVIEW)
@@ -351,3 +376,36 @@ class PublishingTests(Base):
         response = self.client.post(reverse("core_listings:property_set_visibility", args=[self.complex.pk]),
                                     {"visibility": "unpublished"}, HTTP_ACCEPT="application/json")
         self.assertEqual(response.status_code, 200)
+
+
+class PostingTests(Base):
+    """Unverified landlords can't post bulletins or file reports."""
+
+    def post_bulletin(self):
+        return self.client.post(reverse("calendar:post_bulletin"),
+                                data='{"message": "Water interruption tomorrow", "audience": "all"}',
+                                content_type="application/json")
+
+    def file_report(self):
+        return self.client.post(reverse("core_reports:create"), {"category": "scam", "description": "x"})
+
+    def test_unverified_landlord_cannot_post_a_bulletin(self):
+        response = self.post_bulletin()
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["errors"]["__all__"], services.NOT_VERIFIED_TO_POST)
+
+    def test_unverified_landlord_cannot_file_a_report(self):
+        response = self.file_report()
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["errors"]["__all__"], services.NOT_VERIFIED_TO_POST)
+
+    def test_verified_landlord_gets_past_the_check(self):
+        self.landlord.is_verified = True
+        self.landlord.save()
+        self.assertNotEqual(self.post_bulletin().status_code, 403)
+        self.assertNotEqual(self.file_report().status_code, 403)
+
+    def test_renters_are_not_affected(self):
+        self.client.force_login(make_user("arem", "renter", "09222222222"))
+        response = self.file_report()
+        self.assertNotEqual(response.status_code, 403)

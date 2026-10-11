@@ -61,6 +61,14 @@ def can_publish(user):
     return user.is_verified
 
 
+NOT_VERIFIED_TO_POST = "Verify your account first: you can post bulletins and file reports once you're approved."
+
+
+def landlord_must_verify(user):
+    """True for landlords who aren't verified yet (they can't post bulletins or file reports)."""
+    return user.role == "landlord" and not user.is_verified
+
+
 def verification_context(user):
     """For the landlord dashboard: the pop-up, the banner and the welcome message."""
     state = state_for(user)

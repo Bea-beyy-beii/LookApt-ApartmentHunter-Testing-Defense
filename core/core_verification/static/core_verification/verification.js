@@ -1,5 +1,7 @@
-// Landlord verification (core_verification): the upload pop-up, the status
-// banner (re-checks while the documents are being read) and the welcome pop-up.
+// Landlord verification (core_verification): the upload pop-up (with previews
+// you can open full size, like the complex / unit photos), the status banner
+// (re-checks while the documents are being read), the documents already sent,
+// the welcome pop-up, and the buttons unverified landlords can't use yet.
 (function () {
     const LATER_KEY = "lookapt.verifyLater";     // "Later" hides the pop-up until the next visit
 
@@ -18,8 +20,25 @@
         try { return sessionStorage.getItem(key) === "1"; } catch (e) { return false; }
     }
 
+    // ---------------------------------------------------------------- full-size viewer
+    const lightbox = document.querySelector("[data-verify-lightbox]");
+
+    function openLightbox(src, alt) {
+        if (!lightbox) return;
+        const image = lightbox.querySelector("img");
+        image.src = src;
+        image.alt = alt || "";
+        lightbox.showModal();
+    }
+
+    if (lightbox) {
+        lightbox.querySelector(".photo-lightbox-close").addEventListener("click", () => lightbox.close());
+        lightbox.addEventListener("click", event => { if (event.target === lightbox) lightbox.close(); });
+    }
+
     // ---------------------------------------------------------------- upload pop-up
     const dialog = document.querySelector("[data-verify-modal]");
+    let openUpload = null;
     if (dialog) {
         const form = dialog.querySelector("[data-verify-form]");
         const formError = dialog.querySelector("[data-form-error]");
@@ -49,6 +68,7 @@
             remember(LATER_KEY);
             dialog.close();
         }
+        openUpload = open;
 
         dialog.querySelectorAll("[data-modal-close]").forEach(b => b.addEventListener("click", close));
         dialog.addEventListener("click", event => { if (event.target === dialog) close(); });
@@ -58,22 +78,84 @@
         });
         if (dialog.hasAttribute("data-auto-open") && !remembered(LATER_KEY)) open();
 
-        // Show the chosen file's name in its box
+        // A chosen file replaces its upload box with a preview: click the picture to see
+        // it full size (a PDF opens in a new tab), "Change" picks another, × removes it
+        function formatSize(bytes) {
+            return bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.ceil(bytes / 1024)} KB`;
+        }
+
         form.querySelectorAll("input[type=file]").forEach(input => {
             const label = input.closest(".vf-drop");
-            const name = label.querySelector("[data-file-name]");
-            const placeholder = name.textContent;
+            const error = dialog.querySelector(`[data-error-for="${input.name}"]`);
+            let preview = null;
+            let url = null;
+
+            function clearPreview() {
+                if (preview) preview.remove();
+                if (url) URL.revokeObjectURL(url);
+                preview = url = null;
+                label.hidden = false;
+            }
+
+            function showPreview(file) {
+                clearPreview();
+                url = URL.createObjectURL(file);
+                const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+
+                preview = document.createElement("div");
+                preview.className = "vf-preview";
+
+                const thumb = document.createElement("button");
+                thumb.type = "button";
+                thumb.className = "vf-preview-thumb" + (isPdf ? " vf-preview-thumb--pdf" : "");
+                thumb.setAttribute("aria-label", `View ${file.name}`);
+                if (isPdf) {
+                    thumb.textContent = "PDF";
+                    thumb.addEventListener("click", () => window.open(url, "_blank", "noopener"));
+                } else {
+                    const image = document.createElement("img");
+                    image.src = url;
+                    image.alt = "";
+                    thumb.append(image);
+                    thumb.addEventListener("click", () => openLightbox(url, file.name));
+                }
+
+                const text = document.createElement("div");
+                text.className = "vf-preview-text";
+                const name = document.createElement("strong");
+                name.textContent = file.name;
+                const hint = document.createElement("small");
+                hint.textContent = `${formatSize(file.size)} · ${isPdf ? "Click to open" : "Click the picture to view it"}`;
+                text.append(name, hint);
+
+                const change = document.createElement("button");
+                change.type = "button";
+                change.className = "vf-preview-change";
+                change.textContent = "Change";
+                change.addEventListener("click", () => input.click());
+
+                const remove = document.createElement("button");
+                remove.type = "button";
+                remove.className = "vf-preview-remove";
+                remove.textContent = "×";
+                remove.setAttribute("aria-label", `Remove ${file.name}`);
+                remove.addEventListener("click", () => { input.value = ""; clearPreview(); });
+
+                preview.append(thumb, text, change, remove);
+                label.after(preview);
+                label.hidden = true;
+            }
+
             input.addEventListener("change", () => {
                 const file = input.files[0];
-                const error = dialog.querySelector(`[data-error-for="${input.name}"]`);
                 error.hidden = true;
                 if (file && file.size > maxBytes) {
                     input.value = "";
                     error.textContent = `${file.name} is larger than ${form.dataset.maxMb} MB.`;
                     error.hidden = false;
                 }
-                name.textContent = input.files[0] ? input.files[0].name : placeholder;
-                label.classList.toggle("has-file", Boolean(input.files[0]));
+                if (input.files[0]) showPreview(input.files[0]);
+                else clearPreview();
             });
         });
         form.addEventListener("change", event => {
@@ -134,6 +216,39 @@
             } catch (e) { /* try again next tick */ }
         }, 4000);
     }
+
+    // ---------------------------------------------------------------- documents already sent
+    const docs = document.querySelector("[data-verify-docs]");
+    if (docs) {
+        document.addEventListener("click", event => {
+            if (event.target.closest("[data-verify-docs-open]")) docs.showModal();
+        });
+        docs.querySelectorAll("[data-modal-close]").forEach(b => b.addEventListener("click", () => docs.close()));
+        docs.addEventListener("click", event => { if (event.target === docs) docs.close(); });
+        docs.querySelectorAll("[data-lightbox-src]").forEach(thumb => thumb.addEventListener("click", () => {
+            openLightbox(thumb.dataset.lightboxSrc, thumb.querySelector("img").alt);
+        }));
+    }
+
+    // ---------------------------------------------------------------- not verified yet
+    // "Post on Bulletin" / "File a Report" (data-verify-required): open the
+    // verification pop-up instead, or point at the banner if documents were already sent.
+    // Runs before the buttons' own handlers (capture), so their forms never open.
+    document.addEventListener("click", event => {
+        const button = event.target.closest("[data-verify-required]");
+        if (!button) return;
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (openUpload && dialog.hasAttribute("data-can-submit")) {
+            openUpload();
+        } else if (banner) {
+            banner.scrollIntoView({ behavior: "smooth", block: "center" });
+            banner.classList.remove("is-flashing");
+            void banner.offsetWidth;             // restart the animation
+            banner.classList.add("is-flashing");
+        }
+    }, true);
 
     // ---------------------------------------------------------------- welcome
     const welcome = document.querySelector("[data-verify-welcome]");

@@ -1,7 +1,7 @@
 {% comment %}
     Top of the landlord dashboard: where verification stands (verification.js
-    re-checks while the documents are being read), and a one-time welcome once
-    the landlord is approved.
+    re-checks while the documents are being read), the documents they sent,
+    and a one-time welcome once the landlord is approved.
 {% endcomment %}
 {% with v=verification %}
 
@@ -20,14 +20,14 @@
 
     <div class="vf-banner-text">
         {% if v.state == "none" %}
-            <strong>Verify your account to publish listings.</strong>
+            <strong>Verify your account to publish listings, post bulletins and file reports.</strong>
             <span>Upload a government ID, a selfie, and a business permit or proof of ownership. It takes about 2 minutes.</span>
         {% elif v.state == "checking" %}
             <strong>We're checking your documents…</strong>
             <span>This usually takes about a minute. You can keep using your dashboard.</span>
         {% elif v.state == "review" %}
             <strong>Your documents are with our team.</strong>
-            <span>An admin will look at them soon. You can set up your listings in the meantime; publishing unlocks once you're approved.</span>
+            <span>An admin will look at them soon. You can set up your listings in the meantime; publishing, bulletins and reports unlock once you're approved.</span>
         {% elif v.state == "resubmit" %}
             <strong>We need new documents.</strong>
             <span>{{ v.request.message }}</span>
@@ -37,13 +37,66 @@
         {% endif %}
     </div>
 
+    {% if v.request and v.state != "none" %}
+        <button type="button" class="rt-btn rt-btn--ghost vf-banner-btn" data-verify-docs-open>View documents</button>
+    {% endif %}
     {% if v.can_submit %}
         <button type="button" class="rt-btn rt-btn--primary vf-banner-btn" data-verify-open>
             {% if v.state == "resubmit" %}Upload again{% else %}Verify now{% endif %}
         </button>
     {% endif %}
 </div>
+
+{% if v.request and v.state != "none" %}
+{# The documents they sent (private links that work for 5 minutes; the page loads them right away) #}
+{% with r=v.request %}
+<dialog class="lm-modal vf-docs" data-verify-docs aria-labelledby="vf-docs-title">
+    <header class="lm-header">
+        <div>
+            <h2 id="vf-docs-title">Your submitted documents</h2>
+            <p>Sent {{ r.created_at|date:"M j, Y, g:i A" }}. Click a picture to see it in full.</p>
+        </div>
+        <button type="button" class="lm-close" data-modal-close aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+    </header>
+    <div class="vf-docs-grid">
+        <figure class="vf-doc">
+            <button type="button" class="vf-doc-thumb" data-lightbox-src="{{ r.id_photo.url }}" aria-label="View your ID">
+                <img src="{{ r.id_photo.url }}" alt="Your ID">
+            </button>
+            <figcaption><strong>Government ID</strong><span>{{ r.get_id_type_display }}</span></figcaption>
+        </figure>
+        <figure class="vf-doc">
+            <button type="button" class="vf-doc-thumb" data-lightbox-src="{{ r.selfie.url }}" aria-label="View your selfie">
+                <img src="{{ r.selfie.url }}" alt="Your selfie holding your ID">
+            </button>
+            <figcaption><strong>Selfie with ID</strong><span>Photo</span></figcaption>
+        </figure>
+        <figure class="vf-doc">
+            {% if r.ownership_document.name|lower|slice:"-4:" == ".pdf" %}
+                <a class="vf-doc-thumb vf-doc-thumb--pdf" href="{{ r.ownership_document.url }}" target="_blank" rel="noopener" aria-label="Open your document (PDF)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v4h4"/></svg>
+                    <span>PDF</span>
+                </a>
+            {% else %}
+                <button type="button" class="vf-doc-thumb" data-lightbox-src="{{ r.ownership_document.url }}" aria-label="View your document">
+                    <img src="{{ r.ownership_document.url }}" alt="Your permit or proof of ownership">
+                </button>
+            {% endif %}
+            <figcaption><strong>Proof of ownership</strong><span>{{ r.get_ownership_type_display }}</span></figcaption>
+        </figure>
+    </div>
+</dialog>
+{% endwith %}
 {% endif %}
+{% endif %}
+
+{# Full-size view of a document (same viewer as the complex / unit photo upload) #}
+<dialog class="photo-lightbox" data-verify-lightbox>
+    <button type="button" class="photo-lightbox-close" aria-label="Close">×</button>
+    <img src="" alt="">
+</dialog>
 
 {% if v.show_welcome %}
 <dialog class="lm-modal vf-welcome" data-verify-welcome data-url="{% url 'core_verification:welcome_seen' %}"

@@ -5,7 +5,7 @@
 {% endcomment %}
 {% with form=verification_form %}
 <dialog class="lm-modal vf-modal" data-verify-modal aria-labelledby="vf-modal-title"
-        {% if verification.can_submit %}data-auto-open{% endif %}>
+        {% if verification.can_submit %}data-auto-open data-can-submit{% endif %}>
     <form class="lm-form" data-verify-form novalidate enctype="multipart/form-data"
           data-url="{% url 'core_verification:submit' %}" data-max-mb="{{ verification_max_mb }}">
         {% csrf_token %}
@@ -15,7 +15,7 @@
             </span>
             <div>
                 <h2 id="vf-modal-title">Verify your landlord account</h2>
-                <p>Renters trust verified landlords. Once you're verified you can publish your listings.</p>
+                <p>Renters trust verified landlords. Once you're verified you can publish listings, post bulletins and file reports.</p>
             </div>
             <button type="button" class="lm-close" data-modal-close aria-label="Close">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>

@@ -185,6 +185,9 @@
             item.hidden = item.dataset.visibility === status;
         });
 
+        // Units follow the complex: all unpublished while it is, their own status again once it's public
+        card.querySelectorAll("[data-unit-card]").forEach(unitCard => showUnitStatus(unitCard, status === "unpublished"));
+        updateUnitCounts(card);
         updatePropertyCounts();
     }
 
@@ -212,19 +215,33 @@
         });
     }
 
+    const UNIT_LABELS = { available: "Available", occupied: "Occupied", unpublished: "Unpublished" };
+
+    // The card shows "Unpublished" while the complex is unpublished; the unit's
+    // own status (data-own-availability) is kept and shown again afterwards.
+    function showUnitStatus(unitCard, complexUnpublished) {
+        const own = unitCard.dataset.ownAvailability;
+        const shown = complexUnpublished ? "unpublished" : own;
+        unitCard.dataset.availability = shown;
+
+        const pill = unitCard.querySelector("[data-unit-status]");
+        pill.className = `unit-status unit-status--${shown}`;
+        pill.textContent = UNIT_LABELS[shown];
+        pill.title = complexUnpublished ? "Hidden because the complex is unpublished" : "";
+
+        unitCard.querySelectorAll('[data-action="unit-availability"]').forEach(item => {
+            item.hidden = complexUnpublished || item.dataset.availability === own;
+        });
+        const note = unitCard.querySelector("[data-unit-locked]");
+        if (note) note.hidden = !complexUnpublished;
+    }
+
     async function setUnitAvailability(unitCard, availability) {
         try {
             const result = await postAction(unitCard.dataset.availabilityUrl, { availability });
 
-            unitCard.dataset.availability = result.availability;
-
-            const pill = unitCard.querySelector("[data-unit-status]");
-            pill.className = `unit-status unit-status--${result.availability}`;
-            pill.textContent = result.label;
-
-            unitCard.querySelectorAll('[data-action="unit-availability"]').forEach(item => {
-                item.hidden = item.dataset.availability === result.availability;
-            });
+            unitCard.dataset.ownAvailability = result.availability;
+            showUnitStatus(unitCard, false);
 
             updateUnitCounts(unitCard.closest("[data-property-card]"));
             showToast(`${unitCard.dataset.unitName} is now ${result.label.toLowerCase()}.`);

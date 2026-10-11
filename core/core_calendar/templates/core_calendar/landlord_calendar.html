@@ -12,7 +12,7 @@
             <h1>Calendar</h1>
             <p>View and manage your scheduled events, announcements, and important dates.</p>
         </div>
-        <button type="button" class="rt-btn rt-btn--primary cal-post-btn" data-open-bulletin>
+        <button type="button" class="rt-btn rt-btn--primary cal-post-btn" data-open-bulletin{% if verification and verification.state != "approved" %} data-verify-required{% endif %}>
             {% feature_icon "megaphone" %} Post on Bulletin
         </button>
     </div>

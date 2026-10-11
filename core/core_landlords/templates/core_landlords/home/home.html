@@ -19,7 +19,7 @@
                 <button type="button" class="lh-action" data-lh-add-property>
                     {% feature_icon "plus" %} Add Property
                 </button>
-                <button type="button" class="lh-action" data-open-bulletin>
+                <button type="button" class="lh-action" data-open-bulletin{% if verification and verification.state != "approved" %} data-verify-required{% endif %}>
                     {% feature_icon "megaphone" %} Post on Bulletin
                 </button>
                 <button type="button" class="lh-action" data-lh-coming-soon="Exporting financials">

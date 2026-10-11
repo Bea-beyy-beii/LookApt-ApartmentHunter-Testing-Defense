@@ -109,8 +109,13 @@ class Complex(models.Model):
 
         # Counted in Python from self.units.all(), so the listings page's
     # prefetch_related("units") answers them without extra queries.
+    # An unpublished complex counts all its units as unpublished (see Unit.listed_availability).
     def _count_units(self, availability=None):
-        return sum(1 for unit in self.units.all() if availability is None or unit.availability == availability)
+        if availability is None:
+            return len(self.units.all())
+        if self.status == self.ComplexStatus.UNPUBLISHED:
+            return len(self.units.all()) if availability == Unit.Availability.UNPUBLISHED else 0
+        return sum(1 for unit in self.units.all() if unit.availability == availability)
 
     @property
     def total_units(self):
@@ -188,6 +193,9 @@ class Unit(models.Model):
     deposit_months = models.PositiveSmallIntegerField(default=0)
     advance_months = models.PositiveSmallIntegerField(default=0)
 
+    # The unit's own status. While its complex is unpublished the unit is shown as
+    # unpublished (listed_availability) but keeps this value, so publishing the
+    # complex again brings each unit back as it was.
     availability = models.CharField(max_length=15, choices=Availability.choices, default=Availability.AVAILABLE)
 
     # When the current tenant's lease started (occupied units). Used for the
@@ -208,6 +216,18 @@ class Unit(models.Model):
     @property
     def unit_name(self):
             return f"Unit {self.identifier}"
+
+    @property
+    def complex_unpublished(self):
+        return self.complex.status == Complex.ComplexStatus.UNPUBLISHED
+
+    @property
+    def listed_availability(self):
+        """The status shown on the landlord's cards: unpublished while the complex is."""
+        return self.Availability.UNPUBLISHED if self.complex_unpublished else self.availability
+
+    def get_listed_availability_display(self):
+        return self.Availability(self.listed_availability).label
 
     def amenity_list(self):
         """Ticked amenities, e.g. [{"key": "wifi_ready", "label": "Wi-Fi Ready"}]."""

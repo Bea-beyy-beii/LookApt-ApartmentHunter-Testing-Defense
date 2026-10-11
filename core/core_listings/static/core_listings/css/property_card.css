@@ -294,6 +294,17 @@
     color: var(--error);
 }
 
+/* Unit menu while its complex is unpublished: the status items are hidden */
+.property-menu-note {
+    max-width: 220px;
+    padding: 8px 12px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.property-menu-note[hidden] { display: none; }
+
 .property-menu-item--danger:hover {
     background: #fbe9e9;
 }

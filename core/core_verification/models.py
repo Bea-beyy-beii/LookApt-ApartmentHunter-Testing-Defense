@@ -37,7 +37,7 @@ class VerificationRequest(models.Model):
         PRC = "prc", "PRC ID"
         POSTAL = "postal", "Postal ID"
         VOTERS = "voters", "Voter's ID"
-        OTHER = "other", "Other government ID"
+        SENIOR_CITIZEN = "senior_citizen", "Senior Citizen ID"
 
     class OwnershipType(models.TextChoices):
         BUSINESS_PERMIT = "business_permit", "Business / Mayor's permit"

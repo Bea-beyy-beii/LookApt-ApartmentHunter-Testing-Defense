@@ -76,6 +76,13 @@ body[data-tab]:not([data-tab=""]):not([data-tab="myListings"]) .landlord-dashboa
 
 .vf-banner-btn { flex-shrink: 0; }
 
+/* Clicking "Post on Bulletin" / "File a Report" before being verified points here */
+.vf-banner.is-flashing { animation: vf-flash 1.2s ease 2; }
+
+@keyframes vf-flash {
+    50% { box-shadow: 0 0 0 4px rgba(245, 185, 76, 0.55); }
+}
+
 .vf-spinner {
     width: 20px;
     height: 20px;
@@ -196,6 +203,90 @@ body[data-tab]:not([data-tab=""]):not([data-tab="myListings"]) .landlord-dashboa
 
 .vf-drop small { font-size: 12px; }
 
+.vf-drop[hidden] { display: none; }
+
+
+/* ---------- Chosen file: preview (click the picture to view it full size) ---------- */
+
+.vf-preview {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    padding: 10px;
+
+    border: 1.5px solid var(--success);
+    border-radius: 12px;
+    background: rgba(61, 139, 92, 0.06);
+}
+
+.vf-preview-thumb {
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+
+    width: 72px;
+    height: 72px;
+    padding: 0;
+    overflow: hidden;
+
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    background: var(--white);
+    color: var(--navy);
+    font-family: var(--font-primary);
+    font-size: 13px;
+    font-weight: 700;
+
+    cursor: zoom-in;
+}
+
+.vf-preview-thumb--pdf { cursor: pointer; }
+
+.vf-preview-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.vf-preview-text {
+    flex: 1;
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.vf-preview-text strong {
+    overflow: hidden;
+    color: var(--text-primary);
+    font-size: 14px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.vf-preview-text small { color: var(--text-secondary); font-size: 12px; }
+
+.vf-preview-change,
+.vf-preview-remove {
+    flex-shrink: 0;
+    padding: 6px 10px;
+
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    background: var(--white);
+    color: var(--navy);
+
+    font-family: var(--font-primary);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.vf-preview-remove { padding: 4px 10px; font-size: 18px; line-height: 1; }
+
+.vf-preview-change:hover,
+.vf-preview-remove:hover { border-color: var(--navy); }
+
 .vf-drop.has-file {
     border-style: solid;
     border-color: var(--success);
@@ -253,3 +344,54 @@ body[data-tab]:not([data-tab=""]):not([data-tab="myListings"]) .landlord-dashboa
 }
 
 .vf-welcome-actions .rt-btn { min-height: 44px; text-decoration: none; }
+
+
+/* ---------- Documents already sent ---------- */
+
+.vf-docs { width: min(640px, calc(100vw - 32px)); }
+
+.vf-docs-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    padding: 4px 24px 24px;
+}
+
+.vf-doc { display: grid; gap: 8px; margin: 0; }
+
+.vf-doc-thumb {
+    display: grid;
+    place-items: center;
+
+    aspect-ratio: 1;
+    padding: 0;
+    overflow: hidden;
+
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    background: var(--white);
+    color: var(--navy);
+    text-decoration: none;
+
+    cursor: zoom-in;
+}
+
+.vf-doc-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.2s ease;
+}
+
+.vf-doc-thumb:hover img { transform: scale(1.04); }
+
+.vf-doc-thumb--pdf { gap: 4px; align-content: center; cursor: pointer; font-weight: 700; }
+.vf-doc-thumb--pdf svg { width: 40px; height: 40px; }
+
+.vf-doc figcaption { display: grid; gap: 2px; font-size: 13px; }
+.vf-doc figcaption strong { color: var(--text-primary); }
+.vf-doc figcaption span { color: var(--text-secondary); }
+
+@media (max-width: 520px) {
+    .vf-docs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

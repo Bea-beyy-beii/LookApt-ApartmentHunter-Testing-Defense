@@ -28,6 +28,7 @@ from .detail_services import (
 
 
 NOT_VERIFIED = "Verify your account first: listings can be published once you're approved."
+COMPLEX_UNPUBLISHED = "This complex is unpublished. Publish it first to change its units' status."
 
 
 def _my_listings_url(saved=False):
@@ -370,6 +371,12 @@ def unit_set_availability(request, pk):
     if availability not in Unit.Availability.values:
         if _wants_json(request):
             return JsonResponse({"error": "Invalid status."}, status=400)
+        return redirect(_my_listings_url())
+
+    if unit.complex_unpublished:
+        if _wants_json(request):
+            return JsonResponse({"error": COMPLEX_UNPUBLISHED}, status=400)
+        messages.error(request, COMPLEX_UNPUBLISHED)
         return redirect(_my_listings_url())
 
     unit.availability = availability
