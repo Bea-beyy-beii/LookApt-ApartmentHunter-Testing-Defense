@@ -284,6 +284,9 @@
                 ? `(${photoTotal()}/${maxPhotos} photos · ${videoTotal()}/${maxVideos} videos)`
                 : `(${photoTotal()}/${maxPhotos})`;
             zone.classList.toggle("is-full", isFull());
+            // Saved + new photos and videos: the wizard needs at least data-min of them (listings.js)
+            root.dataset.total = String(photoTotal() + (allowVideo ? videoTotal() : 0));
+            if (Number(root.dataset.total) >= Number(root.dataset.min || 0)) showError("");
         }
 
 

@@ -85,6 +85,10 @@ class Complex(models.Model):
     has_parking_space = models.BooleanField(default=False)
     is_gated = models.BooleanField(default=False)
     has_laundry_area = models.BooleanField(default=False)
+    has_security = models.BooleanField(default=False)            # 24/7 security
+    has_cctv = models.BooleanField(default=False)
+    has_common_lounge = models.BooleanField(default=False)
+    has_waste_collection = models.BooleanField(default=False)
 
     min_price = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(1)])
     max_price = models.DecimalField(max_digits=8, decimal_places=2, validators=[MinValueValidator(1)])
@@ -140,6 +144,10 @@ class Complex(models.Model):
         "has_parking_space": "Parking Space",
         "is_gated": "Gated Complex",
         "has_laundry_area": "Laundry Area",
+        "has_security": "24/7 Security",
+        "has_cctv": "CCTV",
+        "has_common_lounge": "Common Lounge",
+        "has_waste_collection": "Waste Collection",
     }
 
     def feature_list(self):

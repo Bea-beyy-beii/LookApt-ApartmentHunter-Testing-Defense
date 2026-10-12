@@ -955,3 +955,35 @@
     color: var(--text-primary);
     font-size: 14px;
 }
+
+/* =========================================================
+   "Select all" next to Property Features / Amenities (listings.js)
+========================================================= */
+
+.group-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.check-select-all {
+    flex-shrink: 0;
+    padding: 6px 14px;
+
+    border: 1px solid var(--border-light);
+    border-radius: 999px;
+    background: var(--white);
+    color: var(--navy);
+
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.check-select-all:hover { border-color: var(--gold); background: #fff3d9; }
+.check-select-all:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+html[data-theme="dark"] .check-select-all { border-color: var(--border-medium); color: var(--text-primary); }
+html[data-theme="dark"] .check-select-all:hover { background: rgba(245, 185, 76, 0.12); }

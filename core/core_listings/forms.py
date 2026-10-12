@@ -38,6 +38,7 @@ class MultipleImageField(forms.ImageField):
 
 
 MAX_UNIT_PHOTOS = 10
+MIN_LISTING_MEDIA = 2       # complexes: 2 photos; units: 2 photos and/or videos
 
 def validate_photo_uploads(photos, existing_count, max_count):
     """Shared by ComplexForm and UnitForm."""
@@ -114,11 +115,13 @@ class ComplexForm(forms.ModelForm):
     def clean_photos(self):
         photos = self.cleaned_data.get("photos") or []
         existing = self.instance.pictures.count() if self.instance.pk else 0
+        if existing + len(photos) < MIN_LISTING_MEDIA:
+            raise ValidationError(f"Add at least {MIN_LISTING_MEDIA} photos of the property.")
         return validate_photo_uploads(photos, existing, MAX_COMPLEX_PHOTOS)
 
     
     
-    FEATURE_FIELDS = ["pet_friendly", "has_parking_space", "is_gated", "has_laundry_area"]
+    FEATURE_FIELDS = list(Complex.FEATURE_LABELS)      # the 8 Property Features checkboxes
 
     def feature_fields(self):
         return [{"field": self[name], "icon": icon_svg(name)} for name in self.FEATURE_FIELDS]
@@ -140,8 +143,13 @@ class ComplexForm(forms.ModelForm):
             "min_price",
             "max_price",
             "num_of_floors",
+            "turnover_days",
             "is_gated",
             "has_laundry_area",
+            "has_security",
+            "has_cctv",
+            "has_common_lounge",
+            "has_waste_collection",
         ]
 
         widgets = {
@@ -196,14 +204,13 @@ class ComplexForm(forms.ModelForm):
             ),
 
             "num_of_floors": forms.NumberInput(attrs={"min": "1", "max": "100", "placeholder": "e.g. 3"}),
+            "turnover_days": forms.NumberInput(attrs={"min": "0", "max": "90", "placeholder": "e.g. 7"}),
         }
 
         labels = {
             "num_of_floors": "Number of Floors",
-            "pet_friendly": "Pet Friendly",
-            "has_parking_space": "Parking Space",
-            "is_gated": "Gated Complex",
-            "has_laundry_area": "Laundry Area",
+            "turnover_days": "Turnover Period (days)",
+            **Complex.FEATURE_LABELS,
             "advance_months": "Advance Payment (months)",
             "deposit_months": "Security Deposit (months)",
         }
@@ -376,6 +383,15 @@ class UnitForm(forms.ModelForm):
         videos = self.cleaned_data.get("videos") or []
         existing = self.instance.videos.count() if self.instance.pk else 0
         return validate_video_uploads(videos, existing, MAX_UNIT_VIDEOS)
+
+    def clean(self):
+        cleaned = super().clean()
+        # At least 2 photos and/or videos (saved + new), checked once both fields are clean
+        if "photos" in cleaned and "videos" in cleaned:
+            saved = (self.instance.pictures.count() + self.instance.videos.count()) if self.instance.pk else 0
+            if saved + len(cleaned["photos"]) + len(cleaned["videos"]) < MIN_LISTING_MEDIA:
+                self.add_error("photos", f"Add at least {MIN_LISTING_MEDIA} photos or videos of the unit.")
+        return cleaned
 
     def _clean_months(self, name):
             value = self.cleaned_data.get(name)
