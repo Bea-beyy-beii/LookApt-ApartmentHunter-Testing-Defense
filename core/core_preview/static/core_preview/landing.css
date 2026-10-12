@@ -67,12 +67,12 @@
 
     max-width: var(--ld-max);
     margin: 0 auto;
-    padding: 22px 32px;
+    padding: 48px 32px;
 }
 
 .ld-brand { display: flex; align-items: center; gap: 8px; text-decoration: none; }
-.ld-brand img { width: 46px; height: auto; }
-.ld-brand span { color: var(--ld-navy); font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+.ld-brand img { width: 56px; height: auto; }
+.ld-brand span { color: var(--ld-navy); font-size: 32px; font-weight: 700; letter-spacing: -0.02em; }
 .ld-brand b { color: var(--gold); font-weight: 700; }
 
 .ld-header-actions { display: flex; gap: 12px; }
@@ -86,7 +86,7 @@
     align-items: center;
     gap: 48px;
 
-    padding: 36px 0 56px;
+    padding: 72px 0 72px;
 }
 
 .ld-eyebrow {
@@ -191,9 +191,9 @@
 
 .ld-chip--apply { left: -12%; top: 62%; }
 .ld-chip--waitlist { left: -14%; top: 77%; padding: 10px 22px; font-size: 14px; }
-.ld-chip--assign { right: -10%; top: 28%; }
-.ld-chip--add { right: -18%; top: 46%; }
-.ld-chip--bulletin { right: -12%; top: 68%; }
+.ld-chip--assign { right: -25%; top: 55%; }
+.ld-chip--add { right: -20%; top: 73%; }
+.ld-chip--bulletin { right: 5%; top: 95%; }
 
 .ld-send {
     position: absolute;
@@ -216,7 +216,7 @@
 
 .ld-divider { height: 0; margin: 0; border: 0; border-top: 2px solid rgba(91, 132, 184, 0.35); }
 
-.ld-landlords { padding: 56px 0 24px; }
+.ld-landlords { padding: 56px 0 80px; }
 
 .ld-landlords-top {
     display: grid;

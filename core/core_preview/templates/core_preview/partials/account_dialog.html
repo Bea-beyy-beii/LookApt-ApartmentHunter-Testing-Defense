@@ -1,0 +1,112 @@
+{% comment %}
+    Account pop-up: profile menu > My Profile / Settings (account.js, account.py).
+    Included by topbar_right.html, so it's on every dashboard page.
+{% endcomment %}
+<dialog class="ac-dialog" data-account aria-labelledby="ac-title" data-csrf="{{ csrf_token }}">
+
+    <header class="ac-head">
+        <h2 id="ac-title">Account</h2>
+        <button type="button" class="ac-close" data-account-close aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+    </header>
+
+    <div class="ac-tabs" role="tablist">
+        <button type="button" role="tab" id="ac-tab-profile" aria-controls="ac-panel-profile" data-account-tab="profile">My Profile</button>
+        <button type="button" role="tab" id="ac-tab-settings" aria-controls="ac-panel-settings" data-account-tab="settings">Settings</button>
+    </div>
+
+    {# ===================== MY PROFILE ===================== #}
+    <section class="ac-panel" id="ac-panel-profile" role="tabpanel" aria-labelledby="ac-tab-profile" data-account-panel="profile">
+
+        <div class="ac-photo" data-avatar-form data-url="{% url 'account_avatar' %}">
+            {% include "core_accounts/partials/avatar.html" with person=user cls="ac-avatar" %}
+            <div class="ac-photo-text">
+                <strong>Profile photo</strong>
+                <small>JPG, PNG or WEBP, up to 5 MB. Without a photo, your initials are shown.</small>
+                <div class="ac-photo-actions">
+                    <label class="ac-btn ac-btn--primary">
+                        <input type="file" accept="image/jpeg,image/png,image/webp" data-avatar-input hidden>
+                        <span data-avatar-upload-label>{% if user.avatar %}Change photo{% else %}Upload photo{% endif %}</span>
+                    </label>
+                    <button type="button" class="ac-btn ac-btn--ghost" data-avatar-remove {% if not user.avatar %}hidden{% endif %}>Remove</button>
+                </div>
+                <p class="ac-status" data-avatar-status role="status"></p>
+            </div>
+        </div>
+
+        <dl class="ac-details">
+            <div><dt>Display name</dt><dd>{{ user.display_name }}</dd></div>
+            <div><dt>Username</dt><dd>@{{ user.username }}</dd></div>
+            <div><dt>Role</dt><dd>{{ user.get_role_display }}{% if user.role == 'landlord' %} · {% if user.is_verified %}Verified{% else %}Not verified yet{% endif %}{% endif %}</dd></div>
+            <div><dt>Phone number</dt><dd>{{ user.phone_number }}</dd></div>
+            <div><dt>Email</dt><dd>{{ user.email|default:"—" }}</dd></div>
+            <div><dt>Member since</dt><dd>{{ user.date_joined|date:"F j, Y" }}</dd></div>
+        </dl>
+        <p class="ac-note">Need to change your name, phone number or email? Email <a href="mailto:{{ support_email }}?subject=LookApt%3A%20update%20my%20account%20details">{{ support_email }}</a>.</p>
+    </section>
+
+    {# ===================== SETTINGS ===================== #}
+    <section class="ac-panel" id="ac-panel-settings" role="tabpanel" aria-labelledby="ac-tab-settings" data-account-panel="settings" hidden>
+
+        {# Contact sharing #}
+        <section class="ac-section" data-contact-form data-url="{% url 'account_contact' %}">
+            <h3>Contact sharing</h3>
+            <p class="ac-hint">
+                {% if user.role == 'landlord' %}
+                    Renters can always message you through LookApt chat. Choose what else they see on your listings.
+                {% else %}
+                    Landlords you apply to can always message you through LookApt chat. Choose what else they see on your application.
+                {% endif %}
+            </p>
+            <label class="ac-switch">
+                <span><strong>Show my email</strong><small>{{ user.email|default:"No email on your account" }}</small></span>
+                <input type="checkbox" name="share_email" {% if user.share_email %}checked{% endif %} {% if not user.email %}disabled{% endif %}>
+                <i aria-hidden="true"></i>
+            </label>
+            <label class="ac-switch">
+                <span><strong>Show my phone number</strong><small>{{ user.phone_number }}</small></span>
+                <input type="checkbox" name="share_phone" {% if user.share_phone %}checked{% endif %}>
+                <i aria-hidden="true"></i>
+            </label>
+            <p class="ac-status" data-contact-status role="status"></p>
+        </section>
+
+        {# Change password #}
+        <form class="ac-section ac-password" data-password-form action="{% url 'account_password' %}" method="post" novalidate>
+            <h3>Change password</h3>
+            <label class="ac-field">
+                <span>Current password</span>
+                <input type="password" name="current_password" autocomplete="current-password" required>
+                <small class="ac-error" data-error-for="current_password"></small>
+            </label>
+            <label class="ac-field">
+                <span>New password</span>
+                <input type="password" name="password" autocomplete="new-password" required>
+                <small class="ac-field-hint">At least 8 characters with uppercase, lowercase, a number and a symbol.</small>
+                <small class="ac-error" data-error-for="password"></small>
+            </label>
+            <label class="ac-field">
+                <span>Confirm new password</span>
+                <input type="password" name="confirm_password" autocomplete="new-password" required>
+                <small class="ac-error" data-error-for="confirm_password"></small>
+            </label>
+            <div class="ac-row">
+                <button type="submit" class="ac-btn ac-btn--primary">Change password</button>
+                <p class="ac-status" data-password-status role="status"></p>
+            </div>
+        </form>
+
+        {# Delete account (an admin does it, see the Terms) #}
+        <section class="ac-section ac-danger">
+            <h3>Delete account</h3>
+            <p class="ac-hint">We'll delete your account and everything linked to it within 30 days. This can't be undone.</p>
+            <a class="ac-btn ac-btn--danger"
+               href="mailto:{{ support_email }}?subject=LookApt%3A%20delete%20my%20account&amp;body=Please%20delete%20my%20LookApt%20account.%0A%0AUsername%3A%20{{ user.username|urlencode }}%0AEmail%3A%20{{ user.email|urlencode }}">
+                Request account deletion
+            </a>
+            <small class="ac-field-hint">Opens an email to {{ support_email }}. Send it from the email on your account.</small>
+        </section>
+    </section>
+
+</dialog>

@@ -1,15 +1,12 @@
 # core_maps/views.py
 from functools import wraps
-
 from django.contrib.auth.views import redirect_to_login
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.http import require_GET
-
 from core.core_listings.models import Complex
 from core.core_preview.access import signed_in_or_previewing
-
 from .maps import services
 from .maps.folium_maps import build_map
 from .maps.geo import DEFAULT_RADIUS_KM, clamp_radius, normalize_mode, radius_for_minutes
