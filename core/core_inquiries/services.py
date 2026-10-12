@@ -333,8 +333,9 @@ def landlord_conversation(landlord_user, renter):
 
 
 @transaction.atomic
-def start_landlord_message(user, renter, body, attachment=None):
-    """Landlord writes to a tenant/applicant from Manage Rentals (creates the thread if needed)."""
+def start_landlord_message(user, renter, body, attachment=None, message_kind=Message.Kind.MESSAGE, bulletin_event=""):
+    """Landlord writes to a tenant/applicant from Manage Rentals (creates the thread if needed).
+    message_kind=BULLETIN: a Post on Bulletin announcement (shown as a banner, core_calendar)."""
     if not landlord_can_contact(user, renter):
         raise PermissionDenied("You can only message renters who rent from you, applied to your units, or messaged you first.")
     kind = clean_attachment(attachment) if attachment else ""
@@ -351,7 +352,8 @@ def start_landlord_message(user, renter, body, attachment=None):
         conversation = Conversation.objects.create(
             renter=renter, landlord=user.landlord, complex=link.unit.complex, unit=link.unit,
         )
-    return _add_message(conversation, user, body, attachment, kind)
+    return _add_message(conversation, user, body, attachment, kind,
+                        message_kind=message_kind, bulletin_event=bulletin_event)
 
 
 @transaction.atomic
@@ -363,8 +365,10 @@ def reply(user, conversation, body, attachment=None):
     return _add_message(conversation, user, body, attachment, kind)
 
 
-def _add_message(conversation, user, body, attachment=None, kind="", topic=""):
-    message = Message(conversation=conversation, sender=user, body=body, topic=topic)
+def _add_message(conversation, user, body, attachment=None, kind="", topic="",
+                 message_kind=Message.Kind.MESSAGE, bulletin_event=""):
+    message = Message(conversation=conversation, sender=user, body=body, topic=topic,
+                      kind=message_kind, bulletin_event=bulletin_event[:200])
     if attachment:
         message.attachment = attachment
         message.attachment_name = os.path.basename(attachment.name)[:255]
@@ -397,6 +401,8 @@ def message_json(user, message):
         "id": message.pk,
         "body": message.body,
         "topic": message.topic,
+        "kind": message.kind,                       # "bulletin" = announcement banner (chat.js)
+        "bulletin_event": message.bulletin_event,
         "mine": message.sender_id == user.pk,
         "created_at": message.created_at.isoformat(),
         "time_label": time_label(message.created_at),
@@ -454,6 +460,7 @@ class _Latest:
 
     def __init__(self, conversation):
         self.body = conversation.latest_body or ""
+        self.kind = conversation.latest_kind or Message.Kind.MESSAGE
         self.attachment_name = conversation.latest_attachment_name or ""
         # A subquery value can come back as a plain string (SQLite): make it a UUID like user.pk
         sender = conversation.latest_sender_id
@@ -462,6 +469,8 @@ class _Latest:
 
     @property
     def preview(self):
+        if self.kind == Message.Kind.BULLETIN:
+            return f"Bulletin: {self.body}"
         return self.body or (f"📎 {self.attachment_name}" if self.attachment_name else "")
 
 
@@ -473,6 +482,7 @@ def _conversations_for_tab(user):
         .annotate(
             unread_count=Count("messages", filter=Q(messages__read_at__isnull=True) & ~Q(messages__sender=user)),
             latest_body=Subquery(latest.values("body")[:1]),
+            latest_kind=Subquery(latest.values("kind")[:1]),
             latest_attachment_name=Subquery(latest.values("attachment_name")[:1]),
             latest_sender_id=Subquery(latest.values("sender_id")[:1]),
         )

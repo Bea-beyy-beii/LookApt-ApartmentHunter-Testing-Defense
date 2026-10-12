@@ -14,6 +14,8 @@
         sent: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>',
         seen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 12.5 4.5 4.5L16 7.5M10 16l1 1 9.5-9.5"/></svg>',
         pdf:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>',
+        megaphone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"/></svg>',
+        calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>',
     };
 
     function csrfToken() {
@@ -74,7 +76,33 @@
         return link;
     }
 
+    // Post on Bulletin: a yellow announcement banner in the middle of the chat, not a bubble
+    function renderBulletin(message) {
+        const banner = el("div", "chat-bulletin");
+        banner.dataset.messageId = message.id;
+
+        const head = el("div", "chat-bulletin-head");
+        head.innerHTML = ICONS.megaphone;
+        head.append(el("span", "", "Bulletin Announcement"));
+        banner.append(head);
+
+        if (message.body) banner.append(el("p", "chat-bulletin-text", message.body));
+        if (message.bulletin_event) {
+            const event = el("div", "chat-bulletin-event");
+            event.innerHTML = ICONS.calendar;
+            event.append(el("span", "", message.bulletin_event));
+            banner.append(event);
+        }
+
+        const time = el("time", "chat-bulletin-time", message.time_label);
+        time.dateTime = message.created_at;
+        banner.append(time);
+        return banner;
+    }
+
     function renderMessage(message) {
+        if (message.kind === "bulletin") return renderBulletin(message);
+
         const fragment = document.createDocumentFragment();
 
         // "About Unit 401 · Sunrise Residences" when the renter changes topic

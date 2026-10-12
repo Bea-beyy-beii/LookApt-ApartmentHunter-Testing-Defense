@@ -16,7 +16,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
 
-from core.core_inquiries.models import Application
+from core.core_inquiries.models import Application, Message
 from core.core_inquiries.services import start_landlord_message, today
 from core.core_listings.models import Complex
 from core.core_rentals.models import Tenancy
@@ -239,15 +239,15 @@ def post_bulletin(user, *, message, complex_ids=None, event_date=None, start_tim
     tenants = Tenancy.objects.filter(
         status=Tenancy.Status.ACTIVE, unit__complex__in=complexes, renter__isnull=False,
     ).select_related("renter")
-    body = f"📢 Bulletin from your landlord\n\n{message}"
-    if event:
-        body += f"\n\n📅 {event.title} · {_event_when(event)}"
+    # Shown in their chat as a yellow "Bulletin Announcement" banner (chat.js)
+    event_label = f"{event.title} · {_event_when(event)}" if event else ""
 
     sent = set()
     for tenancy in tenants:
         if tenancy.renter_id in sent:
             continue
-        start_landlord_message(user, tenancy.renter, body)
+        start_landlord_message(user, tenancy.renter, message,
+                               message_kind=Message.Kind.BULLETIN, bulletin_event=event_label)
         sent.add(tenancy.renter_id)
 
     if not event and not sent:
