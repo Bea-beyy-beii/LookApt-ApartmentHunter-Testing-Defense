@@ -1,0 +1,142 @@
+{% comment %}
+    Search bar + "Filter by" panel in the renter top bar (Home and Saved Listings only).
+    Values: core_renters/search.py (search, filter_options, filter_count).
+    renter_search.js sends them to core_renters:search_listings as you type / pick,
+    and swaps the cards. Without JS the form still works (it reloads the dashboard).
+{% endcomment %}
+<form class="renter-search" method="get" action="{% url 'core_renters:dashboard' %}" role="search"
+      data-renter-search data-url="{% url 'core_renters:search_listings' %}">
+
+    <input type="hidden" name="tab" value="{{ active_tab|default:'home' }}" data-search-tab>
+
+    <label class="dashboard-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="11" cy="11" r="7"/>
+            <path d="m20 20-4-4"/>
+        </svg>
+        <input type="search" name="q" value="{{ search.q }}" autocomplete="off" maxlength="100"
+               placeholder="Search by name, area, landmark, or landlord" aria-label="Search listings">
+    </label>
+
+    <div class="filter-wrap">
+
+        <button class="filter-button" type="button" data-filter-toggle aria-expanded="false" aria-controls="renter-filter-panel">
+            <span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M4 5h16l-6.5 7.3V18l-3 1.5v-7.2z"/>
+                </svg>
+                Filter by
+                <b class="filter-badge" data-filter-badge {% if not filter_count %}hidden{% endif %}>{{ filter_count }}</b>
+            </span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="m7 9 5 5 5-5"/>
+            </svg>
+        </button>
+
+        <div class="filter-panel" id="renter-filter-panel" data-filter-panel hidden>
+
+            <div class="filter-grid">
+
+                <label class="filter-field filter-field--wide">
+                    <span>Sort by</span>
+                    <select name="sort">
+                        {% for value, label in filter_options.sorts %}
+                            <option value="{{ value }}" {% if search.sort == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <div class="filter-field filter-field--wide">
+                    <span>Monthly budget (₱)</span>
+                    <div class="filter-range">
+                        <input type="number" name="budget_min" min="0" step="500" inputmode="numeric" placeholder="Min"
+                               value="{{ search.budget_min|default_if_none:''|floatformat:'0' }}" aria-label="Minimum monthly rent">
+                        <i aria-hidden="true">–</i>
+                        <input type="number" name="budget_max" min="0" step="500" inputmode="numeric" placeholder="Max"
+                               value="{{ search.budget_max|default_if_none:''|floatformat:'0' }}" aria-label="Maximum monthly rent">
+                    </div>
+                </div>
+
+                <label class="filter-field">
+                    <span>Lease Term</span>
+                    <select name="lease_term">
+                        <option value="">Any</option>
+                        {% for value, label in filter_options.lease_terms %}
+                            <option value="{{ value }}" {% if search.lease_term == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label class="filter-field">
+                    <span>Sex Restriction</span>
+                    <select name="sex">
+                        <option value="">Any</option>
+                        {% for value, label in filter_options.sex_restrictions %}
+                            <option value="{{ value }}" {% if search.sex == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label class="filter-field">
+                    <span>Unit Type</span>
+                    <select name="unit_type">
+                        <option value="">Any</option>
+                        {% for value, label in filter_options.unit_types %}
+                            <option value="{{ value }}" {% if search.unit_type == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label class="filter-field">
+                    <span>Furnishing</span>
+                    <select name="furnishing">
+                        <option value="">Any</option>
+                        {% for value, label in filter_options.furnishings %}
+                            <option value="{{ value }}" {% if search.furnishing == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label class="filter-field">
+                    <span>Occupants</span>
+                    <input type="number" name="occupants" min="1" max="20" inputmode="numeric" placeholder="How many of you?"
+                           value="{{ search.occupants|default_if_none:'' }}">
+                </label>
+
+                <label class="filter-check filter-check--switch">
+                    <input type="checkbox" name="available" value="1" {% if search.available %}checked{% endif %}>
+                    <span>Available now only</span>
+                </label>
+
+            </div>
+
+            <fieldset class="filter-chips">
+                <legend>Property Features</legend>
+                {% for key, label in filter_options.features %}
+                    <label class="filter-chip">
+                        <input type="checkbox" name="{{ key }}" value="1" {% if key in search.features %}checked{% endif %}>
+                        <span>{{ label }}</span>
+                    </label>
+                {% endfor %}
+            </fieldset>
+
+            <fieldset class="filter-chips">
+                <legend>Unit Amenities</legend>
+                {% for key, label in filter_options.amenities %}
+                    <label class="filter-chip">
+                        <input type="checkbox" name="{{ key }}" value="1" {% if key in search.amenities %}checked{% endif %}>
+                        <span>{{ label }}</span>
+                    </label>
+                {% endfor %}
+            </fieldset>
+
+            <footer class="filter-footer">
+                <button type="button" class="filter-clear" data-filter-clear>Clear all</button>
+                <button type="button" class="filter-done" data-filter-done>Show results</button>
+            </footer>
+
+        </div>
+
+    </div>
+
+</form>

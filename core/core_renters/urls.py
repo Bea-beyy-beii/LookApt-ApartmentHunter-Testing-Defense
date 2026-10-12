@@ -6,4 +6,5 @@ app_name = 'core_renters'
 
 urlpatterns = [
     path('dashboard/', views.dashboard, name='dashboard'),
+    path('listings/search/', views.search_listings, name='search_listings'),
 ]

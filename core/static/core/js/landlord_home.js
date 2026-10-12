@@ -2,7 +2,7 @@
 // LANDLORD HOME TAB
 // - cards / "Needs Your Attention" rows jump to the right tab
 //   (and Inquiries sub-tab, or a Manage Rentals filter)
-// - quick actions: Add Property, Post on Bulletin (calendar.js), Export (soon)
+// - quick actions: Add Property, Post on Bulletin (calendar.js), Export Financials (a PDF link)
 // - Monthly Receivables drawer (slides in on the right; < > loads another month)
 // - Listing Performance chart (SVG, month dropdown, toggle lines)
 // =========================================================
@@ -65,8 +65,6 @@
                 if (typeof window.showPropertyForm === "function") window.showPropertyForm();
                 return;
             }
-            const soon = event.target.closest("[data-lh-coming-soon]");
-            if (soon) toast(`${soon.dataset.lhComingSoon} will be available soon.`);
         });
     }
 

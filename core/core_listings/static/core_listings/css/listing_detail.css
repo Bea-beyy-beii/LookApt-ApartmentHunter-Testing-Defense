@@ -663,6 +663,17 @@
     scroll-margin-top: 16px;
 }
 
+/* Complex page: Units, Amenities, Location, Reviews, Other Listings */
+.ld-tabs:has(> .ld-tab:nth-child(5)) {
+    grid-template-columns: repeat(5, 1fr);
+}
+
+/* "Other Listings" tab: the renter's listing cards, two per row */
+.ld-other-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+    gap: 16px;
+}
+
 .ld-tabs--three {
     grid-template-columns: repeat(3, 1fr);
 }
