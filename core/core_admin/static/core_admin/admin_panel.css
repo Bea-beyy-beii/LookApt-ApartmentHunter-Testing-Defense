@@ -345,7 +345,6 @@ html[data-theme="dark"] .ap-btn--ghost:hover { background: var(--ap-surface-2); 
 [data-ap-results] { transition: opacity 0.15s ease; }
 [data-ap-results].is-loading { opacity: 0.55; pointer-events: none; }
 
-
 /* Dashboard tabs (dashboard.html): only the open one shows */
 .ap-section[hidden] { display: none; }
 .ap-link-btn { padding: 0; border: 0; background: none; font-family: inherit; cursor: pointer; }
@@ -361,3 +360,10 @@ html[data-theme="dark"] .ap-btn--ghost:hover { background: var(--ap-surface-2); 
 .ap-confirm::backdrop { background: rgba(10, 18, 34, 0.45); }
 .ap-confirm-text { margin: 0 0 18px; font-size: 15px; line-height: 1.5; }
 .ap-confirm-actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+/* Delete account (user_detail.html) */
+.ap-btn--danger-text { border-color: rgba(201, 75, 75, 0.45); color: var(--error); }
+.ap-btn--danger-text:hover { background: rgba(201, 75, 75, 0.08); }
+html[data-theme="dark"] .ap-btn--danger-text { border-color: rgba(217, 129, 129, 0.45); color: #d98181; }
+.ap-check { display: flex; align-items: flex-start; gap: 8px; color: var(--text-primary); font-size: 13.5px; cursor: pointer; }
+.ap-check input { margin-top: 2px; accent-color: var(--error); }

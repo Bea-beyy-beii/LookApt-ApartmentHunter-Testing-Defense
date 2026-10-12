@@ -19,6 +19,7 @@ from core.core_reports.services import SUPPORT_EMAIL
 from core.core_admin import notify
 
 from . import otp
+from .legal import legal_context
 from .services import AccountService
 
 
@@ -28,11 +29,11 @@ ROLE_HOME = {
     'admin': 'core_admin:overview',
 }
 
-SIGNUP_FIELDS = ('first_name', 'last_name', 'phone_number', 'email', 'sex', 'role')
+SIGNUP_FIELDS = ('first_name', 'last_name', 'phone_number', 'email', 'sex', 'role', 'agree_terms')
 
 
 def signup_view(request):
-    """Sign-up in 4 steps (Name, Contact, Profile, Security) on one page.
+    """Sign-up in 5 steps (Name, Contact, Profile, Security, Terms) on one page.
     Next / Back are handled by signup.js; each Next is checked by signup_check_view.
     "Create Account" checks everything again, keeps the sign-up in the session
     and sends the user to the OTP page, which creates the account
@@ -44,6 +45,7 @@ def signup_view(request):
                 'form_data': {f: request.POST.get(f, '') for f in SIGNUP_FIELDS},
                 'errors': errors,
                 'start_step': first_bad,
+                **legal_context(),
             })
         AccountService.start_pending_signup(request, cleaned)
         _send_signup_code(request)
@@ -53,7 +55,18 @@ def signup_view(request):
     return render(request, 'core_accounts/signup.html', {
         'form_data': AccountService.pending_signup(request) or {},
         'start_step': 1,
+        **legal_context(),
     })
+
+
+def terms_view(request):
+    return render(request, 'core_accounts/legal/page.html',
+                  {'page': 'terms', 'page_title': 'Terms and Conditions', **legal_context()})
+
+
+def privacy_view(request):
+    return render(request, 'core_accounts/legal/page.html',
+                  {'page': 'privacy', 'page_title': 'Privacy Notice', **legal_context()})
 
 
 def finish_signup(request):

@@ -280,7 +280,7 @@
             svg.append(label);
         });
 
-        // Lines, then a direct label at each line's end (identity is never colour alone)
+        // Lines (each one's name is in the legend above and in the hover tooltip)
         data.series.forEach(s => {
             const points = s.values.map((v, i) => `${x(i)},${y(v)}`).join(" ");
             svg.append(el("polyline", { points, fill: "none", stroke: color(s.key), "stroke-width": 2,

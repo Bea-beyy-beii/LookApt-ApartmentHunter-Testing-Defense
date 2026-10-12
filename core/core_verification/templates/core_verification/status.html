@@ -37,7 +37,7 @@
         {% endif %}
     </div>
 
-    {% if v.request and v.state != "none" %}
+    {% if v.request and v.state != "none" and not v.request.documents_deleted %}
         <button type="button" class="rt-btn rt-btn--ghost vf-banner-btn" data-verify-docs-open>View documents</button>
     {% endif %}
     {% if v.can_submit %}
@@ -47,7 +47,7 @@
     {% endif %}
 </div>
 
-{% if v.request and v.state != "none" %}
+{% if v.request and v.state != "none" and not v.request.documents_deleted %}
 {# The documents they sent (private links that work for 5 minutes; the page loads them right away) #}
 {% with r=v.request %}
 <dialog class="lm-modal vf-docs" data-verify-docs aria-labelledby="vf-docs-title">

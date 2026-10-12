@@ -4,21 +4,25 @@ from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
 from django.db.models import Q
+from django.utils import timezone
 from core.models import User, Renter, Landlord, phone_regex
 
-# Session key for a sign-up that passed all 4 steps and waits for the OTP
+from .legal import TERMS_VERSION
+
+# Session key for a sign-up that passed all 5 steps and waits for the OTP
 PENDING_SIGNUP = 'pending_signup'
 
 
 class AccountService:
     ROLE_PROFILES = {'renter': Renter, 'landlord': Landlord}
 
-    # Sign-up steps: 1 Name · 2 Contact · 3 Profile · 4 Security
+    # Sign-up steps: 1 Name · 2 Contact · 3 Profile · 4 Security · 5 Terms
     STEPS = {
         1: ('first_name', 'last_name'),
         2: ('phone_number', 'email'),
         3: ('sex', 'role'),
         4: ('password', 'confirm_password'),
+        5: ('agree_terms',),
     }
 
     # ------------------------------------------------------------------ sign-up steps
@@ -87,6 +91,12 @@ class AccountService:
                 errors['confirm_password'] = "Passwords do not match."
             cleaned['password'] = password
 
+        elif step == 5:
+            # signup.js only unlocks the box after reading to the end; here we just need it checked
+            if not data.get('agree_terms'):
+                errors['agree_terms'] = "Please read and agree to the Terms and Conditions and the Privacy Notice."
+            cleaned['agree_terms'] = True
+
         else:
             errors['step'] = "Unknown step."
 
@@ -94,7 +104,7 @@ class AccountService:
 
     @classmethod
     def clean_signup(cls, data):
-        """All 4 steps (the final "Create Account"). Returns (cleaned, errors, first step with an error)."""
+        """All 5 steps (the final "Create Account"). Returns (cleaned, errors, first step with an error)."""
         cleaned, errors, first_bad = {}, {}, None
         for step in cls.STEPS:
             earlier = {k: v for k, v in cleaned.items() if k in ('first_name', 'last_name', 'email')}
@@ -136,9 +146,13 @@ class AccountService:
         if User.objects.filter(email__iexact=pending['email']).exists():
             raise ValidationError("That email is already registered.")
 
+        if not pending.get('agree_terms'):
+            raise ValidationError("Please agree to the Terms and Conditions and the Privacy Notice.")
+
         user = User(first_name=pending['first_name'], last_name=pending['last_name'],
                     phone_number=pending['phone_number'], email=pending['email'],
-                    sex=pending['sex'], role=pending['role'])
+                    sex=pending['sex'], role=pending['role'],
+                    terms_version=TERMS_VERSION, terms_accepted_at=timezone.now())
         user.full_clean(exclude=['username', 'password'])
         user.password = pending['password_hash']
         try:

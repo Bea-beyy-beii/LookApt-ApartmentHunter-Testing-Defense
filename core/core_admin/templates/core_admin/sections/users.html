@@ -20,11 +20,6 @@
         <option value="renter" {% if f.role == "renter" %}selected{% endif %}>Renters</option>
         <option value="landlord" {% if f.role == "landlord" %}selected{% endif %}>Landlords</option>
     </select>
-    <select class="ap-select" name="verified" aria-label="Verification">
-        <option value="">Verified or not</option>
-        <option value="yes" {% if f.verified == "yes" %}selected{% endif %}>Verified</option>
-        <option value="no" {% if f.verified == "no" %}selected{% endif %}>Unverified landlords</option>
-    </select>
     <select class="ap-select" name="status" aria-label="Account status">
         <option value="">Active or suspended</option>
         <option value="active" {% if f.status == "active" %}selected{% endif %}>Active</option>
@@ -41,7 +36,7 @@
         <input type="date" class="ap-input ap-date" name="joined_to" value="{{ f.joined_to }}" aria-label="Joined until">
     </span>
     <button type="button" class="ap-link ap-link-btn" data-ap-clear
-            {% if not ctx.query and not f.role and not f.verified and not f.status and not f.joined %}hidden{% endif %}>Clear filters</button>
+            {% if not ctx.query and not f.role and not f.status and not f.joined %}hidden{% endif %}>Clear filters</button>
 </form>
 
 <div data-ap-results>

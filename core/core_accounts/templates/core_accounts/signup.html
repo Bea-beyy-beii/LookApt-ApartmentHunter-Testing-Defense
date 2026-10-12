@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="{% static 'core/css/components/buttons.css' %}">
     <link rel="stylesheet" href="{% static 'core/css/components/forms.css' %}">
     <link rel="stylesheet" href="{% static 'core/css/components/links.css' %}">
+    <link rel="stylesheet" href="{% static 'core/css/components/legal.css' %}">
 
     <!-- Page CSS -->
     <link rel="stylesheet" href="{% static 'core/css/pages/login.css' %}">
@@ -61,7 +62,7 @@
         <!-- Sign Up Content -->
         <section class="signup-content">
 
-            <!-- Progress: 1 Name · 2 Contact · 3 Profile · 4 Security (signup.js keeps it in sync) -->
+            <!-- Progress: 1 Name · 2 Contact · 3 Profile · 4 Security · 5 Terms (signup.js keeps it in sync) -->
             <ol class="signup-stepper" data-stepper aria-label="Sign-up progress">
                 <li class="signup-stepper-item" data-stepper-item="1">
                     <span class="signup-stepper-dot">
@@ -91,10 +92,17 @@
                     </span>
                     <span class="signup-stepper-label">Security</span>
                 </li>
+                <li class="signup-stepper-item" data-stepper-item="5">
+                    <span class="signup-stepper-dot">
+                        <span class="signup-stepper-num">5</span>
+                        <svg class="signup-stepper-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>
+                    </span>
+                    <span class="signup-stepper-label">Terms</span>
+                </li>
             </ol>
 
 
-            <!-- Sign Up Form: one form, 4 steps. Only the open step is shown. -->
+            <!-- Sign Up Form: one form, 5 steps. Only the open step is shown. -->
             <form
                 method="POST"
                 action="{% url 'signup' %}"
@@ -293,6 +301,50 @@
                             </button>
                         </div>
                         <p class="field-error" id="confirm_password-error" data-error-for="confirm_password">{{ errors.confirm_password }}</p>
+                    </div>
+
+                    <div class="signup-actions signup-actions--split">
+                        <button type="button" class="btn signup-back" data-back>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+                            Back
+                        </button>
+                        <button type="button" class="btn btn-primary signup-next" data-next>
+                            Next
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                        </button>
+                    </div>
+
+                </fieldset>
+
+
+                <!-- ===================== STEP 5 · TERMS ===================== -->
+                <!-- The checkbox unlocks once the box is scrolled to the end (signup.js); the server checks it too -->
+                <fieldset class="signup-step" data-step="5">
+
+                    <h1 class="signup-title">Terms and Privacy</h1>
+                    <p class="signup-subtitle">Please read to the end to continue.</p>
+
+                    <div class="legal-box-wrap">
+                        <nav class="legal-jump" aria-label="Jump to">
+                            <button type="button" data-legal-jump="legal-terms">Terms</button>
+                            <button type="button" data-legal-jump="legal-privacy">Privacy</button>
+                        </nav>
+                        <div class="legal-box" data-legal-box tabindex="0" aria-label="Terms and Conditions and Privacy Notice">
+                            {% include "core_accounts/legal/terms_body.html" %}
+                            {% include "core_accounts/legal/privacy_body.html" %}
+                            <p class="legal-end">End of the Terms and Privacy Notice.</p>
+                        </div>
+                        <div class="legal-progress" aria-hidden="true"><span data-legal-progress></span></div>
+                    </div>
+
+                    <div class="form-group{% if errors.agree_terms %} has-error{% endif %}">
+                        <label class="legal-agree" data-legal-agree>
+                            <input type="checkbox" name="agree_terms" value="1" {% if form_data.agree_terms %}checked{% endif %}
+                                   aria-describedby="agree_terms-hint agree_terms-error">
+                            <span>I have read and agree to the <a href="{% url 'terms' %}" target="_blank" rel="noopener">Terms and Conditions</a> and the <a href="{% url 'privacy' %}" target="_blank" rel="noopener">Privacy Notice</a>, and I consent to LookApt processing my personal data as described, including the AI check of landlord documents.</span>
+                        </label>
+                        <p class="field-hint legal-hint" id="agree_terms-hint" data-legal-hint hidden>Scroll to the end to continue.</p>
+                        <p class="field-error" id="agree_terms-error" data-error-for="agree_terms">{{ errors.agree_terms }}</p>
                     </div>
 
                     <div class="signup-actions signup-actions--split">

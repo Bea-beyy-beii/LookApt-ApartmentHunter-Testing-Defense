@@ -3,19 +3,21 @@ The admin panel (/admin-panel/): data for each page, and the actions admins take
 
     Overview      overview_context()
     Verification  verification_queue(), decide_verification()
-    Users         user_list(), user_profile(), suspend(), reactivate(), ...
+    Users         user_list(), user_profile(), suspend(), reactivate(), delete_account(), ...
     Reports       report_list(), set_report_status(), warn(), unpublish_listings()
 
 Every decision tells the user through core_admin/notify.py (bell + email).
 """
+import logging
 from collections import Counter
 from datetime import timedelta
 
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.db import transaction
+from django.db import models, router, transaction
 from django.db.models import Count, Q
+from django.db.models.deletion import Collector
 from django.utils import timezone
 
 from core.core_inquiries.models import Application
@@ -27,6 +29,8 @@ from core.core_verification.models import VerificationRequest
 from core.models import User
 
 from . import notify
+
+logger = logging.getLogger(__name__)
 
 PAGE_SIZE = 25
 VStatus = VerificationRequest.Status
@@ -230,15 +234,11 @@ def joined_filter(users, joined, joined_from="", joined_to=""):
     return users
 
 
-def user_list(role, verified, status, query, page, joined="", joined_from="", joined_to=""):
+def user_list(role, status, query, page, joined="", joined_from="", joined_to=""):
     users = User.objects.exclude(role="admin").order_by("-date_joined")
     users = joined_filter(users, joined, joined_from, joined_to)
     if role in ("renter", "landlord"):
         users = users.filter(role=role)
-    if verified == "yes":
-        users = users.filter(is_verified=True)
-    elif verified == "no":
-        users = users.filter(role="landlord", is_verified=False)
     if status == "active":
         users = users.filter(is_active=True)
     elif status == "suspended":
@@ -294,6 +294,50 @@ def reactivate(user):
     user.suspension_reason = ""
     user.save(update_fields=["is_active", "suspended_at", "suspension_reason"])
     notify.reactivated(user)
+
+
+def _files_deleted_with(user):
+    """Every uploaded file (photos, videos, chat attachments, report evidence,
+    verification documents ...) on the rows that deleting this user removes."""
+    collector = Collector(using=router.db_for_write(User))
+    collector.collect([user])
+    groups = [(model, list(rows)) for model, rows in collector.data.items()]
+    groups += [(qs.model, list(qs)) for qs in collector.fast_deletes]
+    files = []
+    for model, rows in groups:
+        fields = [f for f in model._meta.concrete_fields if isinstance(f, models.FileField)]
+        for row in rows:
+            files += [(file.storage, file.name) for file in (getattr(row, f.name) for f in fields) if file]
+    return files
+
+
+def _delete_files(files):
+    for storage, name in files:
+        try:
+            storage.delete(name)
+        except Exception:
+            logger.exception("Couldn't delete %s", name)
+
+
+@transaction.atomic
+def delete_account(user, confirm, requested):
+    """Delete an account and everything linked to it, only when its owner asked
+    (Terms: users request deletion by email). The landlord's own tenancy records
+    keep the tenant's name; everything else of theirs goes."""
+    if user.role not in ("renter", "landlord"):
+        raise ValidationError("Admin accounts can't be deleted here.")
+    if not requested:
+        raise ValidationError("Only delete an account when its owner asked for it.")
+    if (confirm or "").strip().lower() != user.username.lower():
+        raise ValidationError(f"Type the username ({user.username}) to confirm.")
+    files = _files_deleted_with(user)
+    name = user.display_name
+    notify.account_deleted(user)
+    user.delete()
+    transaction.on_commit(lambda: _delete_files(files))
+    transaction.on_commit(forget_badges)
+    logger.info("Account %s deleted at the owner's request", name)
+    return name
 
 
 def send_password_help(user):

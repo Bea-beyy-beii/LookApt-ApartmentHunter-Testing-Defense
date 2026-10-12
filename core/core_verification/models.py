@@ -72,3 +72,8 @@ class VerificationRequest(models.Model):
 
     def __str__(self):
         return f"{self.landlord.user.display_name} ({self.get_status_display()})"
+
+    @property
+    def documents_deleted(self):
+        """The files were removed after the retention period (services.purge_old_documents)."""
+        return not self.id_photo

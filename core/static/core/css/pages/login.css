@@ -243,6 +243,17 @@
     text-align: center;
 }
 
+/* Terms · Privacy under the sign-up line */
+.legal-links {
+    margin: 18px 0 -10px;
+    color: var(--text-secondary);
+    font-size: 11.5px;
+    text-align: center;
+}
+
+.legal-links a { color: var(--text-secondary); }
+.legal-links a:hover { color: var(--navy); }
+
 
 /* =========================================================
    RESPONSIVE

@@ -122,3 +122,11 @@ def unpublished_by_admin(user, reason):
                       paragraphs=["Our team unpublished your listings after reviewing a report. Renters can't see "
                                   "them until you publish them again."],
                       quote=reason, button=DASHBOARD))
+
+
+def account_deleted(user):
+    # Email only: the account (and its bell) is gone. user still holds the email address in memory.
+    transaction.on_commit(lambda: send_email(
+        user, subject="LookApt: your account has been deleted",
+        paragraphs=["As you asked, your LookApt account and the data linked to it have been deleted.",
+                    "Thank you for using LookApt. You're welcome to sign up again anytime."]))

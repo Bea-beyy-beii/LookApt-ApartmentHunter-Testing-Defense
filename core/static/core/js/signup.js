@@ -1,8 +1,9 @@
 // =========================================================
-// SIGN UP: 4 steps on one page (Name · Contact · Profile · Security)
+// SIGN UP: 5 steps on one page (Name · Contact · Profile · Security · Terms)
 // - Next: the server checks the open step (signup/check/), then moves on
 // - Back: goes to the previous step (no checks)
-// - Create Account (step 4) submits the whole form; the server checks
+// - Terms (step 5): the "I agree" box unlocks once the text is scrolled to the end
+// - Create Account (step 5) submits the whole form; the server checks
 //   everything again and opens the OTP page
 // Without JavaScript every step shows as one long form.
 // =========================================================
@@ -37,8 +38,52 @@
             else item.removeAttribute("aria-current");
         });
         const active = steps[step - 1];
-        const target = active.querySelector(".has-error input, .has-error select") || active.querySelector("input, select");
+        const target = active.querySelector(".has-error input, .has-error select")
+            || active.querySelector("[data-legal-box], input, select");
         target?.focus({ preventScroll: true });
+        if (active.contains(legalBox)) updateLegal();      // the box only has a size once it's visible
+    }
+
+
+    // ---------------------------------------------------- step 5: read to the end before agreeing
+
+    const legalBox = form.querySelector("[data-legal-box]");
+    const agree = form.elements.agree_terms;
+    const legalHint = form.querySelector("[data-legal-hint]");
+    const legalProgress = form.querySelector("[data-legal-progress]");
+    let readToEnd = Boolean(agree?.checked);            // coming back with it already ticked
+
+    function updateLegal() {
+        if (!legalBox || !agree) return;
+        const scrollable = legalBox.scrollHeight - legalBox.clientHeight;
+        if (!readToEnd && legalBox.clientHeight && legalBox.scrollTop >= scrollable - 8) {
+            readToEnd = true;
+            setError("agree_terms", "");          // drop "read to the end first"
+        }
+        const share = readToEnd || scrollable <= 0 ? 1 : legalBox.scrollTop / scrollable;
+        legalProgress.style.width = `${Math.round(share * 100)}%`;
+        legalProgress.classList.toggle("is-done", readToEnd);
+        agree.disabled = !readToEnd;
+        legalHint.hidden = readToEnd;
+    }
+
+    if (legalBox && agree) {
+        legalBox.addEventListener("scroll", updateLegal, { passive: true });
+        window.addEventListener("resize", updateLegal);
+        // Terms / Privacy shortcuts scroll inside the box
+        form.querySelectorAll("[data-legal-jump]").forEach(button => button.addEventListener("click", () => {
+            const section = document.getElementById(button.dataset.legalJump);
+            legalBox.scrollTo({ top: section.offsetTop - legalBox.offsetTop, behavior: "smooth" });
+        }));
+        // Clicking the locked box: point at the hint
+        form.querySelector("[data-legal-agree]").addEventListener("click", () => {
+            if (!agree.disabled) return;
+            legalHint.classList.remove("is-flashing");
+            void legalHint.offsetWidth;
+            legalHint.classList.add("is-flashing");
+        });
+        agree.disabled = !readToEnd;
+        legalHint.hidden = readToEnd;
     }
 
 
@@ -83,6 +128,10 @@
         } else if (step === 4) {
             if (!form.elements.password.value) errors.password = "Password is required.";
             else if (form.elements.password.value !== form.elements.confirm_password.value) errors.confirm_password = "Passwords do not match.";
+        } else if (step === 5) {
+            if (!agree?.checked) errors.agree_terms = readToEnd
+                ? "Please agree to the Terms and Conditions and the Privacy Notice."
+                : "Please read the Terms and Privacy Notice to the end first.";
         }
         return errors;
     }
@@ -129,7 +178,7 @@
     form.querySelectorAll("[data-next]").forEach(button => button.addEventListener("click", () => next(button)));
     form.querySelectorAll("[data-back]").forEach(button => button.addEventListener("click", () => show(current - 1)));
 
-    // Enter = Next on steps 1–3; on step 4 it checks the step, then submits
+    // Enter = Next on steps 1–4; on step 5 it checks the step, then submits
     form.addEventListener("submit", async event => {
         if (form.dataset.submitting) return;
         event.preventDefault();

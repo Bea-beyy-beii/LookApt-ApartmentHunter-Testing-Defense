@@ -343,6 +343,52 @@ class DashboardTests(Base):
         self.assertNotContains(response, "data-verify-banner")
 
 
+class PurgeTests(Base):
+    """Privacy Notice: rejected / replaced documents are deleted 90 days after the decision."""
+
+    def old(self, status, days, **extra):
+        request = self.make_request(status, **extra)
+        VerificationRequest.objects.filter(pk=request.pk).update(
+            created_at=timezone.now() - timedelta(days=days))
+        return request
+
+    def test_old_rejected_and_replaced_documents_are_deleted(self):
+        rejected = self.old(Status.REJECTED, 100, decided_at=timezone.now() - timedelta(days=91), ai_result={"x": 1})
+        replaced = self.old(Status.RESUBMIT, 100)                     # asked by the AI: no decided_at
+        recent = self.old(Status.REJECTED, 30, decided_at=timezone.now() - timedelta(days=30))
+        approved = self.old(Status.APPROVED, 400, decided_at=timezone.now() - timedelta(days=400))
+        storage = rejected.id_photo.storage
+        old_name = rejected.id_photo.name
+
+        self.assertEqual(services.purge_old_documents(), 2)
+
+        for request in (rejected, replaced):
+            request.refresh_from_db()
+            self.assertTrue(request.documents_deleted)
+            self.assertEqual(request.ownership_document.name, "")
+        self.assertIsNone(rejected.ai_result)
+        self.assertEqual(rejected.status, Status.REJECTED)              # the rejection still counts
+        self.assertFalse(storage.exists(old_name))
+        for request in (recent, approved):
+            request.refresh_from_db()
+            self.assertFalse(request.documents_deleted)
+
+    def test_dashboard_hides_deleted_documents(self):
+        self.old(Status.REJECTED, 100, decided_at=timezone.now() - timedelta(days=91), message="Fake ID.")
+        services.purge_old_documents()
+        with mock.patch("core.core_landlords.views.services.home_context", return_value={}):
+            response = self.client.get(reverse("core_landlords:dashboard"))
+        self.assertContains(response, "Fake ID.")
+        self.assertNotContains(response, "data-verify-docs-open")
+
+    def test_command(self):
+        from django.core.management import call_command
+        self.old(Status.RESUBMIT, 100)
+        out = io.StringIO()
+        call_command("purge_verification_documents", stdout=out)
+        self.assertIn("Cleaned 1", out.getvalue())
+
+
 class PublishingTests(Base):
 
     def setUp(self):

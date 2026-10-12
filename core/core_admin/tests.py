@@ -224,6 +224,35 @@ class UserTests(Base):
         self.assertTrue(Notice.objects.filter(user=self.renter, title="Warning from LookApt").exists())
         self.assertIn("Please stop spamming landlords.", mail.outbox[-1].body)
 
+    def test_no_verified_filter(self):
+        page = self.client.get(reverse("core_admin:overview") + "?tab=users")
+        self.assertNotContains(page, 'name="verified"')
+
+    def test_delete_account_needs_the_request_and_the_username(self):
+        url = reverse("core_admin:user_detail", args=[self.renter.pk])
+        self.client.post(url, {"action": "delete", "confirm": "arem"})                    # not ticked
+        self.client.post(url, {"action": "delete", "confirm": "wrong", "requested": "1"})  # wrong name
+        self.assertTrue(User.objects.filter(pk=self.renter.pk).exists())
+
+    def test_delete_account_removes_data_and_files_and_emails(self):
+        request = self.make_request(status="approved")
+        storage = VerificationRequest._meta.get_field("id_photo").storage
+        names = [request.id_photo.name, request.selfie.name, request.ownership_document.name]
+        response = self.post("user_detail", self.landlord.pk,
+                             {"action": "delete", "confirm": "LIZA", "requested": "1"})
+        self.assertRedirects(response, reverse("core_admin:overview") + "?tab=users", fetch_redirect_response=False)
+        self.assertFalse(User.objects.filter(pk=self.landlord.pk).exists())
+        self.assertFalse(VerificationRequest.objects.exists())
+        self.assertFalse(any(storage.exists(name) for name in names))
+        self.assertEqual(mail.outbox[-1].to, ["liza@example.com"])
+        self.assertIn("deleted", mail.outbox[-1].subject)
+
+    def test_admins_cannot_be_deleted_here(self):
+        other = make_user("boss2", "admin", "09333333333", is_staff=True)
+        self.client.post(reverse("core_admin:user_detail", args=[other.pk]),
+                         {"action": "delete", "confirm": "boss2", "requested": "1"})
+        self.assertTrue(User.objects.filter(pk=other.pk).exists())
+
     def test_password_help_email_links_to_forgot_password(self):
         self.post("user_detail", self.renter.pk, {"action": "password"})
         self.assertIn("https://lookapt.example/forgot-password/", mail.outbox[-1].body)

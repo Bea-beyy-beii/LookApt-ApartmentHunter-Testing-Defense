@@ -25,6 +25,9 @@
         {# The three documents: click to view full size (signed links, 5 minutes) #}
         <section class="ap-card">
             <header class="ap-card-head"><div><h2>Documents</h2><p>Click a picture to see it in full.</p></div></header>
+            {% if item.documents_deleted %}
+            <p class="ap-muted">These documents were deleted {{ retention_days }} days after the decision, as the Privacy Notice promises.</p>
+            {% else %}
             <div class="ap-docs">
                 <figure class="ap-doc">
                     <button type="button" class="ap-doc-thumb" data-ap-view="{{ item.id_photo.url }}" aria-label="View ID">
@@ -49,6 +52,7 @@
                     <figcaption><strong>Proof of ownership</strong><span>{{ item.get_ownership_type_display }}</span></figcaption>
                 </figure>
             </div>
+            {% endif %}
         </section>
 
         {# What Claude read #}
