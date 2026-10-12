@@ -1,7 +1,7 @@
 # core_admin/views.py: the admin panel (/admin-panel/). Admin accounts only.
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.http import JsonResponse
+from django.http import JsonResponse, QueryDict
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
@@ -21,11 +21,43 @@ def _render(request, template, section, context=None):
     return render(request, template, {"section": section, "badges": services.badge_counts(), **(context or {})})
 
 
-def _render_list(request, template, results, section, context):
-    """A list page, or only its results when the live filters ask (admin_panel.js)."""
+def _list_results(request, tab, results, context):
+    """The live filters (admin_panel.js) get only the results table; anyone else
+    opening the list's address lands on that tab of the dashboard, filters kept."""
     if request.headers.get("X-Requested-With") == "ap-live":
         return render(request, results, context)
-    return _render(request, template, section, context)
+    params = request.GET.copy()
+    params["tab"] = tab
+    return redirect(f"{reverse('core_admin:overview')}?{params.urlencode()}")
+
+
+# ---------------------------------------------------------------- what each tab shows
+
+def _verification_tab(params):
+    status = params.get("status") or VerificationRequest.Status.REVIEW
+    query = params.get("q", "").strip()
+    return {"status": status, "query": query, "params": params, "list_url": reverse("core_admin:verification_list"),
+            **services.verification_queue(status, query, params.get("page"))}
+
+
+def _users_tab(params):
+    filters = {k: params.get(k, "") for k in ("role", "verified", "status", "joined", "joined_from", "joined_to")}
+    query = params.get("q", "").strip()
+    return {
+        "filters": filters, "query": query, "joined_options": services.JOINED_OPTIONS,
+        "params": params, "list_url": reverse("core_admin:user_list"),
+        "page": services.user_list(filters["role"], filters["verified"], filters["status"], query, params.get("page"),
+                                   filters["joined"], filters["joined_from"], filters["joined_to"]),
+    }
+
+
+def _reports_tab(params):
+    status = params.get("status") or Report.Status.WAITING
+    category = params.get("category", "")
+    query = params.get("q", "").strip()
+    return {"status": status, "category": category, "query": query, "categories": ALL_CATEGORIES,
+            "params": params, "list_url": reverse("core_admin:report_list"),
+            **services.report_list(status, category, query, params.get("page"))}
 
 
 def _error(request, error):
@@ -34,9 +66,25 @@ def _error(request, error):
 
 # ---------------------------------------------------------------- overview
 
+TABS = ("overview", "verification", "users", "reports")
+
+
 @admin_only
 def overview(request):
-    return _render(request, "core_admin/overview.html", "overview", services.overview_context())
+    """The admin dashboard: all four tabs in one page, switched in the browser like
+    the landlord / renter dashboards. ?tab= picks the first one shown, and only
+    that tab reads the filters in the address (the others start unfiltered)."""
+    tab = request.GET.get("tab") if request.GET.get("tab") in TABS else "overview"
+    params = request.GET.copy()
+    params.pop("tab", None)
+    filters_for = lambda name: params if name == tab else QueryDict()
+    return _render(request, "core_admin/dashboard.html", tab, {
+        "tab": tab,
+        **services.overview_context(),
+        "verification": _verification_tab(filters_for("verification")),
+        "users": _users_tab(filters_for("users")),
+        "reports": _reports_tab(filters_for("reports")),
+    })
 
 
 @admin_only
@@ -56,12 +104,8 @@ def activity_data(request):
 
 @admin_only
 def verification_list(request):
-    status = request.GET.get("status") or VerificationRequest.Status.REVIEW
-    query = request.GET.get("q", "").strip()
-    return _render_list(request, "core_admin/verification_list.html", "core_admin/partials/verification_results.html", "verification", {
-        "status": status, "query": query,
-        **services.verification_queue(status, query, request.GET.get("page")),
-    })
+    return _list_results(request, "verification", "core_admin/partials/verification_results.html",
+                         _verification_tab(request.GET))
 
 
 @admin_only
@@ -91,14 +135,7 @@ def verification_detail(request, pk):
 
 @admin_only
 def user_list(request):
-    g = request.GET
-    filters = {k: g.get(k, "") for k in ("role", "verified", "status", "joined", "joined_from", "joined_to")}
-    query = g.get("q", "").strip()
-    return _render_list(request, "core_admin/user_list.html", "core_admin/partials/user_results.html", "users", {
-        "filters": filters, "query": query, "joined_options": services.JOINED_OPTIONS,
-        "page": services.user_list(filters["role"], filters["verified"], filters["status"], query, g.get("page"),
-                                   filters["joined"], filters["joined_from"], filters["joined_to"]),
-    })
+    return _list_results(request, "users", "core_admin/partials/user_results.html", _users_tab(request.GET))
 
 
 @admin_only
@@ -147,14 +184,7 @@ def user_detail(request, pk):
 
 @admin_only
 def report_list(request):
-    g = request.GET
-    status = g.get("status") or Report.Status.WAITING
-    category = g.get("category", "")
-    query = g.get("q", "").strip()
-    return _render_list(request, "core_admin/report_list.html", "core_admin/partials/report_results.html", "reports", {
-        "status": status, "category": category, "query": query, "categories": ALL_CATEGORIES,
-        **services.report_list(status, category, query, g.get("page")),
-    })
+    return _list_results(request, "reports", "core_admin/partials/report_results.html", _reports_tab(request.GET))
 
 
 @admin_only

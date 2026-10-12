@@ -1,9 +1,5 @@
-{% extends "core_admin/base.html" %}
 {% load admin_icons %}
-
-{% block title %}LookApt Admin — Overview{% endblock %}
-
-{% block content %}
+{# Overview tab of the admin dashboard (dashboard.html) #}
 <div class="ap-page-head">
     <div>
         <h1>Overview</h1>
@@ -13,17 +9,17 @@
 
 {# Headline numbers #}
 <section class="ap-stats" aria-label="Key numbers">
-    <a class="ap-stat {% if stats.to_verify %}ap-stat--attention{% endif %}" href="{% url 'core_admin:verification_list' %}">
+    <a class="ap-stat {% if stats.to_verify %}ap-stat--attention{% endif %}" href="{% url 'core_admin:overview' %}?tab=verification" data-ap-tab="verification">
         <small>Landlords to review</small>
         <strong>{{ stats.to_verify }}</strong>
         <span>{{ stats.verified }} verified so far</span>
     </a>
-    <a class="ap-stat {% if stats.open_reports %}ap-stat--attention{% endif %}" href="{% url 'core_admin:report_list' %}">
+    <a class="ap-stat {% if stats.open_reports %}ap-stat--attention{% endif %}" href="{% url 'core_admin:overview' %}?tab=reports" data-ap-tab="reports">
         <small>Open reports</small>
         <strong>{{ stats.open_reports }}</strong>
         <span>Pending or under review</span>
     </a>
-    <a class="ap-stat" href="{% url 'core_admin:user_list' %}">
+    <a class="ap-stat" href="{% url 'core_admin:overview' %}?tab=users" data-ap-tab="users">
         <small>New users this week</small>
         <strong>{{ stats.new_week }}</strong>
         <span>{{ stats.renters }} renters · {{ stats.landlords }} landlords</span>
@@ -33,7 +29,7 @@
         <strong>{{ stats.active_listings }}</strong>
         <span>{{ stats.active_tenancies }} active rental{{ stats.active_tenancies|pluralize }}</span>
     </div>
-    <a class="ap-stat" href="{% url 'core_admin:user_list' %}?status=suspended">
+    <a class="ap-stat" href="{% url 'core_admin:overview' %}?tab=users&status=suspended" data-ap-tab="users">
         <small>Suspended accounts</small>
         <strong>{{ stats.suspended }}</strong>
         <span>Can't log in</span>
@@ -71,7 +67,7 @@
     <section class="ap-card">
         <header class="ap-card-head">
             <div><h2>Landlords waiting for review</h2><p>Oldest first.</p></div>
-            <a class="ap-link" href="{% url 'core_admin:verification_list' %}">See all {% ap_icon "arrow_right" 14 %}</a>
+            <a class="ap-link" href="{% url 'core_admin:overview' %}?tab=verification" data-ap-tab="verification">See all {% ap_icon "arrow_right" 14 %}</a>
         </header>
         {% if waiting_verifications %}
             <ul class="ap-rows">
@@ -96,7 +92,7 @@
     <section class="ap-card">
         <header class="ap-card-head">
             <div><h2>Open reports</h2><p>Oldest first.</p></div>
-            <a class="ap-link" href="{% url 'core_admin:report_list' %}">See all {% ap_icon "arrow_right" 14 %}</a>
+            <a class="ap-link" href="{% url 'core_admin:overview' %}?tab=reports" data-ap-tab="reports">See all {% ap_icon "arrow_right" 14 %}</a>
         </header>
         {% if waiting_reports %}
             <ul class="ap-rows">
@@ -118,4 +114,3 @@
         {% endif %}
     </section>
 </div>
-{% endblock %}

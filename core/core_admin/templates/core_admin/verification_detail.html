@@ -4,7 +4,7 @@
 {% block title %}LookApt Admin — {{ account.display_name }}'s verification{% endblock %}
 
 {% block breadcrumbs %}
-<a class="ap-back" href="{% url 'core_admin:verification_list' %}?status={{ item.status }}">{% ap_icon "arrow_left" 14 %} Verification</a>
+<a class="ap-back" href="{% url 'core_admin:overview' %}?tab=verification&status={{ item.status }}">{% ap_icon "arrow_left" 14 %} Verification</a>
 {% endblock %}
 
 {% block content %}

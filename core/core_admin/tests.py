@@ -75,13 +75,27 @@ class AccessTests(Base):
 
     def test_admin_pages_open(self):
         report, request = self.make_report(), self.make_request()
-        for url in [reverse("core_admin:overview"), reverse("core_admin:verification_list"),
-                    reverse("core_admin:verification_detail", args=[request.pk]), reverse("core_admin:user_list"),
-                    reverse("core_admin:user_detail", args=[self.landlord.pk]), reverse("core_admin:report_list"),
+        dashboard = reverse("core_admin:overview")
+        for url in [dashboard, dashboard + "?tab=verification", dashboard + "?tab=users", dashboard + "?tab=reports",
+                    reverse("core_admin:verification_detail", args=[request.pk]),
+                    reverse("core_admin:user_detail", args=[self.landlord.pk]),
                     reverse("core_admin:report_detail", args=[report.pk]),
                     reverse("core_admin:activity_data") + "?days=7"]:
             with self.subTest(url):
                 self.assertEqual(self.client.get(url).status_code, 200)
+
+    def test_all_tabs_are_in_one_page(self):
+        """Switching tabs happens in the browser, so every tab is in the page; ?tab= picks the one shown."""
+        response = self.client.get(reverse("core_admin:overview") + "?tab=users")
+        for name in ("overview", "verification", "users", "reports"):
+            self.assertContains(response, f'data-ap-section="{name}"')
+        self.assertContains(response, 'data-ap-section="users" data-title="LookApt Admin — Users" >')     # shown
+        self.assertContains(response, 'data-ap-section="overview" data-title="LookApt Admin — Overview" hidden>')
+
+    def test_old_list_addresses_open_the_tab(self):
+        response = self.client.get(reverse("core_admin:user_list") + "?role=renter")
+        self.assertRedirects(response, reverse("core_admin:overview") + "?role=renter&tab=users",
+                             fetch_redirect_response=False)
 
     def test_landlords_and_renters_are_refused(self):
         for user in (self.landlord, self.renter):
@@ -141,8 +155,12 @@ class UserTests(Base):
             min_price=5000, max_price=9000, status="active", lease_term="monthly",
         )
 
+    def live(self, name, query):
+        """What the live filters get: only that tab's results table."""
+        return self.client.get(reverse(f"core_admin:{name}") + query, HTTP_X_REQUESTED_WITH="ap-live")
+
     def test_list_filters(self):
-        response = self.client.get(reverse("core_admin:user_list") + "?role=renter")
+        response = self.live("user_list", "?role=renter")
         self.assertContains(response, "Arem Test")
         self.assertNotContains(response, "Liza Test")
         self.assertNotContains(response, reverse("core_admin:user_detail", args=[self.admin.pk]))   # admins aren't listed
@@ -151,15 +169,16 @@ class UserTests(Base):
         from datetime import timedelta
         from django.utils import timezone
         User.objects.filter(pk=self.renter.pk).update(date_joined=timezone.now() - timedelta(days=40))
-        url = reverse("core_admin:user_list")
-        self.assertNotContains(self.client.get(url + "?joined=30"), "Arem Test")
-        self.assertContains(self.client.get(url + "?joined=90"), "Arem Test")
+        self.assertNotContains(self.live("user_list", "?joined=30"), "Arem Test")
+        self.assertContains(self.live("user_list", "?joined=90"), "Arem Test")
         old = (timezone.localdate() - timedelta(days=40)).isoformat()
-        response = self.client.get(url + f"?joined=custom&joined_from={old}&joined_to={old}")
+        response = self.live("user_list", f"?joined=custom&joined_from={old}&joined_to={old}")
         self.assertContains(response, "Arem Test")
         self.assertNotContains(response, "Liza Test")
         # A broken date is ignored instead of crashing
-        self.assertEqual(self.client.get(url + "?joined=custom&joined_from=nope").status_code, 200)
+        self.assertEqual(self.live("user_list", "?joined=custom&joined_from=nope").status_code, 200)
+        # Opening the dashboard with the filter in the address applies it to the Users tab
+        self.assertNotContains(self.client.get(reverse("core_admin:overview") + "?tab=users&joined=30"), "Arem Test")
 
     def test_live_filters_get_only_the_results(self):
         response = self.client.get(reverse("core_admin:user_list") + "?q=arem", HTTP_X_REQUESTED_WITH="ap-live")
@@ -250,7 +269,7 @@ class ReportTests(Base):
     def test_repeat_flag(self):
         self.make_report()
         self.make_report()
-        self.assertContains(self.client.get(reverse("core_admin:report_list")), 'title="2 reports received"')
+        self.assertContains(self.client.get(reverse("core_admin:overview") + "?tab=reports"), 'title="2 reports received"')
 
 
 @override_settings(**TEST_SETTINGS)

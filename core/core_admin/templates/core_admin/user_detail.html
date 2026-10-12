@@ -3,7 +3,7 @@
 
 {% block title %}LookApt Admin — {{ account.display_name }}{% endblock %}
 
-{% block breadcrumbs %}<a class="ap-back" href="{% url 'core_admin:user_list' %}">{% ap_icon "arrow_left" 14 %} Users</a>{% endblock %}
+{% block breadcrumbs %}<a class="ap-back" href="{% url 'core_admin:overview' %}?tab=users">{% ap_icon "arrow_left" 14 %} Users</a>{% endblock %}
 
 {% block content %}
 <div class="ap-page-head">

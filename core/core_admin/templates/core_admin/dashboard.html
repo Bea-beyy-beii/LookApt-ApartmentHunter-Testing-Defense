@@ -1,0 +1,20 @@
+{% extends "core_admin/base.html" %}
+
+{% block title %}LookApt Admin{% endblock %}
+
+{% block content %}
+{# All four tabs are on this one page and switch in the browser (admin_panel.js), #}
+{# like the landlord / renter dashboards; ?tab= picks the one shown first. #}
+<section class="ap-section" data-ap-section="overview" data-title="LookApt Admin — Overview" {% if tab != "overview" %}hidden{% endif %}>
+    {% include "core_admin/sections/overview.html" %}
+</section>
+<section class="ap-section" data-ap-section="verification" data-title="LookApt Admin — Verification" {% if tab != "verification" %}hidden{% endif %}>
+    {% include "core_admin/sections/verification.html" with ctx=verification %}
+</section>
+<section class="ap-section" data-ap-section="users" data-title="LookApt Admin — Users" {% if tab != "users" %}hidden{% endif %}>
+    {% include "core_admin/sections/users.html" with ctx=users %}
+</section>
+<section class="ap-section" data-ap-section="reports" data-title="LookApt Admin — Reports" {% if tab != "reports" %}hidden{% endif %}>
+    {% include "core_admin/sections/reports.html" with ctx=reports %}
+</section>
+{% endblock %}

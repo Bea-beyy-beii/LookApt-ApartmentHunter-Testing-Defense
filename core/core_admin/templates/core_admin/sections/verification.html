@@ -1,0 +1,31 @@
+{% load admin_icons %}
+{# Verification tab of the admin dashboard. ctx: tabs, status, query, page, params, list_url #}
+<div class="ap-page-head">
+    <div>
+        <h1>Landlord verification</h1>
+        <p>Claude approves clear submissions by itself; the rest wait here for you.</p>
+    </div>
+</div>
+
+<div class="ap-toolbar">
+    <nav class="ap-tabs" aria-label="Status">
+        {% for tab in ctx.tabs %}
+            <a class="status-filter ap-tab {% if tab.value == ctx.status %}active{% endif %}" data-status="{{ tab.value }}"
+               href="{% url 'core_admin:overview' %}?tab=verification&status={{ tab.value }}">
+                {{ tab.label }} <span class="ap-tab-count">{{ tab.count }}</span>
+            </a>
+        {% endfor %}
+    </nav>
+    <form class="ap-filters" method="get" data-ap-live data-url="{{ ctx.list_url }}">
+        <input type="hidden" name="status" value="{{ ctx.status }}">
+        <label class="ap-search-box">
+            {% ap_icon "search" 16 %}
+            <input type="search" class="ap-search-input" autocomplete="off" name="q" value="{{ ctx.query }}"
+                   placeholder="Search name, email or phone" aria-label="Search landlords">
+        </label>
+    </form>
+</div>
+
+<div data-ap-results>
+    {% include "core_admin/partials/verification_results.html" with page=ctx.page params=ctx.params list_url=ctx.list_url query=ctx.query %}
+</div>
