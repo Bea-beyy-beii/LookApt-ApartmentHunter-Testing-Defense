@@ -253,6 +253,7 @@ html[data-theme="dark"] .ac-switch input:checked + i { background: var(--gold); 
 .ac-btn--danger { border-color: rgba(201, 75, 75, 0.45); background: transparent; color: var(--error); }
 .ac-btn--danger:hover { background: rgba(201, 75, 75, 0.08); }
 .ac-btn:disabled { opacity: 0.6; cursor: progress; }
+.ac-btn[hidden] { display: none; }          /* e.g. Remove photo when there's no photo */
 
 .ac-status { min-height: 1em; margin: 0; color: var(--success); font-size: 12.5px; font-weight: 600; }
 .ac-status.is-error { color: var(--error); }
