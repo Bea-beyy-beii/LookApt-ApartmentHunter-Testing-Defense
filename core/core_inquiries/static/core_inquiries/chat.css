@@ -299,7 +299,7 @@
 
 .chat-bulletin-text {
     margin: 2px 0 0;
-    color: #3d2d08;
+    color:var(--navy);
     font-size: 14px;
     line-height: 1.5;
     white-space: pre-wrap;
