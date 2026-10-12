@@ -1,0 +1,136 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LookApt — Your next home, in a tap</title>
+    <meta name="description" content="Browse, compare, and book your next rental space, all in one place. LookApt helps renters find apartments and landlords manage their listings.">
+
+    <link rel="stylesheet" href="{% static 'core/css/base/reset.css' %}">
+    <link rel="stylesheet" href="{% static 'core/css/base/colors.css' %}">
+    <link rel="stylesheet" href="{% static 'core/css/base/typography.css' %}">
+    <link rel="stylesheet" href="{% static 'core_preview/landing.css' %}">
+</head>
+
+<body class="ld">
+
+    <!-- ===================== HEADER ===================== -->
+    <header class="ld-header">
+        <a class="ld-brand" href="{% url 'core_preview:landing' %}" aria-label="LookApt home">
+            <img src="{% static 'core/images/logo2.png' %}" alt="">
+            <span>Look<b>Apt</b></span>
+        </a>
+        <nav class="ld-header-actions" aria-label="Account">
+            <a class="ld-btn ld-btn--gold ld-btn--sm" href="{% url 'signup' %}">Create an Account</a>
+            <a class="ld-btn ld-btn--outline ld-btn--sm" href="{% url 'login' %}">Log In</a>
+        </nav>
+    </header>
+
+    <main>
+
+        <!-- ===================== HERO (renters) ===================== -->
+        <section class="ld-hero">
+            <div class="ld-hero-text">
+                <p class="ld-eyebrow">A rental experience, made simple</p>
+                <h1>Your next home,<br>in a tap.</h1>
+                <p class="ld-hero-sub">Discover LookApt</p>
+                <p class="ld-lead">Browse, compare, and book your next rental space, all in one place.</p>
+
+                <div class="ld-hero-actions">
+                    <a class="ld-btn ld-btn--gold" href="{% url 'core_preview:renter' %}">Experience Preview</a>
+                </div>
+
+                <ul class="ld-perks">
+                    <li>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.1 7-12A7 7 0 1 0 5 9c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></svg>
+                        <span>Find nearby rentals</span>
+                    </li>
+                    <li>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h5"/><path d="M14 3v5h5M8 9h3M8 13h5"/><circle cx="16.5" cy="16.5" r="3"/><path d="m18.7 18.7 2.3 2.3"/></svg>
+                        <span>Compare your options</span>
+                    </li>
+                    <li>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9"/><path d="M8 9h4M8 13h6M8 17h3"/><path d="m15.5 4.5 3 3L13 13l-3.5.5.5-3.5Z"/></svg>
+                        <span>Apply with ease</span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="ld-visual ld-visual--map" aria-hidden="true">
+                <div class="ld-shot">
+                    <img src="{% static 'core_preview/img/hero-map.png' %}" alt="" loading="eager" onerror="this.remove()">
+                </div>
+                <span class="ld-chip ld-chip--navy ld-chip--apply">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8Z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
+                    Apply as Renter
+                </span>
+                <span class="ld-chip ld-chip--cream ld-chip--waitlist">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
+                    Join Waitlist
+                </span>
+                <span class="ld-send">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 10 14M21 3l-7 18-4-7-7-4Z"/></svg>
+                </span>
+            </div>
+        </section>
+
+        <hr class="ld-divider">
+
+        <!-- ===================== LANDLORDS ===================== -->
+        <section class="ld-landlords">
+            <div class="ld-landlords-top">
+                <div class="ld-visual ld-visual--dash" aria-hidden="true">
+                    <div class="ld-shot ld-shot--dash">
+                        <img src="{% static 'core_preview/img/landlord-dashboard.png' %}" alt="" loading="lazy" onerror="this.remove()">
+                    </div>
+                    <span class="ld-chip ld-chip--navy ld-chip--assign">Assign a Renter</span>
+                    <span class="ld-chip ld-chip--bronze ld-chip--add">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                        Add Property
+                    </span>
+                    <span class="ld-chip ld-chip--navy ld-chip--bulletin">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h3l6 4V6L7 10Z"/><path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11"/></svg>
+                        Post on Bulletin
+                    </span>
+                </div>
+
+                <div class="ld-landlords-text">
+                    <h2>For landlords,</h2>
+                    <p class="ld-landlords-sub">Listing management and wider reach,<br>we&rsquo;ve got you!</p>
+                    <a class="ld-btn ld-btn--slate" href="{% url 'core_preview:landlord' %}">Try Landlord&rsquo;s View</a>
+                </div>
+            </div>
+
+            <ul class="ld-features">
+                <li>
+                    <span class="ld-feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8Z"/><path d="M14 3v5h5M9 12h6M9 16h4"/></svg>
+                    </span>
+                    <div><h3>Manage listings</h3><p>Create and organize your properties and units with ease.</p></div>
+                </li>
+                <li>
+                    <span class="ld-feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-7l-4 3v-3H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/><path d="M9 9.5h.01M12 9.5h3M9 12.5h6"/></svg>
+                    </span>
+                    <div><h3>Track inquiries</h3><p>Respond to potential renters in one place.</p></div>
+                </li>
+                <li>
+                    <span class="ld-feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16M9 14h2M13 14h2M9 17h2"/></svg>
+                    </span>
+                    <div><h3>Stay on top of rent</h3><p>Monitor payments and lease schedules effortlessly.</p></div>
+                </li>
+            </ul>
+        </section>
+
+    </main>
+
+    <!-- ===================== FOOTER ===================== -->
+    <footer class="ld-footer">
+        <p>Got some questions? Email <a href="mailto:{{ support_email }}">{{ support_email }}</a></p>
+        <p class="ld-footer-links"><a href="{% url 'terms' %}">Terms</a> · <a href="{% url 'privacy' %}">Privacy</a></p>
+    </footer>
+
+</body>
+</html>

@@ -1,0 +1,12 @@
+{# Top of the preview pages: what this is, and the way out. data-preview-tabs = the tabs that work (preview.js) #}
+<div class="pv-bar" data-preview="{{ preview }}" data-preview-tabs="{{ preview_tabs }}">
+    <span class="pv-bar-badge">Preview</span>
+    <p>
+        {% if preview == "landlord" %}
+            You're trying LookApt as a <strong>landlord</strong>. Explore <strong>Home</strong> and fill out the <strong>Add Property</strong> form in My Listings. Sign up to publish it.
+        {% else %}
+            You're exploring LookApt as a <strong>renter</strong>. Browse listings on <strong>Home</strong> and pick a spot in <strong>Find Near</strong>. Sign up to open listings, save and apply.
+        {% endif %}
+    </p>
+    <a class="pv-btn pv-btn--gold" href="{% url 'signup' %}?role={{ preview }}">Sign up free</a>
+</div>

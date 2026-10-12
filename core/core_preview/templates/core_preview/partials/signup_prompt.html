@@ -1,0 +1,22 @@
+{# Opened by preview.js when a preview visitor clicks something that needs an account #}
+<dialog class="pv-prompt" data-preview-prompt aria-labelledby="pv-prompt-title">
+    <button type="button" class="pv-prompt-close" data-preview-close aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+    <span class="pv-prompt-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+    </span>
+    <h2 id="pv-prompt-title">Create a free account to <span data-preview-action>continue</span></h2>
+    <p>
+        {% if preview == "landlord" %}
+            Sign up as a landlord to publish your properties, manage rentals and reply to renters, all in one place.
+        {% else %}
+            Sign up to see full listings, save the ones you like, apply and message landlords.
+        {% endif %}
+    </p>
+    <div class="pv-prompt-actions">
+        <a class="pv-btn pv-btn--gold" href="{% url 'signup' %}?role={{ preview }}">Sign up, it's free</a>
+        <a class="pv-btn pv-btn--ghost" href="{% url 'login' %}">Log in</a>
+    </div>
+    <button type="button" class="pv-prompt-keep" data-preview-close>Keep exploring</button>
+</dialog>

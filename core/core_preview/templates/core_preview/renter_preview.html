@@ -1,0 +1,24 @@
+{% extends "core_renters/renter_dashboard.html" %}
+{% load static %}
+{% comment %}
+    /preview/renter/: the real renter dashboard with logged-out data (core_preview/views.py).
+    Only Home and Find Near work; preview.js turns everything else into a sign-up prompt.
+{% endcomment %}
+
+{% block title %}LookApt — Renter Preview{% endblock %}
+
+{% block content %}
+{% include "core_preview/partials/preview_bar.html" %}
+{{ block.super }}
+{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'core_preview/preview.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+{% include "core_preview/partials/signup_prompt.html" %}
+{{ block.super }}
+<script src="{% static 'core_preview/preview.js' %}"></script>
+{% endblock %}

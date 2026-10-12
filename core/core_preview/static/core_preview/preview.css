@@ -1,0 +1,196 @@
+/* =========================================================
+   PREVIEW MODE (core_preview): the bar at the top, the Log in / Sign up
+   buttons in the top bar, locked sidebar tabs, and the sign-up prompt.
+   Prefix: pv-. Colours come from the theme variables.
+========================================================= */
+
+/* ---------- Buttons ---------- */
+
+.pv-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 0 18px;
+
+    border: 1.5px solid transparent;
+    border-radius: var(--radius-pill);
+
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+.pv-btn:active { transform: scale(0.98); }
+
+.pv-btn--gold { background: var(--gold); color: var(--navy); }
+.pv-btn--gold:hover { background: #f0ab2c; }
+
+.pv-btn--ghost { border-color: var(--navy); background: transparent; color: var(--navy); }
+.pv-btn--ghost:hover { background: rgba(32, 58, 104, 0.06); }
+
+html[data-theme="dark"] .pv-btn--ghost { border-color: var(--border-medium); color: var(--text-primary); }
+
+
+/* ---------- Top bar: Log in / Create an Account instead of the bell and profile ---------- */
+
+.pv-topbar { display: flex; align-items: center; gap: 10px; }
+
+/* The top bar normally floats in the corner; with the preview bar it sits in its own row */
+:is(.landlord-dashboard, .renter-dashboard):has(.pv-bar) .dashboard-topbar {
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 14px !important;
+}
+
+
+/* ---------- The bar at the top of the page ---------- */
+
+.pv-bar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+
+    margin: 0 0 20px;
+    padding: 12px 16px;
+
+    border: 1px solid rgba(245, 185, 76, 0.5);
+    border-radius: var(--radius-md);
+    background: rgba(245, 185, 76, 0.14);
+
+    color: var(--text-primary);
+    font-size: 13.5px;
+    line-height: 1.5;
+}
+
+.pv-bar p { flex: 1; min-width: 0; margin: 0; }
+.pv-bar strong { font-weight: 700; }
+
+.pv-bar-badge {
+    flex-shrink: 0;
+    padding: 3px 10px;
+    border-radius: var(--radius-pill);
+    background: var(--navy);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+@media (max-width: 720px) {
+    .pv-bar { flex-wrap: wrap; }
+    .pv-bar .pv-btn { width: 100%; }
+}
+
+
+/* ---------- Locked sidebar tabs and the logout link ---------- */
+
+.is-preview .sidebar-logout { display: none; }
+
+.sidebar-link.pv-locked { opacity: 0.55; }
+
+.sidebar-link.pv-locked .sidebar-label::after {
+    content: "";
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    margin-left: 6px;
+    vertical-align: -1px;
+    background: currentColor;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='11' width='14' height='9' rx='2'/%3E%3Cpath d='M8 11V8a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E") center / contain no-repeat;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='11' width='14' height='9' rx='2'/%3E%3Cpath d='M8 11V8a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* The chart's month dropdown can't load other months in the preview */
+.is-preview [data-lh-month]:disabled { opacity: 0.7; cursor: not-allowed; }
+
+
+/* ---------- "Create a free account to …" ---------- */
+
+.pv-prompt {
+    width: min(420px, calc(100vw - 32px));
+    margin: auto;
+    padding: 30px 26px 18px;
+
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: var(--white);
+    color: var(--text-primary);
+    box-shadow: 0 24px 60px rgba(20, 30, 50, 0.25);
+
+    text-align: center;
+}
+
+.pv-prompt[open] { display: grid; justify-items: center; gap: 10px; animation: pv-pop 0.2s ease; }
+.pv-prompt::backdrop { background: rgba(10, 18, 34, 0.45); }
+
+@keyframes pv-pop { from { opacity: 0; transform: translateY(8px) scale(0.98); } }
+
+.pv-prompt-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.pv-prompt-close:hover { background: rgba(32, 58, 104, 0.08); }
+.pv-prompt-close svg { width: 18px; height: 18px; }
+
+.pv-prompt-icon {
+    display: grid;
+    place-items: center;
+    width: 58px;
+    height: 58px;
+    margin-bottom: 4px;
+    border-radius: 50%;
+    background: rgba(245, 185, 76, 0.22);
+    color: var(--navy);
+}
+
+.pv-prompt-icon svg { width: 28px; height: 28px; }
+
+.pv-prompt h2 { margin: 0; color: var(--navy); font-size: 20px; font-weight: 700; line-height: 1.3; }
+.pv-prompt p { margin: 0; color: var(--text-secondary); font-size: 14px; line-height: 1.55; }
+
+html[data-theme="dark"] .pv-prompt h2,
+html[data-theme="dark"] .pv-prompt-icon { color: var(--text-primary); }
+
+.pv-prompt-actions {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 10px;
+    width: 100%;
+    margin-top: 12px;
+}
+
+.pv-prompt-actions .pv-btn { min-height: 44px; }
+
+.pv-prompt-keep {
+    padding: 6px 10px;
+    border: 0;
+    background: none;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.pv-prompt-keep:hover { color: var(--navy); text-decoration: underline; }
