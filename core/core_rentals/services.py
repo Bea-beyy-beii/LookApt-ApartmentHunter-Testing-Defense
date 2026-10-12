@@ -294,6 +294,7 @@ def _initials(name):
 
 def _decorate(tenancy, on):
     tenancy.initials = _initials(tenancy.tenant_name)
+    tenancy.avatar_url = tenancy.renter.user.avatar_url if tenancy.renter_id else ""     # their profile photo
     tenancy.occupant_count = max(1, len(tenancy.occupants))
     tenancy.is_app_user = tenancy.renter_id is not None
     # The term running now (leases renew until completed/terminated)
@@ -409,7 +410,11 @@ def get_renter_rentals_context(user):
         _decorate(tenancy, on)
         unit = tenancy.unit
         tenancy.cover_url = _cover_url(unit.pictures.all()) or _cover_url(unit.complex.pictures.all())
-        tenancy.landlord_name = unit.complex.landlord.user.display_name
+        landlord = unit.complex.landlord.user
+        tenancy.landlord_name = landlord.display_name
+        tenancy.landlord_initials = landlord.initials
+        tenancy.landlord_avatar = landlord.avatar_url
+        tenancy.landlord_contact = landlord.shared_contact      # only what they chose to show (Settings)
         tenancy.upcoming = tenancy.start_date > on
         tenancy.days_to_start = (tenancy.start_date - on).days
         (current if tenancy.is_active else past).append(tenancy)

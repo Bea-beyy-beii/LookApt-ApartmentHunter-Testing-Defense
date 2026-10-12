@@ -1,0 +1,271 @@
+/* =========================================================
+   RENTAL HISTORY (renter dashboard): core_rentals/renter_rentals.html
+   Prefix: rh-. Same panels as Inquiries / Reports Filed: white card,
+   18px corners, a header row with an icon, then the content.
+   Colours come from the theme variables, so dark mode needs nothing extra.
+========================================================= */
+
+#rentals-section { width: 100%; }
+
+.rh { display: grid; gap: 18px; }
+
+.rh-panel {
+    overflow: hidden;
+    border: 1px solid var(--border-light);
+    border-radius: 18px;
+    background: var(--white);
+    box-shadow: 0 8px 28px rgba(32, 58, 104, 0.06);
+}
+
+.rh-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 62px;
+    padding: 0 22px;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.rh-panel-title { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.rh-panel-title > svg { width: 20px; height: 20px; color: var(--navy); }
+.rh-panel-title h2 { margin: 0; color: var(--navy); font-size: 15px; font-weight: 700; }
+
+.rh-count {
+    display: grid;
+    place-items: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: rgba(32, 58, 104, 0.08);
+    color: var(--navy);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+html[data-theme="dark"] :is(.rh-panel-title > svg, .rh-panel-title h2, .rh-count) { color: var(--text-primary); }
+html[data-theme="dark"] .rh-count { background: rgba(255, 255, 255, 0.1); }
+
+
+/* ---------- Current rental ---------- */
+
+.rh-current {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    gap: 22px;
+    padding: 20px 22px 22px;
+}
+
+.rh-current + .rh-current { border-top: 1px solid var(--border-light); }
+
+.rh-cover {
+    text-decoration: none;
+    display: block;
+    overflow: hidden;
+    aspect-ratio: 4 / 3;
+    border-radius: 14px;
+    background: rgba(32, 58, 104, 0.06);
+}
+
+.rh-cover img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.25s ease; }
+.rh-cover:hover img { transform: scale(1.03); }
+
+.rh-cover-empty {
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 6px;
+    height: 100%;
+    color: var(--text-secondary);
+    font-size: 12.5px;
+}
+
+.rh-cover-empty svg { width: 34px; height: 34px; opacity: 0.7; }
+
+.rh-current-body { display: grid; align-content: start; gap: 16px; min-width: 0; }
+
+.rh-current-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.rh-current-top h3 { margin: 0 0 4px; color: var(--navy); font-size: 19px; font-weight: 700; }
+html[data-theme="dark"] .rh-current-top h3 { color: var(--text-primary); }
+
+.rh-location {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.rh-location svg { flex-shrink: 0; width: 15px; height: 15px; }
+
+/* Rental period · rent · unit · landlord */
+.rh-facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0;
+}
+
+.rh-facts > div {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    column-gap: 12px;
+    align-items: center;
+    padding: 12px 14px;
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+}
+
+.rh-facts > div > :first-child { grid-row: 1 / 4; align-self: center; }
+.rh-facts dt { color: var(--text-secondary); font-size: 12px; }
+.rh-facts dd { margin: 1px 0 0; overflow-wrap: anywhere; color: var(--text-primary); font-size: 14px; font-weight: 700; }
+.rh-facts small { color: var(--text-secondary); font-size: 12px; }
+
+.rh-fact-icon {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: rgba(245, 185, 76, 0.16);
+    color: #b97c12;
+}
+
+.rh-fact-icon svg { width: 19px; height: 19px; }
+
+.rh-avatar {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    overflow: hidden;
+    border-radius: 50%;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+/* Rent status under Monthly Rent */
+.rh-pay { font-weight: 700; }
+.rh-pay--paid { color: var(--success) !important; }
+.rh-pay--due_soon { color: #b97c12 !important; }
+.rh-pay--overdue { color: var(--error) !important; }
+
+
+/* ---------- Status pills ---------- */
+
+.rh-status {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 11px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.rh-status i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.rh-status--active, .rh-status--completed { background: rgba(61, 139, 92, 0.12); color: var(--success); }
+.rh-status--terminated { background: rgba(201, 75, 75, 0.1); color: var(--error); }
+
+
+/* ---------- Past rentals ---------- */
+
+.rh-list { margin: 0; padding: 0; list-style: none; }
+
+.rh-row {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1.6fr) minmax(0, 1.1fr) minmax(0, 0.8fr) minmax(0, 0.7fr) auto;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 22px;
+}
+
+.rh-row + .rh-row { border-top: 1px solid var(--border-light); }
+.rh-row:hover { background: rgba(32, 58, 104, 0.025); }
+
+.rh-thumb {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    overflow: hidden;
+    border-radius: 12px;
+    background: rgba(32, 58, 104, 0.06);
+    color: var(--text-secondary);
+}
+
+.rh-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.rh-thumb svg { width: 24px; height: 24px; opacity: 0.7; }
+
+.rh-row-main { display: grid; gap: 3px; min-width: 0; }
+.rh-row-main strong { overflow: hidden; color: var(--text-primary); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+
+.rh-row-main small {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    overflow: hidden;
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    white-space: nowrap;
+}
+
+.rh-row-main small svg { flex-shrink: 0; width: 13px; height: 13px; }
+
+.rh-row-fact { display: grid; gap: 3px; min-width: 0; }
+.rh-row-fact span { color: var(--text-secondary); font-size: 11.5px; }
+.rh-row-fact strong { color: var(--text-primary); font-size: 13.5px; }
+
+
+/* ---------- Empty (same as Inquiries) ---------- */
+
+.rh-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 240px;
+    padding: 40px 30px;
+    text-align: center;
+}
+
+.rh-empty--small { min-height: 190px; }
+
+.rh-empty-icon {
+    display: grid;
+    place-items: center;
+    width: 54px;
+    height: 54px;
+    margin-bottom: 14px;
+    border-radius: 50%;
+    background: rgba(32, 58, 104, 0.07);
+    color: var(--navy);
+}
+
+.rh-empty-icon svg { width: 25px; height: 25px; }
+.rh-empty h3 { margin: 0 0 6px; color: var(--navy); font-size: 15px; font-weight: 700; }
+.rh-empty p { max-width: 320px; margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.55; }
+html[data-theme="dark"] :is(.rh-empty h3, .rh-empty-icon) { color: var(--text-primary); }
+
+
+/* ---------- Smaller screens ---------- */
+
+@media (max-width: 1100px) {
+    .rh-current { grid-template-columns: 200px minmax(0, 1fr); }
+    .rh-row { grid-template-columns: 56px minmax(0, 1fr) auto auto; }
+    .rh-row-fact:nth-of-type(n + 3) { display: none; }      /* keep the period, hide rent + unit */
+}
+
+@media (max-width: 760px) {
+    .rh-current { grid-template-columns: 1fr; }
+    .rh-cover { aspect-ratio: 16 / 9; }
+    .rh-facts { grid-template-columns: 1fr; }
+    .rh-current-top { flex-direction: column; }
+    .rh-row { grid-template-columns: 48px minmax(0, 1fr) auto; padding: 12px 16px; }
+    .rh-thumb { width: 48px; height: 48px; }
+    .rh-row-fact { display: none; }
+}

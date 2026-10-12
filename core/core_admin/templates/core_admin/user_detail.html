@@ -8,7 +8,7 @@
 {% block content %}
 <div class="ap-page-head">
     <div class="ap-person ap-person--big">
-        <span class="ap-avatar" aria-hidden="true">{{ account.first_name|first|upper }}{{ account.last_name|first|upper }}</span>
+        <span class="ap-avatar ap-avatar--{{ account.role }}" aria-hidden="true">{% if account.avatar %}<img src="{{ account.avatar.url }}" alt="">{% else %}{{ account.initials }}{% endif %}</span>
         <span>
             <h1>{{ account.display_name }}</h1>
             <p>{{ account.get_role_display }} · @{{ account.username }} · joined {{ account.date_joined|date:"M j, Y" }}

@@ -58,7 +58,7 @@
                 {% for a in group.applications %}
                     <div class="wl-row">
                         <div class="rq-person">
-                            <span class="rq-avatar" aria-hidden="true">{{ a.renter_initials }}</span>
+                            <span class="rq-avatar avatar--renter" aria-hidden="true">{% if a.renter_avatar %}<img src="{{ a.renter_avatar }}" alt="">{% else %}{{ a.renter_initials }}{% endif %}</span>
                             <span class="rq-stack">
                                 <strong>{{ a.renter_name }}</strong>
                                 <small>{{ a.occupants|length }} tenant{{ a.occupants|length|pluralize }}</small>

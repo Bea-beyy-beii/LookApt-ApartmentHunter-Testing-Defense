@@ -523,7 +523,7 @@
             if (!button) return;
             renter = button.dataset.renter;
             dialog.querySelector("[data-chat-name]").textContent = button.dataset.name;
-            dialog.querySelector("[data-chat-initials]").textContent = button.dataset.initials;
+            Chat.setAvatar(dialog.querySelector("[data-chat-initials]"), button.dataset.avatar, button.dataset.initials, button.dataset.role);
             dialog.querySelector("[data-chat-subject]").textContent = button.dataset.subject;
             showError("");
             picker.clear();

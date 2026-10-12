@@ -1,6 +1,6 @@
 {% comment %}
     Opens the request chat pop-up (requests.js) with the other person.
-    `chat` = workflow._chat(): name, initials, subject, detail_url, send_url, send_params, preview...
+    `chat` = workflow._chat(): name, initials, avatar, role, subject, detail_url, send_url, send_params, preview...
     bubble=True -> the latest message in a bubble (request cards); otherwise a "Message" link.
 {% endcomment %}
 {% load listing_tags %}
@@ -9,6 +9,8 @@
         data-open-request-chat
         data-name="{{ chat.name }}"
         data-initials="{{ chat.initials }}"
+        data-avatar="{{ chat.avatar }}"
+        data-role="{{ chat.role }}"
         data-subject="{{ chat.subject }}"
         data-detail-url="{{ chat.detail_url }}"
         data-send-url="{{ chat.send_url }}"

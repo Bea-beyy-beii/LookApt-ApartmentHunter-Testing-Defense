@@ -20,7 +20,8 @@
 
 .avatar.profile-picture { width: 40px; height: 40px; font-size: 14px; }
 
-:is(.avatar, .rq-avatar, .ld-landlord-avatar) img {
+:is(.avatar, .rq-avatar, .ld-landlord-avatar, .thread-avatar, .conversation-avatar, .rt-avatar, .rp-avatar, .rh-avatar,
+    .lm-chat-avatar) img {
     display: block;
     width: 100%;
     height: 100%;
@@ -28,12 +29,18 @@
     border-radius: 50%;
 }
 
-:is(.rq-avatar, .ld-landlord-avatar):has(img) { overflow: hidden; padding: 0; }
+:is(.rq-avatar, .ld-landlord-avatar, .thread-avatar, .conversation-avatar, .rt-avatar, .rp-avatar, .rh-avatar,
+    .lm-chat-avatar):has(img) { overflow: hidden; padding: 0; }
 
 /* (html:root body = beats the dashboards' own avatar colours, dark mode included) */
 html:root body .avatar--landlord { background: #2f6bd1; color: #fff; }
 html:root body .avatar--renter { background: var(--gold); color: #203a68; }
+/* An uploaded photo keeps the role colour as a ring (drawn inside, so it's never clipped) */
 html:root body :is(.avatar--landlord, .avatar--renter):has(img) { background: transparent; }
+:is(.avatar--landlord, .avatar--renter):has(img) { outline: 2.5px solid; outline-offset: -2.5px; }
+.avatar--landlord:has(img) { outline-color: #2f6bd1; }
+.avatar--renter:has(img) { outline-color: var(--gold); }
+.ac-avatar:has(img) { outline-width: 4px; outline-offset: -4px; }
 
 
 /* ---------- Pop-up ---------- */
@@ -253,6 +260,7 @@ html[data-theme="dark"] .ac-switch input:checked + i { background: var(--gold); 
 .ac-btn--danger { border-color: rgba(201, 75, 75, 0.45); background: transparent; color: var(--error); }
 .ac-btn--danger:hover { background: rgba(201, 75, 75, 0.08); }
 .ac-btn:disabled { opacity: 0.6; cursor: progress; }
+.ac-btn[hidden] { display: none; }          /* e.g. Remove photo when there's no photo */
 
 .ac-status { min-height: 1em; margin: 0; color: var(--success); font-size: 12.5px; font-weight: 600; }
 .ac-status.is-error { color: var(--error); }
@@ -261,3 +269,85 @@ html[data-theme="dark"] .ac-switch input:checked + i { background: var(--gold); 
     .ac-photo { flex-direction: column; align-items: flex-start; }
     .ac-details > div { grid-template-columns: 1fr; gap: 2px; }
 }
+
+
+/* ---------- "Adjust your photo" (account.js cropper) ---------- */
+
+.ac-crop {
+    width: min(380px, calc(100vw - 32px));
+    margin: auto;
+    padding: 22px 22px 18px;
+
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: var(--white);
+    color: var(--text-primary);
+    box-shadow: 0 24px 60px rgba(20, 30, 50, 0.3);
+}
+
+.ac-crop[open] { display: grid; gap: 12px; animation: ac-pop 0.18s ease; }
+.ac-crop::backdrop { background: rgba(10, 18, 34, 0.55); }
+.ac-crop h3 { margin: 0; color: var(--navy); font-size: 18px; font-weight: 700; }
+html[data-theme="dark"] .ac-crop h3 { color: var(--text-primary); }
+.ac-crop .ac-hint { margin: -6px 0 0; }
+
+/* The photo can be dragged anywhere in the square; the circle is what's saved */
+.ac-crop-stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    overflow: hidden;
+
+    border-radius: 14px;
+    background: #1b2333;
+    touch-action: none;           /* our own drag / pinch instead of page scrolling */
+    cursor: grab;
+    user-select: none;
+}
+
+.ac-crop-stage:active { cursor: grabbing; }
+.ac-crop-stage:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+
+.ac-crop-stage img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    max-width: none;
+    height: auto;
+    transform-origin: 0 0;
+    pointer-events: none;
+}
+
+/* Darkens everything outside the circle (7% inset = the margin in account.js) */
+.ac-crop-mask {
+    position: absolute;
+    inset: 7%;
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    box-shadow: 0 0 0 999px rgba(10, 18, 34, 0.55);
+    pointer-events: none;
+}
+
+.ac-crop-zoom { display: flex; align-items: center; gap: 8px; }
+
+.ac-crop-zoom button {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.ac-crop-zoom button:hover { background: rgba(32, 58, 104, 0.08); color: var(--navy); }
+.ac-crop-zoom svg { width: 20px; height: 20px; }
+.ac-crop-zoom input { flex: 1; accent-color: var(--navy); cursor: pointer; }
+html[data-theme="dark"] .ac-crop-zoom input { accent-color: var(--gold); }
+
+.ac-crop-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; margin-top: 4px; }
+.ac-crop-actions .ac-btn { min-height: 42px; }

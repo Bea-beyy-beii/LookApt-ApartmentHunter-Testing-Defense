@@ -9,7 +9,7 @@
                     <tr>
                         <td>
                             <a class="ap-person" href="{% url 'core_admin:report_detail' r.pk %}">
-                                <span class="ap-avatar ap-avatar--red" aria-hidden="true">{{ r.reported_user.first_name|first|upper }}{{ r.reported_user.last_name|first|upper }}</span>
+                                <span class="ap-avatar ap-avatar--red ap-avatar--{{ r.reported_user.role }}" aria-hidden="true">{% if r.reported_user.avatar %}<img src="{{ r.reported_user.avatar.url }}" alt="">{% else %}{{ r.reported_user.initials }}{% endif %}</span>
                                 <span><strong>{{ r.reported_user.display_name }}
                                     {% if r.repeat_count >= 2 %}<span class="ap-flag" title="{{ r.repeat_count }} reports received">{% ap_icon "warning" 14 %} {{ r.repeat_count }}</span>{% endif %}</strong>
                                     <small>{{ r.reported_user.get_role_display }}</small></span>

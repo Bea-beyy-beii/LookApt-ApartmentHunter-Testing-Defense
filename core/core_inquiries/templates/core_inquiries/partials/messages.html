@@ -14,9 +14,12 @@
                     data-reply-url="{% url 'core_inquiries:conversation_reply' conversation.pk %}"
                     data-action="open-conversation"
                     data-search="{{ conversation.other_user.display_name }} {{ conversation.subject }} {{ conversation.complex.complex_name }}"
+                    data-initials="{{ conversation.other_initials|default:'U' }}"
+                    data-avatar="{{ conversation.other_user.avatar_url }}"
+                    data-role="{{ conversation.other_user.role }}"
                 >
-                    <span class="thread-avatar">
-                        <span class="thread-avatar-fallback">{{ conversation.other_initials|default:"U" }}</span>
+                    <span class="thread-avatar avatar--{{ conversation.other_user.role }}">
+                        {% if conversation.other_user.avatar %}<img src="{{ conversation.other_user.avatar_url }}" alt="">{% else %}<span class="thread-avatar-fallback">{{ conversation.other_initials|default:"U" }}</span>{% endif %}
                     </span>
 
                     <span class="thread-details">
