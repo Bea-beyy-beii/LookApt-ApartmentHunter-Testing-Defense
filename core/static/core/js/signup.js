@@ -41,7 +41,10 @@
         const target = active.querySelector(".has-error input, .has-error select")
             || active.querySelector("[data-legal-box], input, select");
         target?.focus({ preventScroll: true });
-        if (active.contains(legalBox)) updateLegal();      // the box only has a size once it's visible
+        if (active.contains(legalBox)) {                  // the box only has a size once it's visible
+            fitLegalBox();
+            updateLegal();
+        }
     }
 
 
@@ -67,9 +70,24 @@
         legalHint.hidden = readToEnd;
     }
 
+    // Keep step 5 on one screen: shrink the Terms box until the page no longer scrolls
+    // (never below 160px; on a very short screen the page may still scroll a little)
+    function fitLegalBox() {
+        if (!legalBox || !steps[current - 1].contains(legalBox)) return;
+        const root = document.documentElement;
+        legalBox.style.maxHeight = "";                   // start from the CSS height (340px at most)
+        for (let i = 0; i < 3; i++) {                    // a few passes: the page zoom can round the numbers
+            const overflow = root.scrollHeight - root.clientHeight;
+            if (overflow <= 0) break;
+            const height = Math.max(160, legalBox.offsetHeight - overflow);
+            if (height >= legalBox.offsetHeight) break;
+            legalBox.style.maxHeight = `${height}px`;
+        }
+    }
+
     if (legalBox && agree) {
         legalBox.addEventListener("scroll", updateLegal, { passive: true });
-        window.addEventListener("resize", updateLegal);
+        window.addEventListener("resize", () => { fitLegalBox(); updateLegal(); });
         // Terms / Privacy shortcuts scroll inside the box
         form.querySelectorAll("[data-legal-jump]").forEach(button => button.addEventListener("click", () => {
             const section = document.getElementById(button.dataset.legalJump);
