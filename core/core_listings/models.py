@@ -196,6 +196,7 @@ class Unit(models.Model):
     # The unit's own status. While its complex is unpublished the unit is shown as
     # unpublished (listed_availability) but keeps this value, so publishing the
     # complex again brings each unit back as it was.
+
     availability = models.CharField(max_length=15, choices=Availability.choices, default=Availability.AVAILABLE)
 
     # When the current tenant's lease started (occupied units). Used for the

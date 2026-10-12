@@ -249,6 +249,7 @@ ANTHROPIC_API_KEY = env('ANTHROPIC_API_KEY', default='')
 VERIFICATION_AI_MODEL = env('VERIFICATION_AI_MODEL', default='claude-opus-5-5')
 
 
+
 AUTH_USER_MODEL = 'core.User'
 AUTHENTICATION_BACKENDS = ['core.core_accounts.backends.PhoneOrUsernameBackend']
 LOGIN_URL = 'login'

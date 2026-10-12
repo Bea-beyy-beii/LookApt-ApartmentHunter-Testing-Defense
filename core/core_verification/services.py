@@ -61,6 +61,7 @@ def can_publish(user):
     return user.is_verified
 
 
+
 NOT_VERIFIED_TO_POST = "Verify your account first: you can post bulletins and file reports once you're approved."
 
 

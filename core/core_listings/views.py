@@ -26,10 +26,9 @@ from .detail_services import (
     complex_detail_context, get_renter_complex, get_renter_unit, record_view, unit_detail_context,
 )
 
-
 NOT_VERIFIED = "Verify your account first: listings can be published once you're approved."
-COMPLEX_UNPUBLISHED = "This complex is unpublished. Publish it first to change its units' status."
 
+COMPLEX_UNPUBLISHED = "This complex is unpublished. Publish it first to change its units' status."
 
 def _my_listings_url(saved=False):
     # The listings page lives inside the landlord dashboard.
@@ -102,6 +101,7 @@ def listings(request):
 def _warn_if_not_verified(request, form):
     if form.data.get("visibility") == Complex.ComplexStatus.ACTIVE and not can_publish(request.user):
         messages.warning(request, f"It was saved as unpublished. {NOT_VERIFIED}")
+
 
 
 @role_required("landlord")
@@ -378,6 +378,7 @@ def unit_set_availability(request, pk):
             return JsonResponse({"error": COMPLEX_UNPUBLISHED}, status=400)
         messages.error(request, COMPLEX_UNPUBLISHED)
         return redirect(_my_listings_url())
+
 
     unit.availability = availability
     unit.save(update_fields=["availability", "updated_at"])

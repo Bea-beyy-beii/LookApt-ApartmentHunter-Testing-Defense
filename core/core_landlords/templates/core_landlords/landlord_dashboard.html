@@ -21,6 +21,7 @@
 
 {% block content %}
 
+
 {# Verification: status banner + welcome, and the upload pop-up (core_verification) #}
 {% include "core_verification/status.html" %}
 {% include "core_verification/upload.html" %}
@@ -127,23 +128,11 @@
 
 {% block extra_js %}
 
+    
     <script src="{% static 'core_verification/verification.js' %}" defer></script>
-
-    <script
-        src="{% static 'core_inquiries/chat.js' %}"
-        defer
-    ></script>
-
-    <script
-        src="{% static 'core_inquiries/inquiries.js' %}"
-        defer
-    ></script>
-
-    <script
-        src="{% static 'core_reports/reports.js' %}"
-        defer
-    ></script>
-
+    <script src="{% static 'core_inquiries/chat.js' %}" defer></script>
+    <script src="{% static 'core_inquiries/inquiries.js' %}" defer></script>
+    <script src="{% static 'core_reports/reports.js' %}" defer></script>
     <script src="{% static 'core_rentals/rentals.js' %}" defer></script>
     <script src="{% static 'core_inquiries/requests.js' %}" defer></script>
     <script src="{% static 'core/js/landlord_home.js' %}" defer></script>
