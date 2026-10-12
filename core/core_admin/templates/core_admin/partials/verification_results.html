@@ -12,7 +12,7 @@
                     <tr>
                         <td>
                             <a class="ap-person" href="{% url 'core_admin:verification_detail' v.pk %}">
-                                <span class="ap-avatar" aria-hidden="true">{{ u.first_name|first|upper }}{{ u.last_name|first|upper }}</span>
+                                <span class="ap-avatar ap-avatar--{{ u.role }}" aria-hidden="true">{% if u.avatar %}<img src="{{ u.avatar.url }}" alt="">{% else %}{{ u.initials }}{% endif %}</span>
                                 <span><strong>{{ u.display_name }}</strong><small>{{ u.email|default:u.phone_number }}</small></span>
                             </a>
                         </td>

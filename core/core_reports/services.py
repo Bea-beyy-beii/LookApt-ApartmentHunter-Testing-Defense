@@ -49,7 +49,7 @@ def _initials(user):
 # =========================================================
 
 def reportable_people(user):
-    """[{id, name, initials, detail, verified}] the user may report, sorted by name."""
+    """[{id, name, initials, avatar, role, detail, verified}] the user may report, sorted by name."""
     people = {}
 
     def add(person, detail):
@@ -57,6 +57,7 @@ def reportable_people(user):
             return
         entry = people.setdefault(person.pk, {
             "id": str(person.pk), "name": person.display_name, "initials": _initials(person),
+            "avatar": person.avatar_url, "role": person.role,
             "verified": person.is_verified, "details": [],
         })
         if detail and detail not in entry["details"]:
@@ -196,6 +197,8 @@ def get_reports_context(user):
         other = report.reported_user
         report.other_name = other.display_name
         report.other_initials = _initials(other)
+        report.other_avatar = other.avatar_url
+        report.other_role_key = other.role
         report.other_role = other.get_role_display()
         report.reason = report.other_category_text if report.category == "others" and report.other_category_text \
             else labels.get(report.category, report.get_category_display())

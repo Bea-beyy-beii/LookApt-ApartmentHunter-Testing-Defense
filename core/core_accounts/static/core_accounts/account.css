@@ -20,7 +20,8 @@
 
 .avatar.profile-picture { width: 40px; height: 40px; font-size: 14px; }
 
-:is(.avatar, .rq-avatar, .ld-landlord-avatar) img {
+:is(.avatar, .rq-avatar, .ld-landlord-avatar, .thread-avatar, .conversation-avatar, .rt-avatar, .rp-avatar, .rh-avatar,
+    .lm-chat-avatar) img {
     display: block;
     width: 100%;
     height: 100%;
@@ -28,12 +29,18 @@
     border-radius: 50%;
 }
 
-:is(.rq-avatar, .ld-landlord-avatar):has(img) { overflow: hidden; padding: 0; }
+:is(.rq-avatar, .ld-landlord-avatar, .thread-avatar, .conversation-avatar, .rt-avatar, .rp-avatar, .rh-avatar,
+    .lm-chat-avatar):has(img) { overflow: hidden; padding: 0; }
 
 /* (html:root body = beats the dashboards' own avatar colours, dark mode included) */
 html:root body .avatar--landlord { background: #2f6bd1; color: #fff; }
 html:root body .avatar--renter { background: var(--gold); color: #203a68; }
+/* An uploaded photo keeps the role colour as a ring (drawn inside, so it's never clipped) */
 html:root body :is(.avatar--landlord, .avatar--renter):has(img) { background: transparent; }
+:is(.avatar--landlord, .avatar--renter):has(img) { outline: 2.5px solid; outline-offset: -2.5px; }
+.avatar--landlord:has(img) { outline-color: #2f6bd1; }
+.avatar--renter:has(img) { outline-color: var(--gold); }
+.ac-avatar:has(img) { outline-width: 4px; outline-offset: -4px; }
 
 
 /* ---------- Pop-up ---------- */

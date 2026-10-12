@@ -169,3 +169,80 @@ class AccountPopupTests(TestCase):
             shown = landlord_summary(complex_obj)
         self.assertEqual((hidden["email"], hidden["phone"]), ("", ""))
         self.assertEqual((shown["email"], shown["phone"]), ("", "09111111111"))
+
+
+# ------------------------------------------------------------------ profile photos around the app
+
+@override_settings(STORAGES=MEMORY_STORAGES)
+class PhotosEverywhereTests(TestCase):
+    """The profile photo (or initials) shows wherever the other person appears."""
+
+    def setUp(self):
+        from datetime import date, timedelta
+
+        from core.core_inquiries.models import Conversation, Message
+        from core.core_listings.models import Area, Complex, Unit
+        from core.core_rentals.models import Tenancy
+
+        patcher = _mock.patch.object(User._meta.get_field("avatar"), "storage", InMemoryStorage())
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+        def make(username, role, phone):
+            user = User.objects.create_user(username=username, password="pw-12345!", first_name=username.title(),
+                                            last_name="Test", phone_number=phone, sex="female", role=role,
+                                            email=f"{username}@example.com")
+            (Landlord if role == "landlord" else Renter).objects.create(user=user)
+            return user
+
+        self.landlord = make("liza", "landlord", "09111111111")
+        self.renter = make("rina", "renter", "09222222222")
+        from .account import save_avatar
+        save_avatar(self.landlord, photo())
+        save_avatar(self.renter, photo("r.png"))
+
+        complex_obj = Complex.objects.create(
+            landlord=self.landlord.landlord, area=Area.objects.create(area_name="Davao City"),
+            complex_name="Sunrise", address="Poblacion", complex_description="x",
+            min_price=5000, max_price=9000, status="active", lease_term="monthly")
+        unit = Unit.objects.create(complex=complex_obj, identifier=101, bedroom_type="studio", width_dimension=4,
+                                   length_dimension=5, furnish_level="unfurnished", max_occupant=2, price=8000)
+        today = date.today()
+        Tenancy.objects.create(unit=unit, renter=self.renter.renter, tenant_name="Rina Test", occupants=["Rina Test"],
+                               monthly_rent=8000, start_date=today - timedelta(days=10),
+                               end_date=today + timedelta(days=200), status="active")
+        Tenancy.objects.create(unit=unit, renter=self.renter.renter, tenant_name="Rina Test", occupants=["Rina Test"],
+                               monthly_rent=7500, start_date=date(2024, 1, 1), end_date=date(2024, 12, 31),
+                               ended_on=date(2024, 12, 31), status="completed")
+        conversation = Conversation.objects.create(renter=self.renter.renter, landlord=self.landlord.landlord,
+                                                   complex=complex_obj, unit=unit)
+        Message.objects.create(conversation=conversation, sender=self.renter, body="Hello!")
+
+    def test_rental_history(self):
+        self.client.force_login(self.renter)
+        response = self.client.get(reverse("core_renters:dashboard") + "?tab=rentals")
+        self.assertContains(response, "rental_history.css")
+        self.assertContains(response, "Current Rental")
+        self.assertContains(response, "Past Rentals")
+        self.assertContains(response, 'class="rh-avatar avatar--landlord"')
+        self.assertContains(response, self.landlord.avatar_url)
+        self.assertContains(response, "rh-status--completed")
+
+    def test_manage_rentals_shows_the_tenant_photo(self):
+        self.client.force_login(self.landlord)
+        response = self.client.get(reverse("core_landlords:dashboard") + "?tab=rentals")
+        self.assertContains(response, 'class="rt-avatar avatar--renter"')
+        self.assertContains(response, f'data-avatar="{self.renter.avatar_url}"')
+
+    def test_chat_threads_carry_the_photo(self):
+        from core.core_inquiries.services import inbox_json
+        thread = inbox_json(self.landlord)["threads"][0]
+        self.assertEqual((thread["other_avatar"], thread["other_role"]), (self.renter.avatar_url, "renter"))
+        self.client.force_login(self.renter)
+        response = self.client.get(reverse("core_renters:dashboard") + "?tab=inquiries")
+        self.assertContains(response, 'class="thread-avatar avatar--landlord"')
+
+    def test_report_people_carry_the_photo(self):
+        from core.core_reports.services import reportable_people
+        person = reportable_people(self.renter)[0]
+        self.assertEqual((person["avatar"], person["role"]), (self.landlord.avatar_url, "landlord"))

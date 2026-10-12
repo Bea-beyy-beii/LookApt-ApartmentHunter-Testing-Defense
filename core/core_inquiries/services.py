@@ -434,6 +434,8 @@ def conversation_json(user, conversation, after=None):
         "subject": conversation.subject,
         "other_name": other.display_name,
         "other_initials": initials(other),
+        "other_avatar": other.avatar_url,
+        "other_role": other.role,
         "other_verified": other.is_verified,
         "can_send": can_send(user, conversation),
         "messages": [message_json(user, m) for m in messages],
@@ -496,6 +498,8 @@ def inbox_json(user):
                 "id": str(c.pk),
                 "other_name": c.other_user.display_name,
                 "other_initials": c.other_initials,
+                "other_avatar": c.other_user.avatar_url,
+                "other_role": c.other_user.role,
                 "subject": c.subject,
                 "preview": (("You: " if c.latest_message.sender_id == user.pk else "") + c.latest_message.preview)
                            if c.latest_message else "No messages yet.",
