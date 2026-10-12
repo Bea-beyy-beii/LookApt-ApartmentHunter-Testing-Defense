@@ -71,6 +71,7 @@
                 <button type="button" class="ld-tab" role="tab" data-tab="amenities">{% feature_icon "has_kitchen_area" %} Amenities</button>
                 <button type="button" class="ld-tab" role="tab" data-tab="location">{% feature_icon "location" %} Location</button>
                 <button type="button" class="ld-tab" role="tab" data-tab="reviews">{% feature_icon "star" %} Reviews</button>
+                <button type="button" class="ld-tab" role="tab" data-tab="other">{% feature_icon "unit_type" %} Other Listings</button>
             </div>
 
 
@@ -183,6 +184,30 @@
                     <h3>No reviews yet</h3>
                     <p>Reviews from past and current renters will show up here.</p>
                 </div>
+            </section>
+
+
+            <!-- OTHER LISTINGS: the same landlord's other complexes -->
+            <section class="ld-card ld-panel" role="tabpanel" data-panel="other" hidden>
+
+                <div class="ld-panel-header">
+                    <h2 class="ld-card-title">{% feature_icon "unit_type" %} More from {{ landlord.name }} <span class="ld-count">({{ other_listings|length }})</span></h2>
+                </div>
+
+                {% if other_listings %}
+                    <div class="listing-grid ld-other-grid">
+                        {% for listing in other_listings %}
+                            {% include "core_renters/partials/listing_card.html" with origin=origin %}
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="ld-placeholder">
+                        {% feature_icon "unit_type" %}
+                        <h3>No other listings</h3>
+                        <p>{{ complex.complex_name }} is {{ landlord.name }}'s only listing for now.</p>
+                    </div>
+                {% endif %}
+
             </section>
 
         </div>

@@ -141,6 +141,7 @@ def receivables(user, month, on=None):
         "breakdown": breakdown,
         "upcoming": [r for r in rows if r["status"] in ("due_soon", "not_due")],
         "overdue_rows": [r for r in rows if r["status"] == "overdue"],
+        "paid_rows": [r for r in rows if r["status"] == "paid"],
     }
 
 

@@ -29,6 +29,7 @@
     <link rel="stylesheet" href="{% static 'core/css/components/gallery.css' %}">
     <link rel="stylesheet" href="{% static 'core/css/components/feature_chips.css' %}">
     <link rel="stylesheet" href="{% static 'core/css/components/topbar_menus.css' %}">
+    <link rel="stylesheet" href="{% static 'core/css/components/renter_search.css' %}">
 
     {% block extra_css %}{% endblock %}
 
@@ -144,25 +145,10 @@
 
         <header class="dashboard-topbar">
 
-            <label class="dashboard-search">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <circle cx="11" cy="11" r="7"/>
-                    <path d="m20 20-4-4"/>
-                </svg>
-                <input type="search" placeholder="Search by Area, Name, or Landmark" aria-label="Search listings">
-            </label>
-
-            <button class="filter-button" type="button">
-                <span>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path d="M4 5h16l-6.5 7.3V18l-3 1.5v-7.2z"/>
-                    </svg>
-                    Filter by
-                </span>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="m7 9 5 5 5-5"/>
-                </svg>
-            </button>
+            {# Search bar + "Filter by" (dashboard only: Home and Saved Listings) #}
+            {% if filter_options %}
+                {% include "core_renters/partials/search_filter.html" %}
+            {% endif %}
 
             {% topbar_right %}
 
@@ -179,6 +165,7 @@
 <script src="{% static 'core_maps/maps.js' %}"></script>
 <script src="{% static 'core/js/gallery.js' %}"></script>
 <script src="{% static 'core/js/saved_listings.js' %}"></script>
+<script src="{% static 'core/js/renter_search.js' %}"></script>
 <script src="{% static 'core/js/topbar_menus.js' %}"></script>
 {% block extra_js %}{% endblock %}
 

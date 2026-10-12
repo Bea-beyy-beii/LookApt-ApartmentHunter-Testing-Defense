@@ -72,6 +72,7 @@
 
 .lh-action:hover { background: var(--navy-dark); box-shadow: 0 6px 16px rgba(32, 58, 104, 0.22); }
 .lh-action svg { width: 17px; height: 17px; }
+a.lh-action { text-decoration: none; }     /* Export Financials is a download link */
 
 
 /* ---------- Cards ---------- */
@@ -439,6 +440,28 @@ button.lh-card:hover,
 }
 
 .lr-month button:hover { background: #f6f8fc; }
+
+/* "Download October 2026 as PDF" (core_landlords/export.py) */
+.lr-export {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: 36px;
+    margin: -4px 0 12px;
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    color: var(--navy);
+    font-size: 12.5px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.lr-export svg { width: 15px; height: 15px; }
+.lr-export:hover { border-color: var(--navy); background: #f6f8fc; }
+
+html[data-theme="dark"] .lr-export { border-color: rgba(255, 255, 255, 0.14); color: var(--text-primary); }
+html[data-theme="dark"] .lr-export:hover { border-color: #8fb0e8; background: rgba(255, 255, 255, 0.05); }
 
 .lr-total { display: grid; gap: 8px; padding: 12px; border: 1px solid #edf0f3; border-radius: 12px; }
 .lr-total strong { color: var(--navy); font-size: 18px; }

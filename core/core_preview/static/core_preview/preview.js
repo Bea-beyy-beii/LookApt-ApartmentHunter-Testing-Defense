@@ -35,7 +35,7 @@
         ["[data-save-listing]", "save listings"],
         ["[data-open-bulletin]", "post on the bulletin"],
         ["[data-open-report]", "file a report"],
-        ["[data-lh-coming-soon]", "export your financials"],
+        ["[data-export-financials]", "export your financials"],
         ["[data-lh-month-nav]", "see other months"],
         ["[data-lh-month]", "see other months"],
         ["button[type=submit], input[type=submit]",

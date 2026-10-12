@@ -46,21 +46,32 @@
 
     <div class="home-layout">
 
-        <section
-            class="listing-grid"
-            aria-label="Apartment listings"
-        >
+        <div class="home-listings">
 
-            {% for listing in listings %}
-                {% include "core_renters/partials/listing_card.html" %}
-            {% empty %}
-                <div class="listing-empty">
-                    <h3>No listings yet</h3>
-                    <p>New apartments will show up here as soon as landlords publish them.</p>
-                </div>
-            {% endfor %}
+            {# "3 listings match" + Clear, while searching / filtering (renter_search.js) #}
+            <p class="search-summary" data-search-summary {% if not search_active %}hidden{% endif %}>
+                <span data-search-count>{{ listings|length }} listing{{ listings|length|pluralize }} match{{ listings|length|pluralize:"es," }}</span>
+                <button type="button" data-search-reset>Clear search</button>
+            </p>
 
-        </section>
+            <section
+                class="listing-grid"
+                aria-label="Apartment listings"
+                data-home-grid
+            >
+                {% for listing in listings %}
+                    {% include "core_renters/partials/listing_card.html" %}
+                {% endfor %}
+            </section>
+
+            <div class="listing-empty" data-home-empty {% if listings %}hidden{% endif %}>
+                <h3 data-empty-search {% if not search_active %}hidden{% endif %}>No listings match your search</h3>
+                <p data-empty-search {% if not search_active %}hidden{% endif %}>Try other words, or loosen a filter or two.</p>
+                <h3 data-empty-none {% if search_active %}hidden{% endif %}>No listings yet</h3>
+                <p data-empty-none {% if search_active %}hidden{% endif %}>New apartments will show up here as soon as landlords publish them.</p>
+            </div>
+
+        </div>
 
         <aside class="home-side">
             {% include "core_calendar/partials/calendar_widget.html" %}
@@ -96,8 +107,10 @@
 
 
     <div class="listing-empty" data-saved-empty {% if saved_listings %}hidden{% endif %}>
-        <h3>No saved listings yet</h3>
-        <p>Tap the ribbon on any listing to keep it here for later.</p>
+        <h3 data-empty-search {% if not search_active %}hidden{% endif %}>No saved listings match your search</h3>
+        <p data-empty-search {% if not search_active %}hidden{% endif %}>Try other words, or loosen a filter or two.</p>
+        <h3 data-empty-none {% if search_active %}hidden{% endif %}>No saved listings yet</h3>
+        <p data-empty-none {% if search_active %}hidden{% endif %}>Tap the ribbon on any listing to keep it here for later.</p>
     </div>
 
     <section

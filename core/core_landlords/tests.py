@@ -147,6 +147,32 @@ class HomeTests(TestCase):
         chart = self.client.get(reverse("core_landlords:performance_data"), {"month": "2026-09"})
         self.assertEqual(len(chart.json()["days"]), 30)
 
+    def test_export_financials_pdf(self, *_):
+        from io import BytesIO
+        from pypdf import PdfReader
+
+        paid = self.tenant(self.units[0], date(2026, 9, 5))
+        self.tenant(self.units[1], date(2026, 9, 2))                 # overdue Oct 2
+        RentPayment.objects.create(tenancy=paid, due_date=date(2026, 10, 5), amount=12000, paid_on=TODAY)
+        Tenancy.objects.filter(pk=paid.pk).update(tenant_name="Ana <Cruz> & Co")   # markup must be escaped
+
+        self.client.force_login(self.landlord)
+        response = self.client.get(reverse("core_landlords:export_receivables"), {"month": "2026-10"})
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertIn('filename="LookApt-receivables-2026-10.pdf"', response["Content-Disposition"])
+
+        text = "".join(page.extract_text() for page in PdfReader(BytesIO(response.content)).pages)
+        for expected in ("Monthly Receivables: October 2026", "PHP 12,000 of PHP 24,000 collected (50%)",
+                         "Expected Rental Income", "Overdue (1)", "Paid (1)", "Ana <Cruz> & Co", "Sunrise"):
+            self.assertIn(expected, text)
+
+        # The home button and the drawer link to it
+        home = self.client.get(reverse("core_landlords:dashboard"))
+        self.assertContains(home, reverse("core_landlords:export_receivables"))
+        panel = self.client.get(reverse("core_landlords:receivables_panel"), {"month": "2026-11"})
+        self.assertIn("?month=2026-11", panel.json()["html"])
+
     def test_renters_cannot_use_landlord_endpoints(self, *_):
         self.client.force_login(self.renter)
         self.assertEqual(self.client.get(reverse("core_landlords:receivables_panel")).status_code, 403)
+        self.assertEqual(self.client.get(reverse("core_landlords:export_receivables")).status_code, 403)
