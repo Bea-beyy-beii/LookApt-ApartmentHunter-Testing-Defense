@@ -49,7 +49,7 @@ def renter_preview(request):
         "preview": "renter",
         "preview_tabs": ",".join(RENTER_TABS),
         "active_tab": _tab(request, RENTER_TABS),
-        **get_renter_listings_context(None),          # every published listing, nothing saved
+        **get_renter_listings_context(None, request.GET),   # every published listing, nothing saved
     })
 
 

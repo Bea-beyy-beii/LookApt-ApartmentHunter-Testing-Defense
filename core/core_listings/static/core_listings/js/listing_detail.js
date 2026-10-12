@@ -170,41 +170,6 @@
 
 
     // ---------------------------------------------------------
-    // Not built yet: Apply, Waitlist, Inquire, Landlord profile
-    // ---------------------------------------------------------
-
-    function toast(message) {
-        let stack = document.querySelector(".toast-stack");
-        if (!stack) {
-            stack = document.createElement("div");
-            stack.className = "toast-stack";
-            stack.setAttribute("aria-live", "polite");
-            document.body.append(stack);
-        }
-
-        const item = document.createElement("div");
-        item.className = "toast toast--info";
-        item.setAttribute("role", "status");
-        item.innerHTML = '<span class="toast-text"></span>';
-        item.firstChild.textContent = message;
-        stack.append(item);
-
-        setTimeout(() => {
-            item.classList.add("is-leaving");
-            setTimeout(() => item.remove(), 300);
-        }, 3000);
-    }
-
-    function initComingSoon() {
-        document.addEventListener("click", event => {
-            const button = event.target.closest("[data-coming-soon]");
-            if (!button) return;
-            toast(`${button.dataset.comingSoon} will be available soon.`);
-        });
-    }
-
-
-    // ---------------------------------------------------------
     // Sidebar: highlight the tab the renter came from
     // ---------------------------------------------------------
 
@@ -222,7 +187,6 @@
         document.querySelectorAll("[data-detail-gallery]").forEach(initGallery);
         initUnitFilter();
         initClamp();
-        initComingSoon();
         highlightSidebar();
     });
 

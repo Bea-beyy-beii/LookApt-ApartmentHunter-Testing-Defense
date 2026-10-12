@@ -23,10 +23,13 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         if (updateURL) {
+            // The renter's search / filters (renter_search.js) stay in the URL across tabs
+            const query = new URLSearchParams(document.querySelector("[data-renter-search]") ? window.location.search : "");
+            query.set("tab", tabName);
             window.history.pushState(
                 { tab: tabName },
                 "",
-                `?tab=${tabName}`
+                `?${query}`
             );
         }
     }

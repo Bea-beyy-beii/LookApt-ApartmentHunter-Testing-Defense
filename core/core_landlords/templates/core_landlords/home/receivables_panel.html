@@ -23,6 +23,11 @@
     <button type="button" data-lh-month-nav="{{ r.next_value }}" aria-label="Next month">›</button>
 </div>
 
+<a class="lr-export" href="{% url 'core_landlords:export_receivables' %}?month={{ r.month_value }}" download data-export-financials>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+    Download {{ r.month_label }} as PDF
+</a>
+
 <section class="lr-total">
     <div class="lh-card-row">
         <strong>₱{{ r.paid.amount|floatformat:"0g" }} <em>of ₱{{ r.expected.amount|floatformat:"0g" }} collected</em></strong>

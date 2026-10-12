@@ -22,10 +22,11 @@
                 <button type="button" class="lh-action" data-open-bulletin{% if verification and verification.state != "approved" %} data-verify-required{% endif %}>
                     {% feature_icon "megaphone" %} Post on Bulletin
                 </button>
-                <button type="button" class="lh-action" data-lh-coming-soon="Exporting financials">
+                {# This month's Monthly Receivables as a PDF (other months: the drawer's Download PDF) #}
+                <a class="lh-action" href="{% url 'core_landlords:export_receivables' %}" download data-export-financials>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
                     Export Financials
-                </button>
+                </a>
             </div>
         </div>
 

@@ -147,7 +147,13 @@ def complex_detail_context(complex_obj, user):
         "landmarks": complex_landmarks(complex_obj),
         "landlord": landlord_summary(complex_obj),
         "is_saved": _is_saved(user, complex_obj),
+        "other_listings": _other_listings(complex_obj, user),
     }
+
+
+def _other_listings(complex_obj, user):
+    from core.core_renters.services import landlord_other_listings   # core_renters imports core_listings
+    return landlord_other_listings(complex_obj, user)
 
 
 # =========================================================

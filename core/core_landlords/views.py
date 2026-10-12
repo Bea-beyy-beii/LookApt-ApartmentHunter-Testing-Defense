@@ -1,5 +1,5 @@
 # core_landlords/views.py
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.views.decorators.http import require_GET
@@ -12,6 +12,7 @@ from core.core_reports.services import SUPPORT_EMAIL, get_reports_context
 from core.core_verification.services import verification_context
 
 from . import services
+from .export import receivables_pdf
 
 
 @role_required('landlord')
@@ -44,6 +45,17 @@ def receivables_panel(request):
         request=request,
     )
     return JsonResponse({'html': html})
+
+
+@role_required('landlord')
+@require_GET
+def export_receivables(request):
+    """Export Financials: the Monthly Receivables of ?month=YYYY-MM (default: this month) as a PDF."""
+    month = services.parse_month(request.GET.get('month'), today())
+    r = services.receivables(request.user, month)
+    response = HttpResponse(receivables_pdf(request.user, r), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="LookApt-receivables-{r["month_value"]}.pdf"'
+    return response
 
 
 @role_required('landlord')
