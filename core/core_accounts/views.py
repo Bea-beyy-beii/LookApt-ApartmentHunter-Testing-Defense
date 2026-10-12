@@ -51,9 +51,10 @@ def signup_view(request):
         _send_signup_code(request)
         return redirect('otp')
 
-    # Coming back from the OTP page: keep what they typed (except the password)
+    # Coming back from the OTP page: keep what they typed (except the password).
+    # From the preview's "Sign up" buttons (?role=renter / landlord): that role is picked already.
     return render(request, 'core_accounts/signup.html', {
-        'form_data': AccountService.pending_signup(request) or {},
+        'form_data': AccountService.pending_signup(request) or {'role': request.GET.get('role', '')},
         'start_step': 1,
         **legal_context(),
     })

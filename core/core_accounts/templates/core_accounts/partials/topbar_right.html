@@ -1,5 +1,7 @@
 {% load static %}
 {# Top bar, right side: dark mode switch · bell · profile menu. Rendered by {% topbar_right %} (topbar_tags). #}
+{# Preview visitors without an account get Log in / Create an Account instead (core_preview). #}
+{% if preview %}{% include "core_preview/partials/topbar.html" %}{% else %}
 <div class="topbar-right" data-csrf="{{ csrf_token }}">
 
     {# DARK MODE SWITCH (saved on the account: account/theme/) #}
@@ -85,3 +87,4 @@
     </div>
 
 </div>
+{% endif %}

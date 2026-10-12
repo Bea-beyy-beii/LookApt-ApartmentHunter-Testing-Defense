@@ -1,11 +1,14 @@
 # core_maps/views.py
-from django.contrib.auth.decorators import login_required
+from functools import wraps
+
+from django.contrib.auth.views import redirect_to_login
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.http import require_GET
 
 from core.core_listings.models import Complex
+from core.core_preview.access import signed_in_or_previewing
 
 from .maps import services
 from .maps.folium_maps import build_map
@@ -42,8 +45,18 @@ def _radius_and_mode(params):
         raise BadRequest("radius_km / minutes must be numbers.")
 
 
+def login_or_preview(view):
+    """Signed-in users, and visitors trying the renter / landlord preview (core_preview)."""
+    @wraps(view)
+    def wrapper(request, *args, **kwargs):
+        if not signed_in_or_previewing(request):
+            return redirect_to_login(request.get_full_path())
+        return view(request, *args, **kwargs)
+    return wrapper
+
+
 def _json_endpoint(view):
-    @login_required
+    @login_or_preview
     @require_GET
     def wrapper(request, *args, **kwargs):
         try:
@@ -101,7 +114,7 @@ def reverse_api(request):
 # FOLIUM MAP (shown in an iframe)
 # =========================================================
 
-@login_required
+@login_or_preview
 @require_GET
 @xframe_options_sameorigin
 def map_frame(request):

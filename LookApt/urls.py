@@ -22,6 +22,7 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('lookapt-manage/', admin.site.urls),
+    path("", include("core.core_preview.urls")),      # the landing page (/) and /preview/... (before core_listings' old "/")
     path("", include('core.core_accounts.urls')),
     path("renters/", include("core.core_renters.urls")),
     path("landlords/", include("core.core_landlords.urls")),

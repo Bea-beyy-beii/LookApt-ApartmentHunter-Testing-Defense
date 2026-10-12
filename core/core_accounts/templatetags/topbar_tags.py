@@ -12,6 +12,8 @@ DASHBOARDS = {"landlord": "core_landlords:dashboard", "renter": "core_renters:da
 def topbar_right(context):
     """Dark mode switch, notification bell and profile menu (landlord + renter pages)."""
     request = context["request"]
+    if not request.user.is_authenticated:          # the preview pages (core_preview)
+        return {"preview": True}
     return {
         "request": request,
         "user": request.user,

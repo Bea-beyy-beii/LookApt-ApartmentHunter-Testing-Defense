@@ -1,0 +1,25 @@
+{% extends "core_landlords/landlord_dashboard.html" %}
+{% load static %}
+{% comment %}
+    /preview/landlord/: the real landlord dashboard with sample numbers (core_preview/demo.py).
+    Only Home and My Listings work: the Add Property form can be filled in, but
+    publishing (and everything else) opens the sign-up prompt (preview.js).
+{% endcomment %}
+
+{% block title %}LookApt — Landlord Preview{% endblock %}
+
+{% block content %}
+{% include "core_preview/partials/preview_bar.html" %}
+{{ block.super }}
+{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'core_preview/preview.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+{% include "core_preview/partials/signup_prompt.html" %}
+{{ block.super }}
+<script src="{% static 'core_preview/preview.js' %}"></script>
+{% endblock %}
