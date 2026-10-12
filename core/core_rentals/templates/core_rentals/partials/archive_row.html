@@ -16,7 +16,7 @@
     </div>
 
     <div class="rt-cell rt-tenant" role="cell">
-        <span class="rt-avatar{% if not t.is_app_user %} rt-avatar--guest{% endif %}" aria-hidden="true">{{ t.initials }}</span>
+        <span class="rt-avatar{% if t.is_app_user %} avatar--renter{% else %} rt-avatar--guest{% endif %}" aria-hidden="true">{% if t.avatar_url %}<img src="{{ t.avatar_url }}" alt="">{% else %}{{ t.initials }}{% endif %}</span>
         <span class="rt-stack">
             <strong>{{ t.tenant_name }}</strong>
             <small>{{ t.occupant_count }} tenant{{ t.occupant_count|pluralize }}{% if not t.is_app_user %} · not on LookApt{% endif %}</small>

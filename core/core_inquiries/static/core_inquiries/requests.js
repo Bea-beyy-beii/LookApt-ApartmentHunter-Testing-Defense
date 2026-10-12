@@ -270,7 +270,7 @@
             try { params = JSON.parse(target.sendParams || "{}"); } catch (err) { params = {}; }
             sent = false;
             dialog.querySelector("[data-chat-name]").textContent = target.name;
-            dialog.querySelector("[data-chat-initials]").textContent = target.initials;
+            Chat.setAvatar(dialog.querySelector("[data-chat-initials]"), target.avatar, target.initials, target.role);
             dialog.querySelector("[data-chat-subject]").textContent = target.subject;
             showError("");
             picker.clear();

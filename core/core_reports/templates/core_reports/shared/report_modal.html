@@ -38,7 +38,7 @@
                     {% for p in report_people %}
                         <label class="rp-person" data-person data-search="{{ p.search }}">
                             <input type="radio" name="reported_user" value="{{ p.id }}">
-                            <span class="rp-avatar" aria-hidden="true">{{ p.initials }}</span>
+                            <span class="rp-avatar avatar--{{ p.role }}" aria-hidden="true">{% if p.avatar %}<img src="{{ p.avatar }}" alt="">{% else %}{{ p.initials }}{% endif %}</span>
                             <span class="rp-person-text">
                                 <strong>{{ p.name }}{% if p.verified %} <i class="rp-verified" title="Verified">{% feature_icon "shield" %}</i>{% endif %}</strong>
                                 <small>{{ p.detail }}</small>

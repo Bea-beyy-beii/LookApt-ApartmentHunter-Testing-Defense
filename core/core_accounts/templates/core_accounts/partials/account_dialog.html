@@ -23,6 +23,7 @@
             {% include "core_accounts/partials/avatar.html" with person=user cls="ac-avatar" %}
             <div class="ac-photo-text">
                 <strong>Profile photo</strong>
+                <small>JPG, PNG or WEBP, up to 5 MB. Without a photo, your initials are shown.</small>
                 <div class="ac-photo-actions">
                     <label class="ac-btn ac-btn--primary">
                         <input type="file" accept="image/jpeg,image/png,image/webp" data-avatar-input hidden>
@@ -108,31 +109,4 @@
         </section>
     </section>
 
-</dialog>
-
-{# "Adjust your photo": opens after choosing a photo (account.js). Drag to move, slider / wheel / pinch to zoom. #}
-<dialog class="ac-crop" data-crop aria-labelledby="ac-crop-title">
-    <h3 id="ac-crop-title">Adjust your photo</h3>
-    <p class="ac-hint">Drag to move it. Zoom with the slider, your mouse wheel or two fingers.</p>
-
-    <div class="ac-crop-stage" data-crop-stage tabindex="0"
-         aria-label="Photo position. Arrow keys move it, plus and minus zoom.">
-        <img data-crop-image alt="" draggable="false">
-        <span class="ac-crop-mask" aria-hidden="true"></span>
-    </div>
-
-    <div class="ac-crop-zoom">
-        <button type="button" data-crop-step="-1" aria-label="Zoom out">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M8.5 11h5M16 16l4 4"/></svg>
-        </button>
-        <input type="range" min="1" max="4" step="0.01" value="1" data-crop-zoom aria-label="Zoom">
-        <button type="button" data-crop-step="1" aria-label="Zoom in">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M8.5 11h5M11 8.5v5M16 16l4 4"/></svg>
-        </button>
-    </div>
-
-    <div class="ac-crop-actions">
-        <button type="button" class="ac-btn ac-btn--ghost" data-crop-cancel>Cancel</button>
-        <button type="button" class="ac-btn ac-btn--primary" data-crop-save>Save photo</button>
-    </div>
 </dialog>

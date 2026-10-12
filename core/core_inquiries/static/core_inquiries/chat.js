@@ -28,6 +28,16 @@
         return node;
     }
 
+    // Fill an avatar spot: the person's profile photo, or their initials.
+    // role (landlord / renter) gives the blue / yellow colour, or the ring around a photo.
+    function setAvatar(target, url, initials, role) {
+        target.classList.remove("avatar--landlord", "avatar--renter");
+        if (role === "landlord" || role === "renter") target.classList.add(`avatar--${role}`);
+        target.replaceChildren();
+        if (url) target.append(Object.assign(el("img"), { src: url, alt: "" }));
+        else target.textContent = initials || "";
+    }
+
 
     // ---------------------------------------------------------
     // Rendering
@@ -323,6 +333,7 @@
         attachPicker,
         csrfToken,
         el,
+        setAvatar,
     };
 
 })();

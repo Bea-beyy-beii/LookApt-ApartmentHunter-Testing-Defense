@@ -189,6 +189,8 @@ def _chat(user, application, conversation):
     return {
         "name": other.display_name,
         "initials": initials(other),
+        "avatar": other.avatar_url,
+        "role": other.role,
         "subject": f"{application.unit.unit_name} · {application.unit.complex.complex_name}",
         "detail_url": reverse("core_inquiries:conversation_detail", args=[conversation.pk]) if conversation else "",
         "send_url": reverse("core_inquiries:send_to_renter" if landlord_view else "core_inquiries:send_inquiry"),

@@ -75,7 +75,7 @@
                     <li class="rp-item" data-report data-status="{{ r.status }}" data-date="{{ r.created_at|date:'U' }}"
                         data-search="{{ r.other_name }} {{ r.reason }} {{ r.description }} {{ r.get_status_display }}">
                         <button type="button" class="rp-item-head" data-report-toggle aria-expanded="false">
-                            <span class="rp-avatar" aria-hidden="true">{{ r.other_initials }}</span>
+                            <span class="rp-avatar avatar--{{ r.other_role_key }}" aria-hidden="true">{% if r.other_avatar %}<img src="{{ r.other_avatar }}" alt="">{% else %}{{ r.other_initials }}{% endif %}</span>
                             <span class="rp-item-main">
                                 <strong>{{ r.other_name }}</strong>
                                 <small>{{ r.reason }}</small>

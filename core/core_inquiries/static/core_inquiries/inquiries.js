@@ -98,7 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function openThread(btn) {
     openId = btn.dataset.conversationId;
     convo.querySelector("[data-conversation-name]").textContent = btn.querySelector(".thread-name").textContent.trim();
-    convo.querySelector("[data-conversation-initials]").textContent = btn.querySelector(".thread-avatar-fallback").textContent.trim();
+    Chat.setAvatar(convo.querySelector("[data-conversation-avatar]"), btn.dataset.avatar, btn.dataset.initials, btn.dataset.role);
     convo.querySelector("[data-conversation-status]").textContent = btn.querySelector(".thread-subject")?.textContent.trim() || "";
     replyUrl = btn.dataset.replyUrl;
     showError("");
@@ -170,9 +170,16 @@ document.addEventListener("DOMContentLoaded", () => {
     btn.dataset.url = item.url;
     btn.dataset.replyUrl = item.reply_url;
     btn.dataset.search = `${item.other_name} ${item.subject}`;
+    btn.dataset.initials = item.other_initials || "U";
+    btn.dataset.avatar = item.other_avatar || "";
+    btn.dataset.role = item.other_role || "";
 
     const avatar = Chat.el("span", "thread-avatar");
-    avatar.append(Chat.el("span", "thread-avatar-fallback", item.other_initials || "U"));
+    if (item.other_avatar) Chat.setAvatar(avatar, item.other_avatar, "", item.other_role);
+    else {
+        avatar.classList.add(`avatar--${item.other_role}`);
+        avatar.append(Chat.el("span", "thread-avatar-fallback", item.other_initials || "U"));
+    }
 
     const details = Chat.el("span", "thread-details");
     const header = Chat.el("span", "thread-header");

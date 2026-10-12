@@ -9,7 +9,7 @@
                     <tr>
                         <td>
                             <a class="ap-person" href="{% url 'core_admin:user_detail' u.pk %}">
-                                <span class="ap-avatar" aria-hidden="true">{{ u.first_name|first|upper }}{{ u.last_name|first|upper }}</span>
+                                <span class="ap-avatar ap-avatar--{{ u.role }}" aria-hidden="true">{% if u.avatar %}<img src="{{ u.avatar.url }}" alt="">{% else %}{{ u.initials }}{% endif %}</span>
                                 <span><strong>{{ u.display_name }}{% if u.is_verified %} <span class="ap-verified" title="Verified">{% ap_icon "verified" 15 %}<span class="ap-visually-hidden">Verified</span></span>{% endif %}</strong><small>@{{ u.username }}</small></span>
                             </a>
                         </td>
