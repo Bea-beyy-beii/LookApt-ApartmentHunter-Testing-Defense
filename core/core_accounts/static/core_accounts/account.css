@@ -35,6 +35,7 @@
 /* (html:root body = beats the dashboards' own avatar colours, dark mode included) */
 html:root body .avatar--landlord { background: #2f6bd1; color: #fff; }
 html:root body .avatar--renter { background: var(--gold); color: #203a68; }
+
 /* The chat list's initials sit in their own grey circle: let the role colour show through */
 html:root body :is(.avatar--landlord, .avatar--renter) .thread-avatar-fallback { background: transparent; color: inherit; }
 
