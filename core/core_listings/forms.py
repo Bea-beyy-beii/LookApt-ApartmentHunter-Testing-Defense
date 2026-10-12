@@ -43,6 +43,9 @@ MIN_LISTING_MEDIA = 2       # complexes and units: at least 2 photos (unit video
 # A unit with a renter (active contract in Manage Rentals) can't be unpublished
 UNIT_HAS_RENTER = "{name} has a renter, so it can't be unpublished. End the contract in Manage Rentals first."
 COMPLEX_HAS_RENTER = "{name} has units with renters, so it can't be unpublished. End their contracts in Manage Rentals first."
+# ...or deleted (that would also wipe the contracts and payments)
+UNIT_DELETE_HAS_RENTER = "{name} has a renter, so it can't be deleted. End the contract in Manage Rentals first."
+COMPLEX_DELETE_HAS_RENTER = "{name} has units with renters, so it can't be deleted. End their contracts in Manage Rentals first."
 
 def validate_photo_uploads(photos, existing_count, max_count):
     """Shared by ComplexForm and UnitForm."""

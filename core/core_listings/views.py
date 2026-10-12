@@ -10,7 +10,9 @@ from core.core_maps.maps.services import resolve_area, save_complex_landmarks
 from core.core_verification.services import can_publish
 
 from .models import Complex, ComplexPicture, Unit, UnitPicture
-from .forms import COMPLEX_HAS_RENTER, UNIT_HAS_RENTER, ComplexForm, UnitForm
+from .forms import (
+    COMPLEX_DELETE_HAS_RENTER, COMPLEX_HAS_RENTER, UNIT_DELETE_HAS_RENTER, UNIT_HAS_RENTER, ComplexForm, UnitForm,
+)
 
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
@@ -230,6 +232,13 @@ def property_delete(request, pk):
     property_obj = _own_property(request, pk)
     name = property_obj.complex_name
 
+    if property_obj.units.filter(tenancies__status="active").exists():
+        error = COMPLEX_DELETE_HAS_RENTER.format(name=name)
+        if _wants_json(request):
+            return JsonResponse({"error": error}, status=400)
+        messages.error(request, error)
+        return redirect(_my_listings_url())
+
     files = [picture.image for picture in property_obj.pictures.all()]
     files += _unit_media_files(property_obj.units.all())
 
@@ -361,6 +370,14 @@ def _own_unit(request, pk):
 def unit_delete(request, pk):
     unit = _own_unit(request, pk)
     name = unit.unit_name
+
+    if unit.has_renter:
+        error = UNIT_DELETE_HAS_RENTER.format(name=f"Unit {unit.identifier}")
+        if _wants_json(request):
+            return JsonResponse({"error": error}, status=400)
+        messages.error(request, error)
+        return redirect(_my_listings_url())
+
     files = _unit_media_files(Unit.objects.filter(pk=unit.pk))
 
     unit.delete()

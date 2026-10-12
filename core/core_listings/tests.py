@@ -125,6 +125,24 @@ class RenterUnpublishTests(ListingSetup):
         self.assertEqual(self.set_availability(self.occupied, "unpublished").json()["availability"], "unpublished")
         self.assertEqual(self.set_availability(self.occupied, "available").json()["availability"], "available")
 
+    def test_unit_or_complex_with_a_renter_cannot_be_deleted(self):
+        response = self.client.post(reverse("core_listings:unit_delete", args=[self.available.pk]),
+                                    HTTP_ACCEPT="application/json")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("can't be deleted", response.json()["error"])
+        self.assertTrue(Unit.objects.filter(pk=self.available.pk).exists())
+
+        response = self.client.post(reverse("core_listings:property_delete", args=[self.complex.pk]),
+                                    HTTP_ACCEPT="application/json")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("units with renters", response.json()["error"])
+        self.assertTrue(Complex.objects.filter(pk=self.complex.pk).exists())
+
+        # A unit without a renter can still be deleted
+        response = self.client.post(reverse("core_listings:unit_delete", args=[self.occupied.pk]),
+                                    HTTP_ACCEPT="application/json")
+        self.assertEqual(response.status_code, 200)
+
     def test_edit_form_cannot_save_it_as_unpublished(self):
         from .forms import ComplexForm, UnitForm
         form = UnitForm({"availability": "unpublished"}, instance=self.available, complex_obj=self.complex)
