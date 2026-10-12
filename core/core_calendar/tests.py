@@ -19,8 +19,8 @@ def make_user(username, role, phone):
     return user
 
 
-class RenterCalendarTests(TestCase):
-    """Renters see bulletins only for complexes they rent in, and only confirmed site visits."""
+class CalendarSetup(TestCase):
+    """A landlord with two complexes; arem rents in Sunrise, bea doesn't rent anywhere."""
 
     def setUp(self):
         self.landlord = make_user("liza", "landlord", "09111111111")
@@ -70,6 +70,10 @@ class RenterCalendarTests(TestCase):
     def titles(self, items, category):
         return [i["title"] for i in items if i["category"] == category]
 
+
+class RenterCalendarTests(CalendarSetup):
+    """Renters see bulletins only for complexes they rent in, and only confirmed site visits."""
+
     def test_tenant_sees_bulletins_for_their_complex(self):
         self.post([self.sunrise], date(2026, 10, 20))
         self.assertEqual(self.titles(self.items(self.tenant), "announcement"), ["Water"])
@@ -113,3 +117,63 @@ class RenterCalendarTests(TestCase):
     def test_declined_site_visit_is_hidden(self):
         self.visit(self.visitor, self.other_unit, Application.SiteVisit.DECLINED)
         self.assertEqual(self.titles(self.items(self.visitor), "site_visit"), [])
+
+class BulletinMessageTests(CalendarSetup):
+    """Post on Bulletin -> a 'Bulletin Announcement' banner in the chat of current tenants only."""
+
+    def received(self, user):
+        from core.core_inquiries.models import Message
+        return list(Message.objects.filter(conversation__renter=user.renter, kind=Message.Kind.BULLETIN))
+
+    def test_tenant_gets_a_bulletin_banner(self):
+        self.post([self.sunrise], date(2026, 10, 20))
+        [message] = self.received(self.tenant)
+        self.assertEqual(message.body, "Water interruption")          # no "📢 Bulletin from your landlord" text
+        self.assertEqual(message.bulletin_event, "Water · Oct 20, 2026")
+        self.assertEqual(message.preview, "Bulletin: Water interruption")
+
+        from core.core_inquiries.services import message_json
+        data = message_json(self.tenant, message)
+        self.assertEqual((data["kind"], data["bulletin_event"]), ("bulletin", "Water · Oct 20, 2026"))
+
+    def test_bulletin_without_a_date(self):
+        services.post_bulletin(self.landlord, message="Gate closes at 10 PM", complex_ids=[str(self.sunrise.pk)])
+        [message] = self.received(self.tenant)
+        self.assertEqual(message.bulletin_event, "")
+
+    def test_only_current_tenants_get_it(self):
+        waitlisted, applicant, former = (make_user("wes", "renter", "09444444444"),
+                                         make_user("ann", "renter", "09555555555"),
+                                         make_user("fay", "renter", "09666666666"))
+        Application.objects.create(renter=waitlisted.renter, unit=self.unit, kind="waitlist",
+                                   occupants=["Wes"], move_in_date=date(2026, 12, 1))
+        Application.objects.create(renter=applicant.renter, unit=self.other_unit, kind="apply",
+                                   occupants=["Ann"], move_in_date=date(2026, 12, 1))
+        old = self.assign(self.make_unit(self.sunrise, 2), former, date(2026, 9, 1))
+        end_tenancy(old, "completed", on=date(2026, 9, 30))
+
+        __, sent = self.post([self.sunrise, self.moonlight], date(2026, 10, 20))
+        self.assertEqual(sent, 1)
+        self.assertEqual(len(self.received(self.tenant)), 1)
+        for user in (waitlisted, applicant, former, self.visitor):
+            self.assertEqual(self.received(user), [], user.username)
+            self.assertEqual(self.titles(self.items(user), "announcement"), [], user.username)
+
+    def test_old_bulletin_messages_become_banners(self):
+        """The 0006 migration turns bulletins sent before this change into banners."""
+        import importlib
+
+        from django.apps import apps as django_apps
+
+        from core.core_inquiries.models import Conversation, Message
+        conversation = Conversation.objects.create(renter=self.tenant.renter, landlord=self.landlord.landlord,
+                                                   complex=self.sunrise, unit=self.unit)
+        old = Message.objects.create(conversation=conversation, sender=self.landlord,
+                                     body="📢 Bulletin from your landlord\n\nwazzup\n\n📅 Maintenance · Oct 11, 2026")
+        normal = Message.objects.create(conversation=conversation, sender=self.landlord, body="Hello!")
+        migration = importlib.import_module("core.core_inquiries.migrations.0006_message_bulletin")
+        migration.mark_old_bulletins(django_apps, None)
+        old.refresh_from_db()
+        normal.refresh_from_db()
+        self.assertEqual((old.kind, old.body, old.bulletin_event), ("bulletin", "wazzup", "Maintenance · Oct 11, 2026"))
+        self.assertEqual(normal.kind, "message")

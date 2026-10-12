@@ -134,6 +134,10 @@ class Message(models.Model):
         VIDEO = "video", "Video"
         PDF = "pdf", "PDF"
 
+    class Kind(models.TextChoices):
+        MESSAGE = "message", "Message"
+        BULLETIN = "bulletin", "Bulletin announcement"      # Post on Bulletin -> a yellow banner in the chat
+
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name="messages")
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="sent_messages")
     body = models.TextField(max_length=MAX_LENGTH, blank=True)   # can be empty when a file is attached
@@ -148,6 +152,10 @@ class Message(models.Model):
     attachment_kind = models.CharField(max_length=10, choices=AttachmentKind.choices, blank=True)
     attachment_size = models.PositiveIntegerField(default=0)
 
+    kind = models.CharField(max_length=10, choices=Kind.choices, default=Kind.MESSAGE)
+    # Bulletins with a date: "Maintenance / Inspection · Oct 11, 2026 – Oct 17, 2026 (whole week)"
+    bulletin_event = models.CharField(max_length=200, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     read_at = models.DateTimeField(null=True, blank=True)   # "Seen" for the sender
 
@@ -159,5 +167,7 @@ class Message(models.Model):
 
     @property
     def preview(self):
-        """Text for the inbox list: the message, or "📎 contract.pdf"."""
+        """Text for the inbox list: the message, "Bulletin: …", or "📎 contract.pdf"."""
+        if self.kind == self.Kind.BULLETIN:
+            return f"Bulletin: {self.body}"
         return self.body or f"📎 {self.attachment_name or self.get_attachment_kind_display()}"
