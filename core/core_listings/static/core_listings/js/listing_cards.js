@@ -248,8 +248,10 @@
         pill.textContent = UNIT_LABELS[shown];
         pill.title = complexUnpublished ? "Hidden because the complex is unpublished" : "";
 
+        // "Set as Unpublished" while it's listed, "Set as Published" while it's unpublished
         unitCard.querySelectorAll('[data-action="unit-availability"]').forEach(item => {
-            item.hidden = complexUnpublished || item.dataset.availability === own;
+            const unpublishes = item.dataset.availability === "unpublished";
+            item.hidden = complexUnpublished || unpublishes === (own === "unpublished");
         });
         const note = unitCard.querySelector("[data-unit-locked]");
         if (note) note.hidden = !complexUnpublished;

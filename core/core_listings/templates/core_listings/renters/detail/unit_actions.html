@@ -2,6 +2,7 @@
     Apply / Join Waitlist + Inquire buttons for one unit.
     Available unit -> "Apply as Renter", occupied -> "Join Waitlist".
     Already applied -> a disabled "Application Sent" / "On the Waitlist".
+    Renter's sex doesn't fit the complex's restriction -> a disabled "Female/Male tenants only".
     `large` = the big buttons in the right column of the unit page.
     `hide_inquiry` = no Inquire button (complex page rows: the complex's own button handles it).
     The pop-ups live in core_inquiries/modals/ (listing_modals.js opens them).
@@ -14,6 +15,11 @@
         <button type="button" class="ld-btn ld-btn--done" disabled>
             {% feature_icon "check" %}
             {% if unit.is_available %}Application Sent{% else %}On the Waitlist{% endif %}
+        </button>
+    {% elif not unit.complex|admits:user %}
+        <button type="button" class="ld-btn ld-btn--restricted" disabled>
+            {% feature_icon "sex_restriction" %}
+            {% if unit.complex.sex_restriction == "female_only" %}Female{% else %}Male{% endif %} tenants only
         </button>
     {% else %}
         <button type="button"

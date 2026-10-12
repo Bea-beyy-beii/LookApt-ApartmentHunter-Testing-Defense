@@ -111,6 +111,11 @@ class Complex(models.Model):
     def __str__(self):
         return self.complex_name
 
+    def admits(self, user):
+        """Whether the renter's sex fits the landlord's restriction (Male only / Female only)."""
+        required = {SexRestriction.MALE_ONLY: "male", SexRestriction.FEMALE_ONLY: "female"}.get(self.sex_restriction)
+        return required is None or getattr(user, "sex", None) == required
+
         # Counted in Python from self.units.all(), so the listings page's
     # prefetch_related("units") answers them without extra queries.
     # An unpublished complex counts all its units as unpublished (see Unit.listed_availability).
@@ -229,6 +234,11 @@ class Unit(models.Model):
     @property
     def complex_unpublished(self):
         return self.complex.status == Complex.ComplexStatus.UNPUBLISHED
+
+    @property
+    def has_renter(self):
+        """An active contract (Manage Rentals), current or starting soon: the unit can't be unpublished."""
+        return self.tenancies.filter(status="active").exists()
 
     @property
     def listed_availability(self):

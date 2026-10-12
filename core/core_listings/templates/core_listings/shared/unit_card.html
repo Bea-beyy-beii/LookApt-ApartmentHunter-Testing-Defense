@@ -56,7 +56,7 @@
     <!-- Name, details, amenities -->
     <div class="unit-info">
 
-        <a href="{% url 'core_listings:unit_detail' unit.pk %}" class="unit-name">Unit {{ unit.identifier }}</a>
+        <span class="unit-name">Unit {{ unit.identifier }}</span>
 
         <div class="unit-meta">
             <span>
@@ -132,11 +132,6 @@
 
             <div class="property-menu" role="menu" hidden>
 
-                <a href="{% url 'core_listings:unit_detail' unit.pk %}" role="menuitem" class="property-menu-item">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                    View Listing
-                </a>
-
                 <a href="{% url 'core_listings:unit_edit' unit.pk %}" role="menuitem" class="property-menu-item">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4"/></svg>
                     Edit Unit
@@ -148,22 +143,17 @@
                     Publish the complex to change this unit's status.
                 </p>
 
-                <button type="button" role="menuitem" class="property-menu-item"
-                        data-action="unit-availability" data-availability="available"
-                        {% if unit.availability == "available" or unit.complex_unpublished %}hidden{% endif %}>
-                    <span class="status-dot status-dot--active"></span> Set as Available
-                </button>
-
-                <button type="button" role="menuitem" class="property-menu-item"
-                        data-action="unit-availability" data-availability="occupied"
-                        {% if unit.availability == "occupied" or unit.complex_unpublished %}hidden{% endif %}>
-                    <span class="status-dot status-dot--occupied"></span> Set as Occupied
-                </button>
-
+                {# Available / Occupied follow the contracts in Manage Rentals; here the unit is only published or unpublished #}
                 <button type="button" role="menuitem" class="property-menu-item"
                         data-action="unit-availability" data-availability="unpublished"
                         {% if unit.availability == "unpublished" or unit.complex_unpublished %}hidden{% endif %}>
                     <span class="status-dot status-dot--pending"></span> Set as Unpublished
+                </button>
+
+                <button type="button" role="menuitem" class="property-menu-item"
+                        data-action="unit-availability" data-availability="available"
+                        {% if unit.availability != "unpublished" or unit.complex_unpublished %}hidden{% endif %}>
+                    <span class="status-dot status-dot--active"></span> Set as Published
                 </button>
 
                 <hr>

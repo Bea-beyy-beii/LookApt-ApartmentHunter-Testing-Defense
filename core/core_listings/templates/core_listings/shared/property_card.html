@@ -57,9 +57,7 @@
         <!-- ================= Info ================= -->
         <div class="property-info">
 
-            <a href="{% url 'core_listings:property_detail' property.pk %}" class="property-name">
-                {{ property.complex_name }}
-            </a>
+            <span class="property-name">{{ property.complex_name }}</span>
 
             <p class="property-location">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
@@ -174,13 +172,6 @@
                             <path d="M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4"/>
                         </svg>
                         Edit Property
-                    </a>
-
-                    <a href="{% url 'core_listings:property_detail' property.pk %}" role="menuitem" class="property-menu-item">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                            <path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 9h4a1 1 0 0 1 1 1v11M3 21h18M8 8h3M8 12h3M8 16h3"/>
-                        </svg>
-                        View Complex
                     </a>
 
                     <hr>

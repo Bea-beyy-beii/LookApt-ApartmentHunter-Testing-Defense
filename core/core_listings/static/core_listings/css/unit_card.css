@@ -110,10 +110,6 @@
     text-decoration: none;
 }
 
-.unit-name:hover {
-    text-decoration: underline;
-}
-
 /* Row 2: never cut — wraps to a new line if there isn't room */
 .unit-meta {
     display: flex;

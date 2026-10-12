@@ -724,3 +724,21 @@
     box-shadow: none;
     cursor: default;
 }
+
+/* "Female/Male tenants only": the renter's sex doesn't fit the complex */
+.ld-btn--restricted,
+.ld-btn--restricted:hover {
+    background: rgba(32, 58, 104, 0.06);
+    border-color: var(--border-light);
+    color: var(--text-secondary);
+    transform: none;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+html[data-theme="dark"] .ld-btn--restricted,
+html[data-theme="dark"] .ld-btn--restricted:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: var(--border-medium);
+    color: var(--text-secondary);
+}

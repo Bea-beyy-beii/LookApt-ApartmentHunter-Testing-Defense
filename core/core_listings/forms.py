@@ -38,7 +38,11 @@ class MultipleImageField(forms.ImageField):
 
 
 MAX_UNIT_PHOTOS = 10
-MIN_LISTING_MEDIA = 2       # complexes: 2 photos; units: 2 photos and/or videos
+MIN_LISTING_MEDIA = 2       # complexes and units: at least 2 photos (unit videos are optional)
+
+# A unit with a renter (active contract in Manage Rentals) can't be unpublished
+UNIT_HAS_RENTER = "{name} has a renter, so it can't be unpublished. End the contract in Manage Rentals first."
+COMPLEX_HAS_RENTER = "{name} has units with renters, so it can't be unpublished. End their contracts in Manage Rentals first."
 
 def validate_photo_uploads(photos, existing_count, max_count):
     """Shared by ComplexForm and UnitForm."""
@@ -256,6 +260,10 @@ class ComplexForm(forms.ModelForm):
         min_price, max_price = cleaned.get("min_price"), cleaned.get("max_price")
         if min_price and max_price and min_price > max_price:
             self.add_error("max_price", "Max price must be greater than or equal to min price.")
+        # "Save as Unpublished" on a complex whose units have renters
+        if (self.instance.pk and self.data.get("visibility") == Complex.ComplexStatus.UNPUBLISHED
+                and self.instance.units.filter(tenancies__status="active").exists()):
+            self.add_error(None, COMPLEX_HAS_RENTER.format(name=self.instance.complex_name))
         return cleaned
 
 
@@ -375,8 +383,11 @@ class UnitForm(forms.ModelForm):
         return price
 
     def clean_photos(self):
+        # Videos are optional and don't count: a unit needs at least 2 photos
         photos = self.cleaned_data.get("photos") or []
         existing = self.instance.pictures.count() if self.instance.pk else 0
+        if existing + len(photos) < MIN_LISTING_MEDIA:
+            raise ValidationError(f"Add at least {MIN_LISTING_MEDIA} photos of the unit.")
         return validate_photo_uploads(photos, existing, MAX_UNIT_PHOTOS)
 
     def clean_videos(self):
@@ -386,11 +397,9 @@ class UnitForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
-        # At least 2 photos and/or videos (saved + new), checked once both fields are clean
-        if "photos" in cleaned and "videos" in cleaned:
-            saved = (self.instance.pictures.count() + self.instance.videos.count()) if self.instance.pk else 0
-            if saved + len(cleaned["photos"]) + len(cleaned["videos"]) < MIN_LISTING_MEDIA:
-                self.add_error("photos", f"Add at least {MIN_LISTING_MEDIA} photos or videos of the unit.")
+        # "Save as Unpublished" on a unit with a renter
+        if self.instance.pk and self.data.get("availability") == Unit.Availability.UNPUBLISHED and self.instance.has_renter:
+            self.add_error(None, UNIT_HAS_RENTER.format(name=f"Unit {self.instance.identifier}"))
         return cleaned
 
     def _clean_months(self, name):

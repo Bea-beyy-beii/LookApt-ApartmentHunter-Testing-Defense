@@ -10,7 +10,7 @@ from core.core_maps.maps.services import resolve_area, save_complex_landmarks
 from core.core_verification.services import can_publish
 
 from .models import Complex, ComplexPicture, Unit, UnitPicture
-from .forms import ComplexForm, UnitForm
+from .forms import COMPLEX_HAS_RENTER, UNIT_HAS_RENTER, ComplexForm, UnitForm
 
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
@@ -258,6 +258,13 @@ def property_set_visibility(request, pk):
         messages.error(request, NOT_VERIFIED)
         return redirect(_my_listings_url())
 
+    if visibility == Complex.ComplexStatus.UNPUBLISHED and property_obj.units.filter(tenancies__status="active").exists():
+        error = COMPLEX_HAS_RENTER.format(name=property_obj.complex_name)
+        if _wants_json(request):
+            return JsonResponse({"error": error}, status=400)
+        messages.error(request, error)
+        return redirect(_my_listings_url())
+
     property_obj.status = visibility
     property_obj.save(update_fields=["status", "updated_at"])
 
@@ -302,9 +309,12 @@ def _save_unit(form, complex_obj):
     unit = form.save(commit=False)
     unit.complex = complex_obj
 
-    # Which button was clicked: "available" (vacant), "occupied" or "unpublished"
+    # Which button was clicked: "available" (vacant), "occupied" or "unpublished".
+    # A unit with a renter stays occupied (UnitForm already refuses unpublishing it).
     availability = form.data.get("availability")
-    if availability in Unit.Availability.values:
+    if unit.pk and unit.has_renter:
+        unit.availability = Unit.Availability.OCCUPIED
+    elif availability in Unit.Availability.values:
         unit.availability = availability
 
     unit.save()
@@ -379,6 +389,17 @@ def unit_set_availability(request, pk):
         messages.error(request, COMPLEX_UNPUBLISHED)
         return redirect(_my_listings_url())
 
+    if availability == Unit.Availability.UNPUBLISHED and unit.has_renter:
+        error = UNIT_HAS_RENTER.format(name=f"Unit {unit.identifier}")
+        if _wants_json(request):
+            return JsonResponse({"error": error}, status=400)
+        messages.error(request, error)
+        return redirect(_my_listings_url())
+
+    # Occupied / available follow the contracts in Manage Rentals; the landlord
+    # only publishes or unpublishes the unit
+    if availability != Unit.Availability.UNPUBLISHED:
+        availability = Unit.Availability.OCCUPIED if unit.has_renter else Unit.Availability.AVAILABLE
 
     unit.availability = availability
     unit.save(update_fields=["availability", "updated_at"])
