@@ -234,8 +234,13 @@
     // "Post on Bulletin" / "File a Report" (data-verify-required): open the
     // verification pop-up instead, or point at the banner if documents were already sent.
     // Runs before the buttons' own handlers (capture), so their forms never open.
+    // Any File a Report / Post on Bulletin button counts while the "not verified" banner
+    // is on the page, even one that doesn't carry data-verify-required itself.
+    const NEEDS_VERIFICATION = banner
+        ? "[data-verify-required], [data-open-report], [data-open-bulletin]"
+        : "[data-verify-required]";
     document.addEventListener("click", event => {
-        const button = event.target.closest("[data-verify-required]");
+        const button = event.target.closest(NEEDS_VERIFICATION);
         if (!button) return;
         event.preventDefault();
         event.stopPropagation();

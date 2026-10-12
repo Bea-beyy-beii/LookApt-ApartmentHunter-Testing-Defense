@@ -1,9 +1,10 @@
 {% extends "core_admin/base.html" %}
+{% load admin_icons %}
 
 {% block title %}LookApt Admin — {{ account.display_name }}'s verification{% endblock %}
 
 {% block breadcrumbs %}
-<a class="ap-back" href="{% url 'core_admin:verification_list' %}?status={{ item.status }}">← Verification</a>
+<a class="ap-back" href="{% url 'core_admin:verification_list' %}?status={{ item.status }}">{% ap_icon "arrow_left" 14 %} Verification</a>
 {% endblock %}
 
 {% block content %}
@@ -39,7 +40,7 @@
                 </figure>
                 <figure class="ap-doc">
                     {% if is_pdf %}
-                        <a class="ap-doc-thumb ap-doc-thumb--file" href="{{ item.ownership_document.url }}" target="_blank" rel="noopener">PDF ↗</a>
+                        <a class="ap-doc-thumb ap-doc-thumb--file" href="{{ item.ownership_document.url }}" target="_blank" rel="noopener">{% ap_icon "file" 26 %}<span>PDF {% ap_icon "external" 12 %}</span></a>
                     {% else %}
                         <button type="button" class="ap-doc-thumb" data-ap-view="{{ item.ownership_document.url }}" aria-label="View proof of ownership">
                             <img src="{{ item.ownership_document.url }}" alt="Proof of ownership">
@@ -58,7 +59,7 @@
                 <ul class="ap-checks">
                     {% for c in checks %}
                         <li class="ap-check {% if c.ok %}is-ok{% elif c.ok is False %}is-bad{% else %}is-unknown{% endif %}">
-                            <span aria-hidden="true">{% if c.ok %}✓{% elif c.ok is False %}✕{% else %}?{% endif %}</span>
+                            <span aria-hidden="true">{% if c.ok %}{% ap_icon "check" 13 %}{% elif c.ok is False %}{% ap_icon "x" 13 %}{% else %}{% ap_icon "question" 14 %}{% endif %}</span>
                             {{ c.label }}
                             <span class="ap-visually-hidden">{% if c.ok %}(yes){% elif c.ok is False %}(no){% else %}(not checked){% endif %}</span>
                         </li>

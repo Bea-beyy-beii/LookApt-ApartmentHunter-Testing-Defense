@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="{% static 'core/css/base/typography.css' %}">
     <link rel="stylesheet" href="{% static 'core/css/components/branding.css' %}">
     <link rel="stylesheet" href="{% static 'core/css/components/buttons.css' %}">
+    <link rel="stylesheet" href="{% static 'core/css/components/forms.css' %}">
     <link rel="stylesheet" href="{% static 'core/css/components/sidebar.css' %}">
     <link rel="stylesheet" href="{% static 'core/css/pages/landlord_dashboard.css' %}">
     <link rel="stylesheet" href="{% static 'core/css/components/topbar_menus.css' %}">
@@ -20,6 +21,11 @@
     <link rel="stylesheet" href="{% static 'core_listings/css/photo_upload.css' %}">   {# .photo-lightbox #}
     <link rel="stylesheet" href="{% static 'core_admin/admin_panel.css' %}">
     {% block extra_css %}{% endblock %}
+
+    {# Switching pages: load an admin page while the pointer rests on its link, so the click is instant #}
+    <script type="speculationrules">
+    {"prefetch": [{"where": {"and": [{"href_matches": "/admin-panel/*"}, {"not": {"selector_matches": "[data-no-prefetch]"}}]}, "eagerness": "moderate"}]}
+    </script>
 
     {# Dark mode (html[data-theme="dark"]); loaded last so it wins #}
     <link rel="stylesheet" href="{% static 'core/css/theme/dark_auto.css' %}">
@@ -66,7 +72,7 @@
                 {% if badges.reports %}<span class="ap-badge" aria-label="{{ badges.reports }} open">{{ badges.reports }}</span>{% endif %}
             </a>
 
-            <a href="{% url 'logout' %}" class="sidebar-link sidebar-logout">
+            <a href="{% url 'logout' %}" class="sidebar-link sidebar-logout" data-no-prefetch>
                 <span class="sidebar-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h5"/><path d="m15 8 4 4-4 4M8 12h11"/></svg>
                 </span>
@@ -119,7 +125,7 @@
 
 {# Full-size viewer for documents and evidence (admin_panel.js) #}
 <dialog class="photo-lightbox" data-ap-lightbox>
-    <button type="button" class="photo-lightbox-close" aria-label="Close">×</button>
+    <button type="button" class="photo-lightbox-close" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     <img src="" alt="">
     <video controls playsinline hidden></video>
 </dialog>

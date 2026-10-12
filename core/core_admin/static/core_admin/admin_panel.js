@@ -58,6 +58,74 @@
         sync();
     }
 
+    // ---------------------------------------------------------------- live filters (Users, Reports, Verification)
+    // Typing in the search box or changing a filter updates the results right away:
+    // only the results part is fetched again ([data-ap-results]) and the address bar
+    // keeps the filters, so refresh / back / sharing the link still work.
+    const live = document.querySelector("form[data-ap-live]");
+    const results = document.querySelector("[data-ap-results]");
+    if (live && results) {
+        const range = live.querySelector("[data-ap-range]");
+        const joined = live.querySelector("[data-ap-joined]");
+        const clear = live.querySelector("[data-ap-clear]");
+        let timer = null, controller = null;
+
+        function queryFor(form) {
+            const params = new URLSearchParams();
+            new FormData(form).forEach((value, key) => { if (String(value).trim()) params.set(key, value); });
+            if (range && range.hidden) { params.delete("joined_from"); params.delete("joined_to"); }
+            return params;
+        }
+
+        async function update(url) {
+            controller?.abort();
+            controller = new AbortController();
+            results.classList.add("is-loading");
+            try {
+                const response = await fetch(url, { headers: { "X-Requested-With": "ap-live" }, signal: controller.signal });
+                if (!response.ok) throw new Error(response.status);
+                results.innerHTML = await response.text();
+                history.replaceState(null, "", url);
+            } catch (error) {
+                if (error.name !== "AbortError") window.location.href = url;     // fall back to a normal page load
+                return;
+            } finally {
+                results.classList.remove("is-loading");
+            }
+            // Tabs keep the search / filters too
+            const params = new URL(url, location.href).searchParams;
+            document.querySelectorAll("a.ap-tab").forEach(tab => {
+                const tabUrl = new URL(tab.href);
+                ["q", "category"].forEach(key => {
+                    if (params.get(key)) tabUrl.searchParams.set(key, params.get(key));
+                    else tabUrl.searchParams.delete(key);
+                });
+                tab.href = tabUrl.toString();
+            });
+            if (clear) clear.hidden = [...params.keys()].every(key => key === "status" || key === "page");
+        }
+
+        function apply(delay) {
+            clearTimeout(timer);
+            timer = setTimeout(() => update(`${location.pathname}?${queryFor(live)}`), delay);
+        }
+
+        live.addEventListener("input", event => { if (event.target.type === "search") apply(300); });
+        live.addEventListener("change", event => {
+            if (event.target === joined && range) range.hidden = joined.value !== "custom";
+            if (event.target.type !== "search") apply(0);
+        });
+        live.addEventListener("submit", event => { event.preventDefault(); apply(0); });
+        // Previous / Next pages without reloading
+        results.addEventListener("click", event => {
+            const link = event.target.closest(".ap-pagination a");
+            if (!link) return;
+            event.preventDefault();
+            update(link.href);
+            results.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+    }
+
     // ---------------------------------------------------------------- activity chart
     const card = document.querySelector("[data-ap-chart]");
     if (!card) return;
@@ -152,7 +220,9 @@
             tip.innerHTML = `<strong>${shortDate(data.dates[i])}</strong>` + data.series.map(s =>
                 `<span><i style="background:${color(s.key)}"></i>${s.label}<b>${s.values[i]}</b></span>`).join("");
             tip.hidden = false;
-            const left = Math.min(x(i) * box.width / width + 12, box.width - tip.offsetWidth - 4);
+            // CSS pixels (the page is zoomed); flip to the left of the line near the right edge
+            let left = x(i) + 14;
+            if (left + tip.offsetWidth > plot.clientWidth) left = x(i) - tip.offsetWidth - 14;
             tip.style.left = `${plot.offsetLeft + Math.max(0, left)}px`;
             tip.style.top = `${plot.offsetTop + 8}px`;
         }
@@ -196,5 +266,7 @@
 
     daysSelect.addEventListener("change", load);
     new ResizeObserver(() => render()).observe(plot);
-    load();
+    // The last 30 days come with the page; other periods are fetched
+    const initial = document.getElementById("ap-chart-data");
+    if (initial) { data = JSON.parse(initial.textContent); fill(); } else load();
 })();

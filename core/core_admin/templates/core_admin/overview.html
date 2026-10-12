@@ -1,4 +1,5 @@
 {% extends "core_admin/base.html" %}
+{% load admin_icons %}
 
 {% block title %}LookApt Admin — Overview{% endblock %}
 
@@ -57,6 +58,7 @@
     </header>
     <ul class="ap-legend" data-ap-legend aria-label="Legend"></ul>
     <div class="ap-chart" data-ap-chart-plot role="img" aria-label="Activity chart"></div>
+    {{ chart_data|json_script:"ap-chart-data" }}
     <div class="ap-chart-tip" data-ap-chart-tip hidden></div>
     <details class="ap-chart-table">
         <summary>Show as a table</summary>
@@ -69,7 +71,7 @@
     <section class="ap-card">
         <header class="ap-card-head">
             <div><h2>Landlords waiting for review</h2><p>Oldest first.</p></div>
-            <a class="ap-link" href="{% url 'core_admin:verification_list' %}">See all →</a>
+            <a class="ap-link" href="{% url 'core_admin:verification_list' %}">See all {% ap_icon "arrow_right" 14 %}</a>
         </header>
         {% if waiting_verifications %}
             <ul class="ap-rows">
@@ -87,21 +89,21 @@
                 {% endfor %}
             </ul>
         {% else %}
-            <p class="ap-empty">No one is waiting. 🎉</p>
+            <p class="ap-empty">{% ap_icon "check" 18 %} No one is waiting.</p>
         {% endif %}
     </section>
 
     <section class="ap-card">
         <header class="ap-card-head">
             <div><h2>Open reports</h2><p>Oldest first.</p></div>
-            <a class="ap-link" href="{% url 'core_admin:report_list' %}">See all →</a>
+            <a class="ap-link" href="{% url 'core_admin:report_list' %}">See all {% ap_icon "arrow_right" 14 %}</a>
         </header>
         {% if waiting_reports %}
             <ul class="ap-rows">
                 {% for r in waiting_reports %}
                     <li>
                         <a class="ap-row" href="{% url 'core_admin:report_detail' r.pk %}">
-                            <span class="ap-avatar ap-avatar--red" aria-hidden="true">!</span>
+                            <span class="ap-avatar ap-avatar--red" aria-hidden="true">{% ap_icon "alert" 18 %}</span>
                             <span class="ap-row-main">
                                 <strong>{{ r.reported_user.display_name }}</strong>
                                 <small>{{ r.get_category_display }} · by {{ r.reporter.display_name }}</small>
@@ -112,7 +114,7 @@
                 {% endfor %}
             </ul>
         {% else %}
-            <p class="ap-empty">No open reports.</p>
+            <p class="ap-empty">{% ap_icon "check" 18 %} No open reports.</p>
         {% endif %}
     </section>
 </div>

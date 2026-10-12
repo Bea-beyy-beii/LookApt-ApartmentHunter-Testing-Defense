@@ -87,3 +87,63 @@
     width: 20px;
     height: 20px;
 }
+
+/* =========================================================
+   DROPDOWNS (every <select> in the app)
+   Cream, rounded, a navy chevron; gold when hovered or focused.
+   :not([multiple]):not([size]) makes this win over each page's own
+   select styles (it only sets look, not size).
+========================================================= */
+
+select:not([multiple]):not([size]) {
+    appearance: none;
+    -webkit-appearance: none;
+
+    padding-right: 38px;
+
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    background-color: var(--cream);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23203a68' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+
+    color: var(--text-primary);
+    font-family: inherit;
+
+    cursor: pointer;
+    transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+select:not([multiple]):not([size]):hover {
+    border-color: var(--gold);
+    background-color: #fff3d9;
+}
+
+select:not([multiple]):not([size]):focus-visible {
+    border-color: var(--gold);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(245, 185, 76, 0.35);
+}
+
+select:not([multiple]):not([size]):disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+select option {
+    background: var(--white);
+    color: var(--text-primary);
+}
+
+html[data-theme="dark"] select:not([multiple]):not([size]) {
+    border-color: var(--border-medium);
+    background-color: var(--dark-surface-2, #18253d);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e1e8f4' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
+html[data-theme="dark"] select:not([multiple]):not([size]):hover {
+    border-color: var(--gold);
+    background-color: #2a2a22;
+}

@@ -1,8 +1,9 @@
 {% extends "core_admin/base.html" %}
+{% load admin_icons %}
 
 {% block title %}LookApt Admin — {{ account.display_name }}{% endblock %}
 
-{% block breadcrumbs %}<a class="ap-back" href="{% url 'core_admin:user_list' %}">← Users</a>{% endblock %}
+{% block breadcrumbs %}<a class="ap-back" href="{% url 'core_admin:user_list' %}">{% ap_icon "arrow_left" 14 %} Users</a>{% endblock %}
 
 {% block content %}
 <div class="ap-page-head">

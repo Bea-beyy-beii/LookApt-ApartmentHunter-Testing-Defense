@@ -1,4 +1,4 @@
-{% load static %}
+{% load static auth_icons %}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -101,11 +101,7 @@
                             class="input-icon"
                             aria-hidden="true"
                         >
-                            <img
-                                src="{% static 'core/images/icons/person.png' %}"
-                                alt=""
-                                class="input-icons"
-                            >
+                            {% auth_icon "person" %}
                         </span>
 
                         <input
@@ -135,11 +131,7 @@
                             class="input-icon"
                             aria-hidden="true"
                         >
-                            <img
-                                src="{% static 'core/images/icons/lock.png' %}"
-                                alt=""
-                                class="input-icons"
-                            >
+                            {% auth_icon "lock" %}
                         </span>
 
                         <input

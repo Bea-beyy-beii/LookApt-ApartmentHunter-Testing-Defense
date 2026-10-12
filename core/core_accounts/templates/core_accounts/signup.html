@@ -1,4 +1,4 @@
-{% load static %}
+{% load static auth_icons %}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -122,7 +122,7 @@
                         <label for="first_name">First Name</label>
                         <div class="input-wrapper">
                             <span class="input-icon" aria-hidden="true">
-                                <img src="{% static 'core/images/icons/person.png' %}" alt="" class="input-icons">
+                                {% auth_icon "person" %}
                             </span>
                             <input type="text" id="first_name" name="first_name" placeholder="First Name"
                                    autocomplete="given-name" maxlength="150" value="{{ form_data.first_name }}"
@@ -135,7 +135,7 @@
                         <label for="last_name">Last Name</label>
                         <div class="input-wrapper">
                             <span class="input-icon" aria-hidden="true">
-                                <img src="{% static 'core/images/icons/person.png' %}" alt="" class="input-icons">
+                                {% auth_icon "person" %}
                             </span>
                             <input type="text" id="last_name" name="last_name" placeholder="Last Name"
                                    autocomplete="family-name" maxlength="150" value="{{ form_data.last_name }}"
@@ -170,7 +170,7 @@
                         <label for="phone_number">Phone Number</label>
                         <div class="input-wrapper">
                             <span class="input-icon" aria-hidden="true">
-                                <img src="{% static 'core/images/icons/phone.png' %}" alt="" class="input-icons">
+                                {% auth_icon "phone" %}
                             </span>
                             <input type="tel" id="phone_number" name="phone_number" placeholder="09XXXXXXXXX"
                                    maxlength="11" inputmode="numeric" autocomplete="tel" value="{{ form_data.phone_number }}"
@@ -183,7 +183,7 @@
                         <label for="email">Email</label>
                         <div class="input-wrapper">
                             <span class="input-icon" aria-hidden="true">
-                                <img src="{% static 'core/images/icons/inbox.png' %}" alt="" class="input-icons">
+                                {% auth_icon "inbox" %}
                             </span>
                             <input type="email" id="email" name="email" placeholder="Email"
                                    autocomplete="email" value="{{ form_data.email }}"
@@ -216,7 +216,7 @@
                         <label for="sex">Sex</label>
                         <div class="input-wrapper">
                             <span class="input-icon" aria-hidden="true">
-                                <img src="{% static 'core/images/icons/gender.png' %}" alt="" class="input-icons">
+                                {% auth_icon "gender" %}
                             </span>
                             <select id="sex" name="sex" required aria-describedby="sex-error">
                                 <option value="" disabled {% if not form_data.sex %}selected{% endif %}>Select Sex</option>
@@ -231,7 +231,7 @@
                         <label for="role">Role</label>
                         <div class="input-wrapper">
                             <span class="input-icon" aria-hidden="true">
-                                <img src="{% static 'core/images/icons/tag.png' %}" alt="" class="input-icons">
+                                {% auth_icon "tag" %}
                             </span>
                             <select id="role" name="role" required aria-describedby="role-error">
                                 <option value="" disabled {% if not form_data.role %}selected{% endif %}>Select Role</option>
@@ -266,7 +266,7 @@
                         <label for="password">Password</label>
                         <div class="input-wrapper">
                             <span class="input-icon" aria-hidden="true">
-                                <img src="{% static 'core/images/icons/lock.png' %}" alt="" class="input-icons">
+                                {% auth_icon "lock" %}
                             </span>
                             <input type="password" id="password" name="password" placeholder="Password"
                                    autocomplete="new-password" aria-describedby="password-hint password-error">
@@ -283,7 +283,7 @@
                         <label for="confirm_password">Confirm Password</label>
                         <div class="input-wrapper">
                             <span class="input-icon" aria-hidden="true">
-                                <img src="{% static 'core/images/icons/lock.png' %}" alt="" class="input-icons">
+                                {% auth_icon "lock" %}
                             </span>
                             <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm Password"
                                    autocomplete="new-password" aria-describedby="confirm_password-error">

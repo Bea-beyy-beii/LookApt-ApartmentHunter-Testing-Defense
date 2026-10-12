@@ -1,0 +1,32 @@
+{% load admin_icons %}
+{# The results part of the page: also sent alone when a filter changes (admin_panel.js) #}
+<section class="ap-card ap-card--flush">
+    {% if page.object_list %}
+        <table class="ap-table">
+            <thead>
+                <tr><th>Landlord</th><th>Documents</th><th>Claude's summary</th><th>Sent</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+                {% for v in page %}
+                    {% with u=v.landlord.user %}
+                    <tr>
+                        <td>
+                            <a class="ap-person" href="{% url 'core_admin:verification_detail' v.pk %}">
+                                <span class="ap-avatar" aria-hidden="true">{{ u.first_name|first|upper }}{{ u.last_name|first|upper }}</span>
+                                <span><strong>{{ u.display_name }}</strong><small>{{ u.email|default:u.phone_number }}</small></span>
+                            </a>
+                        </td>
+                        <td><span class="ap-muted">{{ v.get_id_type_display }}<br>{{ v.get_ownership_type_display }}</span></td>
+                        <td class="ap-cell-summary">{{ v.ai_summary|default:"—"|truncatechars:110 }}</td>
+                        <td><time datetime="{{ v.created_at|date:'c' }}" title="{{ v.created_at|date:'M j, Y, g:i A' }}">{{ v.created_at|timesince }} ago</time></td>
+                        <td><span class="ap-pill ap-pill--{{ v.status }}">{{ v.get_status_display }}</span></td>
+                    </tr>
+                    {% endwith %}
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="ap-empty">{% if query %}No landlords match "{{ query }}".{% else %}Nothing here.{% endif %}</p>
+    {% endif %}
+</section>
+{% include "core_admin/partials/pagination.html" %}

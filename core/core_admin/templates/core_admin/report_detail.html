@@ -1,8 +1,9 @@
 {% extends "core_admin/base.html" %}
+{% load admin_icons %}
 
 {% block title %}LookApt Admin — Report about {{ reported.display_name }}{% endblock %}
 
-{% block breadcrumbs %}<a class="ap-back" href="{% url 'core_admin:report_list' %}?status={{ report.status }}">← Reports</a>{% endblock %}
+{% block breadcrumbs %}<a class="ap-back" href="{% url 'core_admin:report_list' %}?status={{ report.status }}">{% ap_icon "arrow_left" 14 %} Reports</a>{% endblock %}
 
 {% block content %}
 <div class="ap-page-head">
@@ -33,9 +34,9 @@
                                     <img src="{{ e.file.url }}" alt="{{ e.name }}" loading="lazy">
                                 </button>
                             {% elif e.kind == "video" %}
-                                <button type="button" class="ap-doc-thumb ap-doc-thumb--file" data-ap-view="{{ e.file.url }}" data-ap-kind="video" aria-label="Play {{ e.name }}">▶ Video</button>
+                                <button type="button" class="ap-doc-thumb ap-doc-thumb--file" data-ap-view="{{ e.file.url }}" data-ap-kind="video" aria-label="Play {{ e.name }}">{% ap_icon "play" 26 %}<span>Video</span></button>
                             {% else %}
-                                <a class="ap-doc-thumb ap-doc-thumb--file" href="{{ e.file.url }}" target="_blank" rel="noopener">Open file ↗</a>
+                                <a class="ap-doc-thumb ap-doc-thumb--file" href="{{ e.file.url }}" target="_blank" rel="noopener">{% ap_icon "file" 26 %}<span>Open file {% ap_icon "external" 12 %}</span></a>
                             {% endif %}
                             <figcaption><span>{{ e.name|default:"Attachment"|truncatechars:30 }}</span></figcaption>
                         </figure>
@@ -54,7 +55,7 @@
                     <span class="ap-avatar ap-avatar--red" aria-hidden="true">{{ reported.first_name|first|upper }}{{ reported.last_name|first|upper }}</span>
                     <span><strong>{{ reported.display_name }}</strong><small>{{ reported.get_role_display }}{% if not reported.is_active %} · suspended{% endif %}</small></span>
                 </a>
-                <p class="ap-muted ap-gap">{% if reported_count >= 2 %}<span class="ap-flag">⚠ {{ reported_count }} reports received</span>{% else %}First report about them{% endif %}</p>
+                <p class="ap-muted ap-gap">{% if reported_count >= 2 %}<span class="ap-flag">{% ap_icon "warning" 14 %} {{ reported_count }} reports received</span>{% else %}First report about them{% endif %}</p>
             </section>
             <section class="ap-card">
                 <header class="ap-card-head"><div><h2>Filed by</h2></div></header>

@@ -247,6 +247,10 @@ def property_set_visibility(request, pk):
     property_obj = _own_property(request, pk)
     visibility = request.POST.get("visibility")
 
+    if visibility not in Complex.ComplexStatus.values:
+        if _wants_json(request):
+            return JsonResponse({"error": "Invalid visibility."}, status=400)
+        return redirect(_my_listings_url())
 
     if visibility == Complex.ComplexStatus.ACTIVE and not can_publish(request.user):
         if _wants_json(request):

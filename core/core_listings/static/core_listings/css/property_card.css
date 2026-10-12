@@ -253,6 +253,11 @@
     box-shadow: var(--shadow-soft);
 }
 
+/* Opened above the button / aligned left when there's no room (listing_cards.js: placeMenu) */
+.property-menu { overflow-y: auto; }
+.property-menu.is-up { top: auto; bottom: calc(100% + 6px); }
+.property-menu.is-left { right: auto; left: 0; }
+
 .property-menu hr {
     margin: 6px 4px;
     border: 0;

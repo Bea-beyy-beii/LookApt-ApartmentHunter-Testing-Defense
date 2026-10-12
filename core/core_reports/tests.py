@@ -28,6 +28,8 @@ class ReportTests(TestCase):
 
     def setUp(self):
         self.landlord = make_user("liza", "landlord", "09111111111")
+        self.landlord.is_verified = True          # unverified landlords can't file reports (core_verification)
+        self.landlord.save()
         self.other_landlord = make_user("mark", "landlord", "09444444444")
         self.renter = make_user("arem", "renter", "09222222222")
         self.stranger = make_user("bea", "renter", "09333333333")
