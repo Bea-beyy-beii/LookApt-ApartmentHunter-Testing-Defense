@@ -12,6 +12,12 @@ phone_regex = RegexValidator(
     message="Phone number must start with 09 and be exactly 11 digits."
 )
 
+# --------------------------------------------------------------------------------------------------------------- PROFILE PHOTOS
+
+def avatar_path(instance, filename):
+    # A new random name each upload, so browsers never show a cached old photo
+    return f"avatars/{instance.pk}/{uuid.uuid4().hex}.webp"
+
 # --------------------------------------------------------------------------------------------------------------- CLASS USER - FOR USERS TABLE
 
 class User(AbstractUser):
@@ -55,6 +61,14 @@ class User(AbstractUser):
     terms_version = models.CharField(max_length=20, blank=True)
     terms_accepted_at = models.DateTimeField(null=True, blank=True)
 
+    # Account pop-up (core_accounts/account.py)
+    # Profile photo; without one, the avatar is the initials on blue (landlords) / yellow (renters)
+    avatar = models.ImageField(upload_to=avatar_path, blank=True)
+    # Contact sharing: renters -> landlords they apply to; landlords -> renters on their listings.
+    # Both off = talk through LookApt chat only (the default).
+    share_email = models.BooleanField(default=False)
+    share_phone = models.BooleanField(default=False)
+
 # ----------------------------------------------------------- TRIGGER FOR USERNAMES
 # ------------------------------- USERNAME FORMAT: firstname.lastname
 
@@ -82,6 +96,20 @@ class User(AbstractUser):
     @property
     def display_name(self):
         return f"{self.first_name.title()} {self.last_name.title()}"
+
+    @property
+    def initials(self):
+        return f"{self.first_name[:1]}{self.last_name[:1]}".upper()
+
+    @property
+    def avatar_url(self):
+        return self.avatar.url if self.avatar else ""
+
+    @property
+    def shared_contact(self):
+        """What this user lets the other side see (Settings > Contact sharing): e.g. 'a@b.com · 0917…', or ''."""
+        return " · ".join(value for value, shared in ((self.email, self.share_email), (self.phone_number, self.share_phone))
+                          if shared and value)
 
 
 

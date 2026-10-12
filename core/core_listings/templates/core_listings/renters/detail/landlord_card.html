@@ -10,7 +10,7 @@
 
     <div class="ld-landlord-body">
 
-        <span class="ld-landlord-avatar" aria-hidden="true">{{ landlord.initials }}</span>
+        <span class="ld-landlord-avatar avatar--landlord" aria-hidden="true">{% if landlord.avatar_url %}<img src="{{ landlord.avatar_url }}" alt="">{% else %}{{ landlord.initials }}{% endif %}</span>
 
         <div class="ld-landlord-info">
             <strong class="ld-landlord-name">{{ landlord.name }}</strong>
@@ -34,6 +34,13 @@
                     <span>Since <strong>{{ landlord.member_since|date:"M Y" }}</strong></span>
                 </span>
             </div>
+
+            {% if landlord.email or landlord.phone %}
+                <ul class="ld-landlord-contact">
+                    {% if landlord.phone %}<li><a href="tel:{{ landlord.phone }}">{% feature_icon "phone" %} {{ landlord.phone }}</a></li>{% endif %}
+                    {% if landlord.email %}<li><a href="mailto:{{ landlord.email }}">{% feature_icon "mail" %} {{ landlord.email }}</a></li>{% endif %}
+                </ul>
+            {% endif %}
         </div>
 
     </div>

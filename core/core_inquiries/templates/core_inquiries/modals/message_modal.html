@@ -16,7 +16,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
         </button>
 
-        <span class="ld-landlord-avatar lm-chat-avatar" aria-hidden="true">{{ landlord.initials }}</span>
+        <span class="ld-landlord-avatar lm-chat-avatar avatar--landlord" aria-hidden="true">{% if landlord.avatar_url %}<img src="{{ landlord.avatar_url }}" alt="">{% else %}{{ landlord.initials }}{% endif %}</span>
 
         <div class="lm-chat-person">
             <div class="lm-chat-name">

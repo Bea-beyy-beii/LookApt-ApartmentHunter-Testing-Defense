@@ -82,7 +82,11 @@ def landlord_summary(complex_obj):
     user = landlord.user
     return {
         "name": user.display_name,
-        "initials": f"{user.first_name[:1]}{user.last_name[:1]}".upper(),
+        "initials": user.initials,
+        "avatar_url": user.avatar_url,
+        # Only what the landlord chose to show (Settings > Contact sharing)
+        "email": user.email if user.share_email else "",
+        "phone": user.phone_number if user.share_phone else "",
         "is_verified": user.is_verified,
         "listings": renter_visible_complexes().filter(landlord=landlord).count(),
         "member_since": user.date_joined,

@@ -6,7 +6,7 @@ from django.conf import settings
 from django.urls import reverse
 from core.models import User
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse
@@ -18,7 +18,7 @@ from core.core_inquiries.services import notifications_for
 from core.core_reports.services import SUPPORT_EMAIL
 from core.core_admin import notify
 
-from . import otp
+from . import account, otp
 from .legal import legal_context
 from .services import AccountService
 
@@ -334,6 +334,46 @@ def google_callback_view(request):
 
 
 # ------------------------------------------------------------------ TOP BAR (dark mode switch + bell)
+
+# ------------------------------------------------------------------ Account pop-up (account.py)
+
+def _avatar_json(user):
+    return {'url': user.avatar_url, 'initials': user.initials}
+
+
+@login_required
+@require_POST
+def account_avatar_view(request):
+    """Profile tab: upload a photo (avatar) or remove it (remove=1)."""
+    try:
+        if request.POST.get('remove'):
+            account.remove_avatar(request.user)
+        else:
+            account.save_avatar(request.user, request.FILES.get('avatar'))
+    except ValidationError as error:
+        return JsonResponse({'error': ' '.join(error.messages)}, status=400)
+    return JsonResponse(_avatar_json(request.user))
+
+
+@login_required
+@require_POST
+def account_contact_view(request):
+    """Settings tab: which of email / phone the other side may see."""
+    account.set_contact_sharing(request.user, request.POST.get('share_email') == '1',
+                                request.POST.get('share_phone') == '1')
+    return JsonResponse({'share_email': request.user.share_email, 'share_phone': request.user.share_phone})
+
+
+@login_required
+@require_POST
+def account_password_view(request):
+    """Settings tab: change password (stays logged in)."""
+    errors = account.change_password(request.user, request.POST)
+    if errors:
+        return JsonResponse({'ok': False, 'errors': errors}, status=400)
+    update_session_auth_hash(request, request.user)
+    return JsonResponse({'ok': True})
+
 
 @login_required
 @require_POST

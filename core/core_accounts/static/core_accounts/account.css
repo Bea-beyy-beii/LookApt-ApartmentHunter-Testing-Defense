@@ -1,0 +1,263 @@
+/* =========================================================
+   ACCOUNT POP-UP (profile menu > My Profile / Settings) + AVATARS
+   Loaded by topbar_right.html. Prefix: ac-. Colours from the theme variables.
+========================================================= */
+
+/* ---------- Avatars: photo, or initials on blue (landlords) / yellow (renters) ---------- */
+
+.avatar {
+    display: inline-grid;
+    place-items: center;
+    flex-shrink: 0;
+    overflow: hidden;
+
+    border-radius: 50%;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    user-select: none;
+}
+
+.avatar.profile-picture { width: 40px; height: 40px; font-size: 14px; }
+
+:is(.avatar, .rq-avatar, .ld-landlord-avatar) img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+:is(.rq-avatar, .ld-landlord-avatar):has(img) { overflow: hidden; padding: 0; }
+
+/* (html:root body = beats the dashboards' own avatar colours, dark mode included) */
+html:root body .avatar--landlord { background: #2f6bd1; color: #fff; }
+html:root body .avatar--renter { background: var(--gold); color: #203a68; }
+html:root body :is(.avatar--landlord, .avatar--renter):has(img) { background: transparent; }
+
+
+/* ---------- Pop-up ---------- */
+
+.ac-dialog {
+    width: min(560px, calc(100vw - 32px));
+    max-height: min(720px, calc(100vh - 48px));
+    margin: auto;
+    padding: 0;
+    overflow: hidden;
+
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: var(--white);
+    color: var(--text-primary);
+    box-shadow: 0 24px 60px rgba(20, 30, 50, 0.25);
+}
+
+.ac-dialog[open] { display: flex; flex-direction: column; animation: ac-pop 0.18s ease; }
+.ac-dialog::backdrop { background: rgba(10, 18, 34, 0.45); }
+
+@keyframes ac-pop { from { opacity: 0; transform: translateY(8px); } }
+
+.ac-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px 8px;
+}
+
+.ac-head h2 { margin: 0; color: var(--navy); font-size: 21px; font-weight: 700; }
+html[data-theme="dark"] .ac-head h2 { color: var(--text-primary); }
+
+.ac-close {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.ac-close:hover { background: rgba(32, 58, 104, 0.08); }
+.ac-close svg { width: 18px; height: 18px; }
+
+.ac-tabs {
+    display: flex;
+    gap: 4px;
+    margin: 0 24px;
+    padding: 4px;
+    border-radius: 12px;
+    background: rgba(32, 58, 104, 0.06);
+}
+
+.ac-tabs button {
+    flex: 1;
+    min-height: 36px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.ac-tabs button[aria-selected="true"] { background: var(--white); color: var(--navy); box-shadow: 0 2px 8px rgba(20, 30, 50, 0.08); }
+html[data-theme="dark"] .ac-tabs { background: rgba(255, 255, 255, 0.06); }
+html[data-theme="dark"] .ac-tabs button[aria-selected="true"] { background: rgba(255, 255, 255, 0.12); color: var(--text-primary); box-shadow: none; }
+
+.ac-panel { padding: 18px 24px 24px; overflow-y: auto; }
+.ac-panel[hidden] { display: none; }
+
+
+/* ---------- My Profile ---------- */
+
+.ac-photo { display: flex; align-items: center; gap: 18px; margin-bottom: 18px; }
+
+.ac-avatar { width: 92px; height: 92px; font-size: 32px; }
+
+.ac-photo-text { display: grid; gap: 4px; min-width: 0; }
+.ac-photo-text strong { font-size: 15px; }
+.ac-photo-text small { color: var(--text-secondary); font-size: 12.5px; line-height: 1.45; }
+.ac-photo-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+
+.ac-details {
+    display: grid;
+    margin: 0;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+}
+
+.ac-details > div {
+    display: grid;
+    grid-template-columns: 130px minmax(0, 1fr);
+    gap: 12px;
+    padding: 11px 16px;
+}
+
+.ac-details > div + div { border-top: 1px solid var(--border-light); }
+.ac-details dt { color: var(--text-secondary); font-size: 13px; }
+.ac-details dd { margin: 0; overflow-wrap: anywhere; font-size: 14px; font-weight: 600; }
+
+.ac-note { margin: 12px 2px 0; color: var(--text-secondary); font-size: 12.5px; line-height: 1.5; }
+.ac-note a { color: var(--navy); font-weight: 600; }
+html[data-theme="dark"] .ac-note a { color: var(--text-primary); }
+
+
+/* ---------- Settings ---------- */
+
+.ac-section { display: grid; gap: 10px; }
+.ac-section + .ac-section { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-light); }
+.ac-section h3 { margin: 0; color: var(--navy); font-size: 15.5px; font-weight: 700; }
+html[data-theme="dark"] .ac-section h3 { color: var(--text-primary); }
+.ac-hint { margin: -4px 0 2px; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+
+/* On / off switches */
+.ac-switch {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 10px 14px;
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    cursor: pointer;
+}
+
+.ac-switch span { display: grid; gap: 2px; min-width: 0; }
+.ac-switch strong { font-size: 14px; }
+.ac-switch small { overflow-wrap: anywhere; color: var(--text-secondary); font-size: 12.5px; }
+.ac-switch input { position: absolute; opacity: 0; pointer-events: none; }
+
+.ac-switch i {
+    position: relative;
+    flex-shrink: 0;
+    width: 42px;
+    height: 24px;
+    border-radius: 999px;
+    background: var(--border-medium);
+    transition: background-color 0.2s ease;
+}
+
+.ac-switch i::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease;
+}
+
+.ac-switch input:checked + i { background: var(--navy); }
+.ac-switch input:checked + i::after { transform: translateX(18px); }
+.ac-switch input:focus-visible + i { outline: 2px solid var(--gold); outline-offset: 2px; }
+.ac-switch:has(input:disabled) { opacity: 0.55; cursor: not-allowed; }
+html[data-theme="dark"] .ac-switch input:checked + i { background: var(--gold); }
+
+/* Password fields */
+.ac-field { display: grid; gap: 5px; }
+.ac-field > span { font-size: 13px; font-weight: 600; }
+
+.ac-field input {
+    min-height: 42px;
+    padding: 0 12px;
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    background: var(--white);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.ac-field input:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+.ac-field.has-error input { border-color: var(--error); }
+.ac-field-hint { color: var(--text-secondary); font-size: 12px; }
+.ac-error { color: var(--error); font-size: 12px; }
+.ac-error:empty { display: none; }
+
+.ac-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+
+.ac-danger h3 { color: var(--error) !important; }
+.ac-danger .ac-btn { justify-self: start; }
+
+
+/* ---------- Buttons + status ---------- */
+
+.ac-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 0 16px;
+    border: 1.5px solid transparent;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.ac-btn--primary { background: var(--navy); color: #fff; }
+.ac-btn--primary:hover { background: var(--navy-dark); }
+.ac-btn--ghost { border-color: var(--border-medium); background: transparent; color: var(--text-primary); }
+.ac-btn--ghost:hover { border-color: var(--navy); }
+.ac-btn--danger { border-color: rgba(201, 75, 75, 0.45); background: transparent; color: var(--error); }
+.ac-btn--danger:hover { background: rgba(201, 75, 75, 0.08); }
+.ac-btn:disabled { opacity: 0.6; cursor: progress; }
+
+.ac-status { min-height: 1em; margin: 0; color: var(--success); font-size: 12.5px; font-weight: 600; }
+.ac-status.is-error { color: var(--error); }
+
+@media (max-width: 480px) {
+    .ac-photo { flex-direction: column; align-items: flex-start; }
+    .ac-details > div { grid-template-columns: 1fr; gap: 2px; }
+}

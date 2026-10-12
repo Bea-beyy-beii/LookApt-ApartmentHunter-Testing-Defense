@@ -21,6 +21,9 @@ urlpatterns = [
 
     # Top bar: dark mode switch + notification bell
     path('account/theme/', views.theme_view, name='account_theme'),
+    path('account/avatar/', views.account_avatar_view, name='account_avatar'),
+    path('account/contact/', views.account_contact_view, name='account_contact'),
+    path('account/password/', views.account_password_view, name='account_password'),
     path('account/notifications/', views.notifications_view, name='account_notifications'),
     path('account/notifications/seen/', views.notifications_seen_view, name='account_notifications_seen'),
 ]   

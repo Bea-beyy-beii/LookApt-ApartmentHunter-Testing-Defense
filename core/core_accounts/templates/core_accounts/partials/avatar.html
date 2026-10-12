@@ -1,0 +1,3 @@
+{# A user's photo, or their initials on blue (landlords) / yellow (renters). #}
+{# {% include "core_accounts/partials/avatar.html" with person=some_user cls="extra classes" %} #}
+<span class="avatar avatar--{{ person.role }}{% if cls %} {{ cls }}{% endif %}" data-avatar data-initials="{{ person.initials }}" aria-hidden="true">{% if person.avatar %}<img src="{{ person.avatar.url }}" alt="">{% else %}{{ person.initials }}{% endif %}</span>

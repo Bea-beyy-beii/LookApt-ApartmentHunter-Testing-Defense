@@ -1447,3 +1447,28 @@
     column-gap: 18px;
     max-height: none;
 }
+
+
+/* Landlord's phone / email, when they chose to show them (Settings > Contact sharing) */
+.ld-landlord-contact {
+    display: grid;
+    gap: 4px;
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 13px;
+}
+
+.ld-landlord-contact a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    overflow-wrap: anywhere;
+    color: var(--navy);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.ld-landlord-contact a:hover { text-decoration: underline; }
+.ld-landlord-contact svg { flex-shrink: 0; width: 15px; height: 15px; }
+html[data-theme="dark"] .ld-landlord-contact a { color: var(--text-primary); }
