@@ -51,6 +51,10 @@ FEATURE_ICONS = {
     "filter": '<path d="M4 5h16l-6.5 7.3V18l-3 1.5v-7.2z"/>',
     "list": '<path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/>',
     "plus": '<path d="M12 5v14M5 12h14"/>',
+    "has_security": '<path d="M12 3 4.5 6v6c0 4.5 3.2 7.8 7.5 9 4.3-1.2 7.5-4.5 7.5-9V6L12 3Z"/><path d="M12 8v4l2.5 1.5"/>',
+    "has_cctv": '<path d="M3 7.5 15.5 4l2 6.5L5 14Z"/><path d="m17.5 10.5 3 1-1.5 4-3.2-1.1M8 13.5 9 19M5 19h6"/>',
+    "has_common_lounge": '<path d="M5 11V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"/><path d="M3 13a2 2 0 0 1 4 0v2h10v-2a2 2 0 0 1 4 0v4H3Z"/><path d="M5 17v2M19 17v2"/>',
+    "has_waste_collection": '<path d="M4 7h16M10 7V4h4v3M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/>',
     "phone": '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
     "mail": '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
 }

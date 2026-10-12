@@ -47,8 +47,8 @@
     </div>
 
 
-    <!-- Lease / Sex / Floors -->
-    <div class="form-grid three-columns">
+    <!-- Lease / Sex / Floors / Turnover -->
+    <div class="form-grid four-columns">
 
         <div class="form-group">
             <label for="{{ form.lease_term.id_for_label }}">Lease Term</label>
@@ -68,12 +68,23 @@
             {% if form.num_of_floors.errors %}<div class="field-error">{{ form.num_of_floors.errors }}</div>{% endif %}
         </div>
 
+        {# Days needed to clean / fix a unit after a tenant leaves: the next tenant's earliest move-in #}
+        <div class="form-group">
+            <label for="{{ form.turnover_days.id_for_label }}">Turnover Period (days) <span>*</span></label>
+            {{ form.turnover_days }}
+            <p class="field-hint">Days to prepare a unit after a tenant moves out. Used to estimate when renters can move in.</p>
+            {% if form.turnover_days.errors %}<div class="field-error">{{ form.turnover_days.errors }}</div>{% endif %}
+        </div>
+
     </div>
 
 
     <!-- Features -->
     <div class="form-group">
-        <label class="group-label">Property Features</label>
+        <div class="group-label-row">
+            <label class="group-label">Property Features</label>
+            <button type="button" class="check-select-all" data-select-all>Select all</button>
+        </div>
         <p class="field-hint">Select what your property offers.</p>
 
         <div class="check-grid">

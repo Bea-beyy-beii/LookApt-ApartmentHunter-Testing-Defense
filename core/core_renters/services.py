@@ -1,17 +1,15 @@
 # core_renters/services.py
 # Listing cards on the renter dashboard (Home + Saved Listings tabs).
-from collections import Counter
-
 from django.db.models import Prefetch
 
 from core.core_listings.models import SavedListing, Unit
 from core.core_listings.services import renter_visible_complexes
 
-MAX_CARD_CHIPS = 3
+MAX_CARD_CHIPS = 4      # complex features only (unit amenities are on the listing page)
 
 
 def _decorate(complex_obj, saved_ids):
-    """Add the values the card shows: price, availability badge, chips, saved state."""
+    """Add the values the card shows: price, availability badge, feature chips, saved state."""
     units = list(complex_obj.units.all())   # published units only (see the Prefetch below)
     available = [unit for unit in units if unit.availability == Unit.Availability.AVAILABLE]
     priced = available or units
@@ -20,21 +18,8 @@ def _decorate(complex_obj, saved_ids):
     complex_obj.card_available = len(available)
     complex_obj.is_saved = complex_obj.pk in saved_ids
 
-    # Chips: complex features, then amenities found in its units, furnishing last
-    chips = complex_obj.feature_list()
-    seen = set()
-    for unit in priced:
-        for amenity in unit.amenity_list():
-            if amenity["key"] not in seen:
-                seen.add(amenity["key"])
-                chips.append(amenity)
-
-    furnish_level = Counter(unit.furnish_level for unit in priced).most_common(1)[0][0]
-    if furnish_level != "unfurnished":
-        furnish_label = dict(Unit._meta.get_field("furnish_level").choices)[furnish_level]
-        chips = chips[:MAX_CARD_CHIPS - 1] + [{"key": "furnished", "label": furnish_label}]
-
-    complex_obj.card_chips = chips[:MAX_CARD_CHIPS]
+    # Chips: the complex's own features (Pet Friendly, CCTV ...), up to 4
+    complex_obj.card_chips = complex_obj.feature_list()[:MAX_CARD_CHIPS]
     return complex_obj
 
 

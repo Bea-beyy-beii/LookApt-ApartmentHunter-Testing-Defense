@@ -29,6 +29,15 @@
 .feature-chip--has_parking_space  { background: #e6eefb; color: #2f5fb3; }
 .feature-chip--is_gated           { background: #fbf0dc; color: #9a6a1f; }
 .feature-chip--has_laundry_area   { background: #e8edfa; color: #3b4f9a; }
+.feature-chip--has_security       { background: #e6f2ec; color: #2b7a4b; }
+.feature-chip--has_cctv           { background: #eceef3; color: #3d4a63; }
+.feature-chip--has_common_lounge  { background: #f6ebfa; color: #8a3fa8; }
+.feature-chip--has_waste_collection { background: #edf5e1; color: #4f7a1f; }
+
+html[data-theme="dark"] .feature-chip--has_security       { background: #17352a; color: #7fd1a3; }
+html[data-theme="dark"] .feature-chip--has_cctv           { background: #252d3c; color: #c3cbdb; }
+html[data-theme="dark"] .feature-chip--has_common_lounge  { background: #33213b; color: #d7a4ec; }
+html[data-theme="dark"] .feature-chip--has_waste_collection { background: #273317; color: #b6d98a; }
 
 /* Unit amenities */
 .feature-chip--air_conditioned    { background: #e5f0fb; color: #1f6fbf; }

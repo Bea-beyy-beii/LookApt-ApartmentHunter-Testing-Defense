@@ -47,6 +47,8 @@ function wizardNext() {
         return;
     }
 
+    if (!hasEnoughMedia(panel)) return;
+
     if (currentStep < totalSteps()) {
         goToStep(currentStep + 1);
     }
@@ -106,6 +108,60 @@ function hasPinnedLocation() {
     if (note) note.hidden = pinned;
     return pinned;
 }
+
+
+// ---------------------------------------------------------
+// PHOTO STEP: at least 2 photos (complex) / photos or videos (unit)
+// photo_upload.js keeps the count in data-total
+// ---------------------------------------------------------
+
+function hasEnoughMedia(panel) {
+    const upload = panel && panel.querySelector('[data-photo-upload][data-min]');
+    if (!upload) return true;
+    const total = Number(upload.dataset.total ?? upload.dataset.existing ?? 0);
+    if (total >= Number(upload.dataset.min)) return true;
+    const error = upload.querySelector('.photo-upload-error');
+    if (error) {
+        error.textContent = upload.dataset.minMessage;
+        error.hidden = false;
+    }
+    return false;
+}
+
+
+// ---------------------------------------------------------
+// "SELECT ALL" for Property Features / Amenities
+// ---------------------------------------------------------
+
+function syncSelectAll(button) {
+    const boxes = [...button.closest('.form-group').querySelectorAll('[data-check-feature] input[type="checkbox"]')];
+    const allOn = boxes.length > 0 && boxes.every(box => box.checked);
+    button.textContent = allOn ? 'Clear all' : 'Select all';
+    button.setAttribute('aria-pressed', String(allOn));
+}
+
+document.addEventListener('click', function (e) {
+    const button = e.target.closest('[data-select-all]');
+    if (!button) return;
+    const boxes = [...button.closest('.form-group').querySelectorAll('[data-check-feature] input[type="checkbox"]')];
+    const turnOn = !boxes.every(box => box.checked);
+    boxes.forEach(box => {
+        if (box.checked === turnOn) return;
+        box.checked = turnOn;
+        box.dispatchEvent(new Event('change', { bubbles: true }));    // keeps the draft + review in sync
+    });
+    syncSelectAll(button);
+});
+
+document.addEventListener('change', function (e) {
+    const group = e.target.closest && e.target.closest('.form-group');
+    const button = group && group.querySelector('[data-select-all]');
+    if (button) syncSelectAll(button);
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-select-all]').forEach(syncSelectAll);    // e.g. editing with all ticked
+});
 
 
 // ---------------------------------------------------------
@@ -178,6 +234,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (form.querySelector('[name="latitude"]') && !hasPinnedLocation()) {
             e.preventDefault();
             goToStep(2);
+        }
+
+        const photoPanel = form.querySelector('[data-photo-upload][data-min]')?.closest('.wizard-step-panel');
+        if (!e.defaultPrevented && photoPanel && !hasEnoughMedia(photoPanel)) {
+            e.preventDefault();
+            goToStep(Number(photoPanel.dataset.step));
         }
 
         // Valid submit: cover the page with a "Creating…" screen while files upload

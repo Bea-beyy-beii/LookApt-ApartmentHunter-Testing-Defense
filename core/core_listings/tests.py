@@ -88,3 +88,76 @@ class UnpublishedComplexTests(TestCase):
         self.assertEqual(names(), [])
         self.set_visibility("active")
         self.assertEqual(names(), ["Sunrise"])
+
+
+# ------------------------------------------------------------------ features, turnover, required photos
+
+import io as _io
+
+from django.core.files.uploadedfile import SimpleUploadedFile
+from PIL import Image
+
+from .forms import ComplexForm, UnitForm
+
+
+def jpg(name="p.jpg"):
+    buffer = _io.BytesIO()
+    Image.new("RGB", (40, 30), "teal").save(buffer, "JPEG")
+    return SimpleUploadedFile(name, buffer.getvalue(), content_type="image/jpeg")
+
+
+class ListingFormTests(TestCase):
+
+    def setUp(self):
+        self.user = make_landlord()
+        self.complex = Complex.objects.create(
+            landlord=self.user.landlord, area=Area.objects.create(area_name="Davao City"),
+            complex_name="Sunrise", address="Poblacion", complex_description="x",
+            min_price=5000, max_price=20000, status="active", lease_term="monthly",
+        )
+
+    def complex_data(self, **changes):
+        data = {"complex_name": "Moonlight", "complex_description": "Nice", "address": "Matina",
+                "latitude": "7.07", "longitude": "125.6", "lease_term": "monthly", "sex_restriction": "any",
+                "min_price": "5000", "max_price": "9000", "num_of_floors": "3", "turnover_days": "10",
+                "has_cctv": "on", "has_security": "on"}
+        data.update(changes)
+        return data
+
+    def test_eight_features_and_turnover_in_the_form(self):
+        form = ComplexForm(landlord=self.user.landlord)
+        self.assertEqual([f["field"].name for f in form.feature_fields()], list(Complex.FEATURE_LABELS))
+        self.assertEqual(len(Complex.FEATURE_LABELS), 8)
+        self.assertIn("turnover_days", form.fields)
+
+    def test_complex_needs_two_photos(self):
+        one = ComplexForm(self.complex_data(), {"photos": [jpg()]}, landlord=self.user.landlord)
+        self.assertFalse(one.is_valid())
+        self.assertIn("photos", one.errors)
+        two = ComplexForm(self.complex_data(), {"photos": [jpg(), jpg("b.jpg")]}, landlord=self.user.landlord)
+        self.assertTrue(two.is_valid(), two.errors)
+        self.assertEqual(two.cleaned_data["turnover_days"], 10)
+        self.assertTrue(two.cleaned_data["has_cctv"])
+
+    def unit_data(self):
+        return {"identifier": "101", "floor": "1", "bedroom_type": "studio", "width_dimension": "4",
+                "length_dimension": "5", "max_occupant": "2", "furnish_level": "unfurnished", "price": "8000",
+                "advance_months": "1", "deposit_months": "1"}
+
+    def test_unit_needs_two_photos_or_videos(self):
+        one = UnitForm(self.unit_data(), {"photos": [jpg()]}, complex_obj=self.complex)
+        self.assertFalse(one.is_valid())
+        self.assertIn("photos", one.errors)
+        two = UnitForm(self.unit_data(), {"photos": [jpg(), jpg("b.jpg")]}, complex_obj=self.complex)
+        self.assertTrue(two.is_valid(), two.errors)
+
+    def test_card_chips_are_complex_features_only(self):
+        from core.core_renters.services import get_renter_listings_context
+        for key in Complex.FEATURE_LABELS:
+            setattr(self.complex, key, True)
+        self.complex.save()
+        Unit.objects.create(complex=self.complex, identifier=1, bedroom_type="studio", width_dimension=4,
+                            length_dimension=5, furnish_level="fully_furnished", max_occupant=2, price=8000,
+                            air_conditioned=True, wifi_ready=True)
+        [listing] = get_renter_listings_context(None)["listings"]
+        self.assertEqual([chip["key"] for chip in listing.card_chips], list(Complex.FEATURE_LABELS)[:4])

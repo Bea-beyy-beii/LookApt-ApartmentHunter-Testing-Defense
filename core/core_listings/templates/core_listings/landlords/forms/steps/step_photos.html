@@ -3,7 +3,7 @@
     <div class="section-heading">
         <h2>{{ photo_heading|default:"Property Photos" }}</h2>
         <p>
-            Upload up to {{ max_photos|default:5 }} photos{% if allow_video %} and {{ max_videos }} video{{ max_videos|pluralize }}{% endif %}
+            Upload at least 2 {% if allow_video %}photos or videos{% else %}photos{% endif %} (up to {{ max_photos|default:5 }} photos{% if allow_video %} and {{ max_videos }} video{{ max_videos|pluralize }}{% endif %})
             of this {{ photo_subject|default:"property" }}. Clear, well-lit photos attract more renters.
         </p>
     </div>
@@ -12,6 +12,8 @@
     <div class="photo-upload"
          data-photo-upload
          data-max="{{ max_photos|default:5 }}"
+         data-min="2"
+         data-min-message="Add at least 2 {% if allow_video %}photos or videos{% else %}photos{% endif %} of this {{ photo_subject|default:"property" }} to continue."
          data-existing="{{ saved_pictures|length }}"
          {% if allow_video %}data-allow-video="1" data-max-videos="{{ max_videos }}" data-existing-videos="{{ saved_videos|length }}"{% endif %}>
 
