@@ -155,6 +155,8 @@
 /* =========================================================
    STEPS
    With JavaScript only the open step shows (signup.js adds .is-js).
+   The steps are stacked in one grid cell, so the card is always as tall
+   as the tallest step and doesn't change size between steps.
 ========================================================= */
 
 .signup-step {
@@ -167,8 +169,26 @@
     border: 0;
 }
 
+.signup-form.is-js .signup-steps {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.signup-form.is-js .signup-step {
+    grid-area: 1 / 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Back / Next sit at the bottom of every step, in the same place */
+.signup-form.is-js .signup-actions {
+    margin-top: auto;
+    padding-top: 22px;
+}
+
 .signup-form.is-js .signup-step:not(.is-active) {
-    display: none;
+    visibility: hidden;
+    pointer-events: none;
 }
 
 .signup-form.is-js .signup-step.is-active {
@@ -489,33 +509,27 @@
    The box scrolls on its own; the checkbox unlocks at the end.
 ========================================================= */
 
+.legal-subtitle { margin-bottom: 12px; }
+
+/* "Jump to Terms · Privacy" inside the subtitle */
+.legal-subtitle button {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--navy);
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: 700;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.legal-subtitle button:hover { color: var(--gold); }
+
 .legal-box-wrap {
     position: relative;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
 }
-
-.legal-jump {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 8px;
-}
-
-.legal-jump button {
-    padding: 4px 12px;
-
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-pill);
-    background: var(--white);
-    color: var(--navy);
-
-    font-family: inherit;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: border-color 0.2s ease, background-color 0.2s ease;
-}
-
-.legal-jump button:hover { border-color: var(--gold); background: #fff3d9; }
 
 .legal-box {
     max-height: min(340px, 42vh);
@@ -530,6 +544,21 @@
 }
 
 .legal-box:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* With JavaScript: the Terms box takes whatever room step 5 has left
+   (at least 150px; the card is as tall as the tallest step) */
+.signup-form.is-js .legal-box-wrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.signup-form.is-js .legal-box {
+    flex: 1 1 150px;
+    min-height: 0;
+    max-height: none;
+}
 
 .legal-box .legal-doc + .legal-doc {
     margin-top: 20px;
@@ -586,9 +615,8 @@
 .legal-agree:has(input:disabled) input { cursor: not-allowed; }
 .legal-agree a { font-weight: 600; }
 
-.legal-hint { margin-left: 27px; }
-.legal-hint.is-flashing { animation: legal-flash 0.9s ease 2; }
+.legal-subtitle.is-flashing { animation: legal-flash 0.9s ease 2; }
 
 @keyframes legal-flash {
-    50% { color: var(--navy); font-weight: 700; }
+    50% { color: var(--navy); }
 }

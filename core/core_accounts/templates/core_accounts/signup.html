@@ -120,6 +120,9 @@
                 {% endfor %}
 
 
+                <!-- All 5 steps share one spot, so the card keeps the same size on every step -->
+                <div class="signup-steps">
+
                 <!-- ===================== STEP 1 · NAME ===================== -->
                 <fieldset class="signup-step" data-step="1">
 
@@ -322,13 +325,13 @@
                 <fieldset class="signup-step" data-step="5">
 
                     <h1 class="signup-title">Terms and Privacy</h1>
-                    <p class="signup-subtitle">Please read to the end to continue.</p>
+                    <p class="signup-subtitle legal-subtitle" id="agree_terms-hint" data-legal-hint>
+                        Read to the end to continue. Jump to
+                        <button type="button" data-legal-jump="legal-terms">Terms</button> ·
+                        <button type="button" data-legal-jump="legal-privacy">Privacy</button>
+                    </p>
 
                     <div class="legal-box-wrap">
-                        <nav class="legal-jump" aria-label="Jump to">
-                            <button type="button" data-legal-jump="legal-terms">Terms</button>
-                            <button type="button" data-legal-jump="legal-privacy">Privacy</button>
-                        </nav>
                         <div class="legal-box" data-legal-box tabindex="0" aria-label="Terms and Conditions and Privacy Notice">
                             {% include "core_accounts/legal/terms_body.html" %}
                             {% include "core_accounts/legal/privacy_body.html" %}
@@ -341,9 +344,8 @@
                         <label class="legal-agree" data-legal-agree>
                             <input type="checkbox" name="agree_terms" value="1" {% if form_data.agree_terms %}checked{% endif %}
                                    aria-describedby="agree_terms-hint agree_terms-error">
-                            <span>I have read and agree to the <a href="{% url 'terms' %}" target="_blank" rel="noopener">Terms and Conditions</a> and the <a href="{% url 'privacy' %}" target="_blank" rel="noopener">Privacy Notice</a>, and I consent to LookApt processing my personal data as described, including the AI check of landlord documents.</span>
+                            <span>I agree to the <a href="{% url 'terms' %}" target="_blank" rel="noopener">Terms and Conditions</a> and consent to the <a href="{% url 'privacy' %}" target="_blank" rel="noopener">Privacy Notice</a>, including the AI check of landlord documents.</span>
                         </label>
-                        <p class="field-hint legal-hint" id="agree_terms-hint" data-legal-hint hidden>Scroll to the end to continue.</p>
                         <p class="field-error" id="agree_terms-error" data-error-for="agree_terms">{{ errors.agree_terms }}</p>
                     </div>
 
@@ -358,6 +360,8 @@
                     </div>
 
                 </fieldset>
+
+                </div>
 
             </form>
 
