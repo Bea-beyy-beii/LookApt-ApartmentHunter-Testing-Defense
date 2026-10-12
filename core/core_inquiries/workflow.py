@@ -209,10 +209,12 @@ def _decorate(user, application, conversation, on):
     renter_user = application.renter.user
     application.renter_name = renter_user.display_name
     application.renter_initials = initials(renter_user)
-    application.renter_contact = renter_user.email or renter_user.phone_number
+    application.renter_avatar = renter_user.avatar_url
+    application.renter_contact = renter_user.shared_contact       # only what the renter chose to share (Settings)
     landlord_user = unit.complex.landlord.user
     application.landlord_name = landlord_user.display_name
     application.landlord_initials = initials(landlord_user)
+    application.landlord_avatar = landlord_user.avatar_url
     application.landlord_verified = landlord_user.is_verified
     application.other_occupants = application.occupants[1:]
     application.chat = _chat(user, application, conversation)

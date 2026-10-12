@@ -50,10 +50,10 @@
             {% if is_landlord_inbox %}
                 <h4>Requested by</h4>
                 <div class="rq-person">
-                    <span class="rq-avatar" aria-hidden="true">{{ a.renter_initials }}</span>
+                    <span class="rq-avatar avatar--renter" aria-hidden="true">{% if a.renter_avatar %}<img src="{{ a.renter_avatar }}" alt="">{% else %}{{ a.renter_initials }}{% endif %}</span>
                     <span class="rq-stack">
                         <strong>{{ a.renter_name }}</strong>
-                        <small>{{ a.renter_contact }}</small>
+                        <small>{{ a.renter_contact|default:"Prefers LookApt chat" }}</small>
                     </span>
                 </div>
                 <div class="rq-divider"></div>
@@ -64,7 +64,7 @@
             {% else %}
                 <h4>Landlord</h4>
                 <div class="rq-person">
-                    <span class="rq-avatar" aria-hidden="true">{{ a.landlord_initials }}</span>
+                    <span class="rq-avatar avatar--landlord" aria-hidden="true">{% if a.landlord_avatar %}<img src="{{ a.landlord_avatar }}" alt="">{% else %}{{ a.landlord_initials }}{% endif %}</span>
                     <span class="rq-stack">
                         <strong>{{ a.landlord_name }}</strong>
                         {% if a.landlord_verified %}<small class="rq-verified">{% feature_icon "shield" %} Verified Landlord</small>{% endif %}

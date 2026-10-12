@@ -42,7 +42,7 @@
     {# PROFILE MENU #}
     <div class="topbar-menu-wrap">
         <button type="button" class="profile-overview profile-toggle" data-topbar-toggle aria-haspopup="true" aria-expanded="false">
-            <img src="{% static 'core/images/looka.png' %}" alt="" class="profile-picture">
+            {% include "core_accounts/partials/avatar.html" with person=user cls="profile-picture" %}
             <span class="profile-display-name">{{ user.display_name }}</span>
             <svg class="profile-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
         </button>
@@ -65,17 +65,12 @@
                 </span>
             </div>
 
-            <button type="button" class="topbar-menu-item" data-coming-soon="My Profile">
+            <button type="button" class="topbar-menu-item" data-account-open="profile">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.2-5.3 7-5.3s6.2 1.7 7 5.3"/></svg>My Profile
             </button>
-            <button type="button" class="topbar-menu-item" data-coming-soon="Settings">
+            <button type="button" class="topbar-menu-item" data-account-open="settings">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>Settings
             </button>
-            {% if user.role == 'landlord' %}
-            <button type="button" class="topbar-menu-item" data-coming-soon="Verification">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3 5 6v5.5c0 4.3 3 8 7 9.5 4-1.5 7-5.2 7-9.5V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg>Verification
-            </button>
-            {% endif %}
             <a class="topbar-menu-item" href="mailto:{{ support_email }}?subject=LookApt%20support">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 13v-1a8 8 0 0 1 16 0v1"/><rect x="3" y="13" width="4" height="6" rx="1.5"/><rect x="17" y="13" width="4" height="6" rx="1.5"/><path d="M19 19c0 1.5-2 2-5 2"/></svg>Contact Support
             </a>
@@ -87,4 +82,9 @@
     </div>
 
 </div>
+
+{# My Profile / Settings pop-up #}
+{% include "core_accounts/partials/account_dialog.html" %}
+<link rel="stylesheet" href="{% static 'core_accounts/account.css' %}">
+<script src="{% static 'core_accounts/account.js' %}" defer></script>
 {% endif %}

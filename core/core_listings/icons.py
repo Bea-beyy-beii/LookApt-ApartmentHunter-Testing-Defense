@@ -51,6 +51,8 @@ FEATURE_ICONS = {
     "filter": '<path d="M4 5h16l-6.5 7.3V18l-3 1.5v-7.2z"/>',
     "list": '<path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/>',
     "plus": '<path d="M12 5v14M5 12h14"/>',
+    "phone": '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
+    "mail": '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
 }
 
 
