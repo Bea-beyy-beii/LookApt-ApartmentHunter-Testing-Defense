@@ -1,0 +1,50 @@
+{% load admin_icons %}
+{# Users tab of the admin dashboard. ctx: filters, query, joined_options, page, params, list_url #}
+{% with f=ctx.filters %}
+<div class="ap-page-head">
+    <div>
+        <h1>Users</h1>
+        <p>Every renter and landlord. Open someone to edit, warn or suspend them.</p>
+    </div>
+</div>
+
+{# Filters apply as you type / pick (admin_panel.js: data-ap-live); no Filter button needed #}
+<form class="ap-toolbar ap-filters" method="get" data-ap-live data-url="{{ ctx.list_url }}">
+    <label class="ap-search-box">
+        {% ap_icon "search" 16 %}
+        <input type="search" class="ap-search-input" name="q" value="{{ ctx.query }}" placeholder="Search name, email, phone or username"
+               aria-label="Search users" autocomplete="off">
+    </label>
+    <select class="ap-select" name="role" aria-label="Role">
+        <option value="">All roles</option>
+        <option value="renter" {% if f.role == "renter" %}selected{% endif %}>Renters</option>
+        <option value="landlord" {% if f.role == "landlord" %}selected{% endif %}>Landlords</option>
+    </select>
+    <select class="ap-select" name="verified" aria-label="Verification">
+        <option value="">Verified or not</option>
+        <option value="yes" {% if f.verified == "yes" %}selected{% endif %}>Verified</option>
+        <option value="no" {% if f.verified == "no" %}selected{% endif %}>Unverified landlords</option>
+    </select>
+    <select class="ap-select" name="status" aria-label="Account status">
+        <option value="">Active or suspended</option>
+        <option value="active" {% if f.status == "active" %}selected{% endif %}>Active</option>
+        <option value="suspended" {% if f.status == "suspended" %}selected{% endif %}>Suspended</option>
+    </select>
+    <select class="ap-select" name="joined" aria-label="Date joined" data-ap-joined>
+        {% for value, label in ctx.joined_options %}
+            <option value="{{ value }}" {% if f.joined == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <span class="ap-date-range" data-ap-range {% if f.joined != "custom" %}hidden{% endif %}>
+        <input type="date" class="ap-input ap-date" name="joined_from" value="{{ f.joined_from }}" aria-label="Joined from">
+        <span class="ap-muted">to</span>
+        <input type="date" class="ap-input ap-date" name="joined_to" value="{{ f.joined_to }}" aria-label="Joined until">
+    </span>
+    <button type="button" class="ap-link ap-link-btn" data-ap-clear
+            {% if not ctx.query and not f.role and not f.verified and not f.status and not f.joined %}hidden{% endif %}>Clear filters</button>
+</form>
+
+<div data-ap-results>
+    {% include "core_admin/partials/user_results.html" with page=ctx.page params=ctx.params list_url=ctx.list_url query=ctx.query %}
+</div>
+{% endwith %}

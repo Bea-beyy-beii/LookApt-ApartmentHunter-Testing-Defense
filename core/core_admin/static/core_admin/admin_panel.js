@@ -58,26 +58,79 @@
         sync();
     }
 
-    // ---------------------------------------------------------------- live filters (Users, Reports, Verification)
-    // Typing in the search box or changing a filter updates the results right away:
-    // only the results part is fetched again ([data-ap-results]) and the address bar
-    // keeps the filters, so refresh / back / sharing the link still work.
-    const live = document.querySelector("form[data-ap-live]");
-    const results = document.querySelector("[data-ap-results]");
-    if (live && results) {
-        const range = live.querySelector("[data-ap-range]");
-        const joined = live.querySelector("[data-ap-joined]");
-        const clear = live.querySelector("[data-ap-clear]");
+    // ---------------------------------------------------------------- tabs (Overview, Verification, Users, Reports)
+    // All four are in the page already (dashboard.html), so switching is instant, like the
+    // landlord / renter dashboards. The address bar follows (?tab= plus that tab's filters),
+    // so refresh, back / forward and shared links open the same view.
+    const sections = new Map([...document.querySelectorAll("[data-ap-section]")].map(s => [s.dataset.apSection, s]));
+    const filtersOf = {};       // tab -> function giving its current filters (set up below)
+
+    function tabUrl(name, params) {
+        const query = new URLSearchParams(params || "");
+        query.delete("page");
+        query.set("tab", name);
+        // ?tab= first, then the filters
+        return `${location.pathname}?tab=${name}${[...query].filter(([k]) => k !== "tab").map(([k, v]) => `&${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join("")}`;
+    }
+
+    function showTab(name, { push = true, params = null } = {}) {
+        const section = sections.get(name);
+        if (!section) return false;
+        sections.forEach((s, key) => { s.hidden = key !== name; });
+        document.querySelectorAll(".sidebar-link[data-ap-tab]").forEach(link => {
+            link.classList.toggle("active", link.dataset.apTab === name);
+        });
+        document.title = section.dataset.title || document.title;
+        // A link like "Suspended accounts" (?tab=users&status=suspended) also sets that tab's filters
+        if (params && [...params.keys()].some(key => key !== "tab") && section.apSetFilters) section.apSetFilters(params);
+        const url = tabUrl(name, filtersOf[name] ? filtersOf[name]() : "");
+        if (push && url !== location.pathname + location.search) history.pushState({ tab: name }, "", url);
+        window.scrollTo({ top: 0 });
+        return true;
+    }
+
+    if (sections.size) {
+        document.addEventListener("click", event => {
+            const link = event.target.closest("a[data-ap-tab]");
+            if (!link || event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+            const params = new URL(link.href).searchParams;
+            if (showTab(link.dataset.apTab, { params })) event.preventDefault();
+        });
+        window.addEventListener("popstate", () => {
+            const name = new URLSearchParams(location.search).get("tab") || "overview";
+            showTab(name, { push: false });
+        });
+    }
+
+    // ---------------------------------------------------------------- live filters (Verification, Users, Reports)
+    // Typing in a search box or changing a filter updates that tab's results right away:
+    // only the results table is fetched again ([data-ap-results]).
+    document.querySelectorAll("form[data-ap-live]").forEach(form => {
+        const section = form.closest("[data-ap-section]");
+        const name = section ? section.dataset.apSection : null;
+        const results = (section || document).querySelector("[data-ap-results]");
+        const range = form.querySelector("[data-ap-range]");
+        const joined = form.querySelector("[data-ap-joined]");
+        const clear = form.querySelector("[data-ap-clear]");
+        const statusInput = form.querySelector("input[name=status][type=hidden]");
+        const statusTabs = section ? section.querySelectorAll("a.ap-tab[data-status]") : [];
         let timer = null, controller = null;
 
-        function queryFor(form) {
-            const params = new URLSearchParams();
-            new FormData(form).forEach((value, key) => { if (String(value).trim()) params.set(key, value); });
-            if (range && range.hidden) { params.delete("joined_from"); params.delete("joined_to"); }
-            return params;
+        function params() {
+            const query = new URLSearchParams();
+            new FormData(form).forEach((value, key) => { if (String(value).trim()) query.set(key, value); });
+            if (range && range.hidden) { query.delete("joined_from"); query.delete("joined_to"); }
+            return query;
+        }
+        if (name) filtersOf[name] = params;
+
+        function syncControls() {
+            if (range && joined) range.hidden = joined.value !== "custom";
+            if (statusInput) statusTabs.forEach(tab => tab.classList.toggle("active", tab.dataset.status === statusInput.value));
+            if (clear) clear.hidden = [...params().keys()].every(key => statusInput && key === "status");
         }
 
-        async function update(url) {
+        async function load(url, query) {
             controller?.abort();
             controller = new AbortController();
             results.classList.add("is-loading");
@@ -85,46 +138,52 @@
                 const response = await fetch(url, { headers: { "X-Requested-With": "ap-live" }, signal: controller.signal });
                 if (!response.ok) throw new Error(response.status);
                 results.innerHTML = await response.text();
-                history.replaceState(null, "", url);
+                if (name && !section.hidden) history.replaceState({ tab: name }, "", tabUrl(name, query));
             } catch (error) {
                 if (error.name !== "AbortError") window.location.href = url;     // fall back to a normal page load
-                return;
             } finally {
                 results.classList.remove("is-loading");
             }
-            // Tabs keep the search / filters too
-            const params = new URL(url, location.href).searchParams;
-            document.querySelectorAll("a.ap-tab").forEach(tab => {
-                const tabUrl = new URL(tab.href);
-                ["q", "category"].forEach(key => {
-                    if (params.get(key)) tabUrl.searchParams.set(key, params.get(key));
-                    else tabUrl.searchParams.delete(key);
-                });
-                tab.href = tabUrl.toString();
-            });
-            if (clear) clear.hidden = [...params.keys()].every(key => key === "status" || key === "page");
         }
 
         function apply(delay) {
+            syncControls();
             clearTimeout(timer);
-            timer = setTimeout(() => update(`${location.pathname}?${queryFor(live)}`), delay);
+            timer = setTimeout(() => { const query = params(); load(`${form.dataset.url}?${query}`, query); }, delay);
         }
 
-        live.addEventListener("input", event => { if (event.target.type === "search") apply(300); });
-        live.addEventListener("change", event => {
-            if (event.target === joined && range) range.hidden = joined.value !== "custom";
-            if (event.target.type !== "search") apply(0);
+        // For links that open this tab with filters (see showTab)
+        if (section) section.apSetFilters = query => {
+            form.reset();
+            [...form.elements].forEach(field => { if (field.name && field.type !== "hidden") field.value = ""; });
+            query.forEach((value, key) => { if (form.elements[key]) form.elements[key].value = value; });
+            apply(0);
+        };
+
+        form.addEventListener("input", event => { if (event.target.type === "search") apply(300); });
+        form.addEventListener("change", event => { if (event.target.type !== "search") apply(0); });
+        form.addEventListener("submit", event => { event.preventDefault(); apply(0); });
+        clear?.addEventListener("click", () => {
+            [...form.elements].forEach(field => { if (field.name && field.type !== "hidden") field.value = ""; });
+            apply(0);
         });
-        live.addEventListener("submit", event => { event.preventDefault(); apply(0); });
+        // Status tabs (Pending / Under review ...) filter in place too
+        statusTabs.forEach(tab => tab.addEventListener("click", event => {
+            if (!statusInput || event.metaKey || event.ctrlKey) return;
+            event.preventDefault();
+            statusInput.value = tab.dataset.status;
+            apply(0);
+        }));
         // Previous / Next pages without reloading
         results.addEventListener("click", event => {
             const link = event.target.closest(".ap-pagination a");
             if (!link) return;
             event.preventDefault();
-            update(link.href);
+            load(link.href, new URL(link.href).searchParams);
             results.scrollIntoView({ behavior: "smooth", block: "start" });
         });
-    }
+        syncControls();
+    });
 
     // ---------------------------------------------------------------- activity chart
     const card = document.querySelector("[data-ap-chart]");

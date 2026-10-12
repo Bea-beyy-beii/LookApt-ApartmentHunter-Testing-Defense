@@ -3,7 +3,7 @@
 
 {% block title %}LookApt Admin — Report about {{ reported.display_name }}{% endblock %}
 
-{% block breadcrumbs %}<a class="ap-back" href="{% url 'core_admin:report_list' %}?status={{ report.status }}">{% ap_icon "arrow_left" 14 %} Reports</a>{% endblock %}
+{% block breadcrumbs %}<a class="ap-back" href="{% url 'core_admin:overview' %}?tab=reports&status={{ report.status }}">{% ap_icon "arrow_left" 14 %} Reports</a>{% endblock %}
 
 {% block content %}
 <div class="ap-page-head">

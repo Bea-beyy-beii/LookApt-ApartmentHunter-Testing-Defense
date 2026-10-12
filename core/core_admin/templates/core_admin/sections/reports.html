@@ -1,0 +1,37 @@
+{% load admin_icons %}
+{# Reports tab of the admin dashboard. ctx: tabs, status, category, categories, query, page, params, list_url #}
+<div class="ap-page-head">
+    <div>
+        <h1>Reports</h1>
+        <p>Reports filed by renters and landlords. A warning sign marks someone reported more than once.</p>
+    </div>
+</div>
+
+<div class="ap-toolbar">
+    <nav class="ap-tabs" aria-label="Status">
+        {% for tab in ctx.tabs %}
+            <a class="status-filter ap-tab {% if tab.value == ctx.status %}active{% endif %}" data-status="{{ tab.value }}"
+               href="{% url 'core_admin:overview' %}?tab=reports&status={{ tab.value }}">
+                {{ tab.label }} <span class="ap-tab-count">{{ tab.count }}</span>
+            </a>
+        {% endfor %}
+    </nav>
+    <form class="ap-filters" method="get" data-ap-live data-url="{{ ctx.list_url }}">
+        <input type="hidden" name="status" value="{{ ctx.status }}">
+        <select class="ap-select" name="category" aria-label="Category">
+            <option value="">All categories</option>
+            {% for value, label in ctx.categories %}
+                <option value="{{ value }}" {% if value == ctx.category %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <label class="ap-search-box">
+            {% ap_icon "search" 16 %}
+            <input type="search" class="ap-search-input" autocomplete="off" name="q" value="{{ ctx.query }}"
+                   placeholder="Search names or details" aria-label="Search reports">
+        </label>
+    </form>
+</div>
+
+<div data-ap-results>
+    {% include "core_admin/partials/report_results.html" with page=ctx.page params=ctx.params list_url=ctx.list_url query=ctx.query %}
+</div>

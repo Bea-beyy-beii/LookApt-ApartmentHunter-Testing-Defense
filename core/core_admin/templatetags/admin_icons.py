@@ -32,9 +32,9 @@ def ap_icon(name, size=16):
     )
 
 
-@register.simple_tag(takes_context=True)
-def page_query(context, number):
-    """?…&page=N keeping the current filters (and only one page=)."""
-    params = context["request"].GET.copy()
+@register.simple_tag
+def page_query(params, number):
+    """?…&page=N keeping this list's filters (and only one page=)."""
+    params = params.copy()
     params["page"] = number
     return "?" + params.urlencode()

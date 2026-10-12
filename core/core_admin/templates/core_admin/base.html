@@ -22,9 +22,10 @@
     <link rel="stylesheet" href="{% static 'core_admin/admin_panel.css' %}">
     {% block extra_css %}{% endblock %}
 
-    {# Switching pages: load an admin page while the pointer rests on its link, so the click is instant #}
+    {# Detail pages (a user, a report ...) load while the pointer rests on their link, so the click is instant. #}
+    {# The tabs themselves (data-ap-tab) switch inside the page and don't need it. #}
     <script type="speculationrules">
-    {"prefetch": [{"where": {"and": [{"href_matches": "/admin-panel/*"}, {"not": {"selector_matches": "[data-no-prefetch]"}}]}, "eagerness": "moderate"}]}
+    {"prefetch": [{"where": {"and": [{"href_matches": "/admin-panel/*"}, {"not": {"selector_matches": "[data-no-prefetch], [data-ap-tab]"}}]}, "eagerness": "moderate"}]}
     </script>
 
     {# Dark mode (html[data-theme="dark"]); loaded last so it wins #}
@@ -45,26 +46,26 @@
         </a>
 
         <nav class="sidebar-nav" aria-label="Admin navigation">
-            <a href="{% url 'core_admin:overview' %}" class="sidebar-link {% if section == 'overview' %}active{% endif %}">
+            <a href="{% url 'core_admin:overview' %}?tab=overview" data-ap-tab="overview" class="sidebar-link {% if section == 'overview' %}active{% endif %}">
                 <span class="sidebar-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="4" rx="1.5"/><rect x="13" y="10" width="7" height="10" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/></svg>
                 </span>
                 <span class="sidebar-label">Overview</span>
             </a>
-            <a href="{% url 'core_admin:verification_list' %}" class="sidebar-link {% if section == 'verification' %}active{% endif %}">
+            <a href="{% url 'core_admin:overview' %}?tab=verification" data-ap-tab="verification" class="sidebar-link {% if section == 'verification' %}active{% endif %}">
                 <span class="sidebar-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3 5 6v5.5c0 4.3 3 8 7 9.5 4-1.5 7-5.2 7-9.5V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg>
                 </span>
                 <span class="sidebar-label">Verification</span>
                 {% if badges.verification %}<span class="ap-badge" aria-label="{{ badges.verification }} waiting">{{ badges.verification }}</span>{% endif %}
             </a>
-            <a href="{% url 'core_admin:user_list' %}" class="sidebar-link {% if section == 'users' %}active{% endif %}">
+            <a href="{% url 'core_admin:overview' %}?tab=users" data-ap-tab="users" class="sidebar-link {% if section == 'users' %}active{% endif %}">
                 <span class="sidebar-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1M16 4a3 3 0 0 1 0 6M18 14a4 4 0 0 1 3 4v2"/></svg>
                 </span>
                 <span class="sidebar-label">Users</span>
             </a>
-            <a href="{% url 'core_admin:report_list' %}" class="sidebar-link {% if section == 'reports' %}active{% endif %}">
+            <a href="{% url 'core_admin:overview' %}?tab=reports" data-ap-tab="reports" class="sidebar-link {% if section == 'reports' %}active{% endif %}">
                 <span class="sidebar-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 3.8h10l4 4V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4.8a1 1 0 0 1 1-1Z"/><path d="M14 3.8v5h5M8 13h8M8 17h5"/></svg>
                 </span>

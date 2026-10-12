@@ -345,3 +345,8 @@ html[data-theme="dark"] .ap-btn--ghost:hover { background: var(--ap-surface-2); 
 [data-ap-clear][hidden] { display: none; }
 [data-ap-results] { transition: opacity 0.15s ease; }
 [data-ap-results].is-loading { opacity: 0.55; pointer-events: none; }
+
+/* Dashboard tabs (dashboard.html): only the open one shows */
+.ap-section[hidden] { display: none; }
+.ap-link-btn { padding: 0; border: 0; background: none; font-family: inherit; cursor: pointer; }
+.ap-link-btn[hidden] { display: none; }
