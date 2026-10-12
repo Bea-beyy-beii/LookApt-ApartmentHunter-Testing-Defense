@@ -257,7 +257,7 @@
     function render() {
         if (!data) return;
         const width = plot.clientWidth || 600, height = plot.clientHeight || 240;
-        const pad = { top: 12, right: 100, bottom: 26, left: 34 };
+        const pad = { top: 12, right: 16, bottom: 26, left: 34 };
         const n = data.dates.length;
         const max = niceMax(Math.max(1, ...data.series.flatMap(s => s.values)));
         const x = i => pad.left + (n === 1 ? 0 : i * (width - pad.left - pad.right) / (n - 1));
@@ -280,26 +280,11 @@
             svg.append(label);
         });
 
-        // Lines, then a direct label at each line's end (identity is never colour alone)
-        const ends = [];
+        // Lines (each one's name is in the legend above and in the hover tooltip)
         data.series.forEach(s => {
             const points = s.values.map((v, i) => `${x(i)},${y(v)}`).join(" ");
             svg.append(el("polyline", { points, fill: "none", stroke: color(s.key), "stroke-width": 2,
                                         "stroke-linejoin": "round", "stroke-linecap": "round" }));
-            ends.push({ s, y: y(s.values[n - 1]) });
-        });
-        ends.sort((a, b) => a.y - b.y);
-        // No overlap: push labels apart, then lift the stack back up if it ran below the x axis
-        const gap = 15, floor = height - pad.bottom - 4;
-        for (let i = 1; i < ends.length; i++) ends[i].y = Math.max(ends[i].y, ends[i - 1].y + gap);
-        for (let i = ends.length - 1; i >= 0; i--) {
-            const limit = i === ends.length - 1 ? floor : ends[i + 1].y - gap;
-            ends[i].y = Math.max(pad.top + 4, Math.min(ends[i].y, limit));
-        }
-        ends.forEach(({ s, y: yy }) => {
-            const label = el("text", { x: width - pad.right + 8, y: yy + 4, class: "ap-direct-label" });
-            label.textContent = s.label;
-            svg.append(label);
         });
 
         // Hover: crosshair + dots + tooltip for the nearest day

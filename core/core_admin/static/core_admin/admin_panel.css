@@ -128,7 +128,6 @@ a.ap-stat:hover { border-color: var(--border-medium); }
 .ap-chart svg { display: block; touch-action: pan-y; }
 .ap-grid { stroke: var(--border-light); stroke-width: 1; }
 .ap-axis { fill: var(--text-secondary); font-size: 11px; font-family: inherit; }
-.ap-direct-label { fill: var(--text-primary); font-size: 12px; font-weight: 600; font-family: inherit; }
 .ap-crosshair { stroke: var(--border-medium); stroke-width: 1; stroke-dasharray: 3 3; }
 .ap-dot { stroke: var(--white); stroke-width: 2; }
 
