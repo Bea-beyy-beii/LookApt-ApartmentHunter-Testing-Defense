@@ -49,7 +49,7 @@
 
     const legalBox = form.querySelector("[data-legal-box]");
     const agree = form.elements.agree_terms;
-    const legalHint = form.querySelector("[data-legal-hint]");     // "Read to the end to continue"…
+    const legalHint = form.querySelector("[data-legal-hint]");
     const legalProgress = form.querySelector("[data-legal-progress]");
     let readToEnd = Boolean(agree?.checked);            // coming back with it already ticked
 
@@ -64,6 +64,7 @@
         legalProgress.style.width = `${Math.round(share * 100)}%`;
         legalProgress.classList.toggle("is-done", readToEnd);
         agree.disabled = !readToEnd;
+        legalHint.hidden = readToEnd;
     }
 
     if (legalBox && agree) {
@@ -82,6 +83,7 @@
             legalHint.classList.add("is-flashing");
         });
         agree.disabled = !readToEnd;
+        legalHint.hidden = readToEnd;
     }
 
 
