@@ -112,6 +112,28 @@ class ApplicationTests(Base):
     def test_cannot_apply_to_occupied_unit(self):
         self.assertEqual(self.apply(self.occupied).status_code, 400)
 
+    def test_sex_restriction_is_checked(self):
+        # The renter is female
+        self.complex.sex_restriction = "male_only"
+        self.complex.save()
+        response = self.apply(self.available)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["errors"]["__all__"], "Sunrise is for male tenants only.")
+        waitlist = self.apply(self.occupied, kind="waitlist", site_visit_date="", site_visit_time="")
+        self.assertEqual(waitlist.status_code, 400)
+        self.assertIn("male tenants only", waitlist.json()["errors"]["__all__"])
+
+        self.complex.sex_restriction = "female_only"
+        self.complex.save()
+        self.assertEqual(self.apply(self.available).status_code, 201)
+
+    def test_restricted_unit_shows_a_disabled_button(self):
+        self.complex.sex_restriction = "male_only"
+        self.complex.save()
+        response = self.client.get(reverse("core_listings:renter_complex_detail", args=[self.complex.pk]))
+        self.assertContains(response, "Male tenants only")
+        self.assertNotContains(response, "data-open-application")
+
     def test_only_one_pending_application_per_unit(self):
         self.assertEqual(self.apply(self.available).status_code, 201)
         response = self.apply(self.available)

@@ -256,14 +256,6 @@
         // A fixed menu would stay put while the page moves, so close it instead
         window.addEventListener("scroll", () => closeAll(), true);
         window.addEventListener("resize", () => closeAll());
-
-        // Not built yet (View Contract)
-        document.addEventListener("click", event => {
-            const button = event.target.closest(".rentals-page [data-coming-soon], .rt-menu [data-coming-soon]");
-            if (!button) return;
-            closeAll();
-            toast(`${button.dataset.comingSoon} will be available soon.`, "info");
-        });
     }
 
 

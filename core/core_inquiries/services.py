@@ -114,6 +114,10 @@ def _clean_occupants(user, unit, names):
 
 def _clean_details(user, unit, kind, occupants, move_in_date, site_visit_date=None, site_visit_time=None):
     """Checks shared by "submit" and "edit". Returns the cleaned values."""
+    if not unit.complex.admits(user):
+        sex = "female" if unit.complex.sex_restriction == "female_only" else "male"
+        raise ValidationError({"__all__": f"{unit.complex.complex_name} is for {sex} tenants only."})
+
     now = today()
     latest = now + timedelta(days=MAX_DAYS_AHEAD)
 

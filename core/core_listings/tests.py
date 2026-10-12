@@ -16,8 +16,8 @@ def make_landlord(username="liza", phone="09111111111"):
     return user
 
 
-class UnpublishedComplexTests(TestCase):
-    """Unpublishing a complex shows its units as unpublished, but each unit keeps its own status."""
+class ListingSetup(TestCase):
+    """A landlord with one published complex: units 1 available, 2 occupied, 3 unpublished."""
 
     def setUp(self):
         self.user = make_landlord()
@@ -44,6 +44,11 @@ class UnpublishedComplexTests(TestCase):
 
     def fresh_complex(self):
         return Complex.objects.prefetch_related("units").get(pk=self.complex.pk)
+
+
+
+class UnpublishedComplexTests(ListingSetup):
+    """Unpublishing a complex shows its units as unpublished, but each unit keeps its own status."""
 
     def test_units_follow_the_complex_and_come_back_as_they_were(self):
         self.set_visibility("unpublished")
@@ -88,6 +93,54 @@ class UnpublishedComplexTests(TestCase):
         self.assertEqual(names(), [])
         self.set_visibility("active")
         self.assertEqual(names(), ["Sunrise"])
+
+
+class RenterUnpublishTests(ListingSetup):
+    """A unit with a renter can't be unpublished, on its own or through its complex."""
+
+    def setUp(self):
+        super().setUp()
+        from datetime import date
+        from core.core_rentals.services import assign_tenant
+        assign_tenant(self.available, date.today(), tenant_name="Ana Cruz")    # now occupied with a renter
+
+    def set_availability(self, unit, availability):
+        return self.client.post(reverse("core_listings:unit_set_availability", args=[unit.pk]),
+                                {"availability": availability}, HTTP_ACCEPT="application/json")
+
+    def test_unit_with_a_renter_cannot_be_unpublished(self):
+        response = self.set_availability(self.available, "unpublished")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("has a renter", response.json()["error"])
+        self.available.refresh_from_db()
+        self.assertEqual(self.available.availability, "occupied")
+
+    def test_complex_with_a_renter_cannot_be_unpublished(self):
+        response = self.set_visibility("unpublished")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("units with renters", response.json()["error"])
+        self.assertEqual(self.fresh_complex().status, "active")
+
+    def test_unit_without_a_renter_can_be_unpublished_and_published_again(self):
+        self.assertEqual(self.set_availability(self.occupied, "unpublished").json()["availability"], "unpublished")
+        self.assertEqual(self.set_availability(self.occupied, "available").json()["availability"], "available")
+
+    def test_edit_form_cannot_save_it_as_unpublished(self):
+        from .forms import ComplexForm, UnitForm
+        form = UnitForm({"availability": "unpublished"}, instance=self.available, complex_obj=self.complex)
+        self.assertFalse(form.is_valid())
+        self.assertIn("has a renter", str(form.non_field_errors()))
+        form = ComplexForm({"visibility": "unpublished"}, instance=self.complex)
+        self.assertFalse(form.is_valid())
+        self.assertIn("units with renters", str(form.non_field_errors()))
+
+    def test_menus_only_have_edit_visibility_and_delete(self):
+        response = self.client.get(reverse("core_landlords:dashboard") + "?tab=myListings")
+        for gone in ("View Complex", "View Listing", "Set as Occupied", "Set as Available",
+                     'href="%s"' % reverse("core_listings:unit_detail", args=[self.available.pk])):
+            self.assertNotContains(response, gone)
+        self.assertContains(response, "Set as Unpublished")
+        self.assertContains(response, "Set as Published")
 
 
 # ------------------------------------------------------------------ features, turnover, required photos
@@ -144,10 +197,15 @@ class ListingFormTests(TestCase):
                 "length_dimension": "5", "max_occupant": "2", "furnish_level": "unfurnished", "price": "8000",
                 "advance_months": "1", "deposit_months": "1"}
 
-    def test_unit_needs_two_photos_or_videos(self):
+    def test_unit_needs_two_photos(self):
         one = UnitForm(self.unit_data(), {"photos": [jpg()]}, complex_obj=self.complex)
         self.assertFalse(one.is_valid())
         self.assertIn("photos", one.errors)
+        # Videos don't count toward the 2
+        mp4 = lambda name: SimpleUploadedFile(name, b"\x00\x00\x00\x18ftypmp42" + b"\x00" * 64, content_type="video/mp4")
+        videos_only = UnitForm(self.unit_data(), {"videos": [mp4("a.mp4"), mp4("b.mp4")]}, complex_obj=self.complex)
+        self.assertFalse(videos_only.is_valid())
+        self.assertIn("photos", videos_only.errors)
         two = UnitForm(self.unit_data(), {"photos": [jpg(), jpg("b.jpg")]}, complex_obj=self.complex)
         self.assertTrue(two.is_valid(), two.errors)
 

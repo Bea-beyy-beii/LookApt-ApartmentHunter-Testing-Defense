@@ -77,10 +77,6 @@
     text-overflow: ellipsis;
 }
 
-.property-name:hover {
-    text-decoration: underline;
-}
-
 .property-location {
     display: flex;
     align-items: center;
