@@ -23,11 +23,52 @@
     }
 
     // ---------------------------------------------------------------- "Are you sure?"
-    document.querySelectorAll("form[data-ap-confirm]").forEach(form => {
-        form.addEventListener("submit", event => {
-            if (!window.confirm(form.dataset.apConfirm)) event.preventDefault();
+    // Our own pop-up instead of window.confirm(), which shows the site's address ("lookapt.com says").
+    const confirmForms = document.querySelectorAll("form[data-ap-confirm]");
+    if (confirmForms.length) {
+        const dialog = document.createElement("dialog");
+        dialog.className = "ap-confirm";
+        dialog.innerHTML = `<p class="ap-confirm-text"></p>
+            <div class="ap-confirm-actions">
+                <button type="button" class="ap-btn ap-btn--ghost" value="cancel">Cancel</button>
+                <button type="button" class="ap-btn ap-btn--primary" value="ok">Confirm</button>
+            </div>`;
+        document.body.append(dialog);
+        const text = dialog.querySelector(".ap-confirm-text");
+        const ok = dialog.querySelector("[value=ok]");
+        let pending = null;
+
+        dialog.addEventListener("click", event => {
+            const button = event.target.closest("button");
+            if (button) dialog.close(button.value);
+            else if (event.target === dialog) dialog.close("cancel");     // click outside
         });
-    });
+        dialog.addEventListener("close", () => {
+            const { form, submitter } = pending || {};
+            pending = null;
+            if (form && dialog.returnValue === "ok") {
+                form.dataset.apConfirmed = "1";
+                form.requestSubmit(submitter || undefined);
+            }
+        });
+
+        confirmForms.forEach(form => {
+            form.addEventListener("submit", event => {
+                if (form.dataset.apConfirmed) { delete form.dataset.apConfirmed; return; }
+                event.preventDefault();
+                pending = { form, submitter: event.submitter };
+                text.textContent = form.dataset.apConfirm;
+                // Red for suspending / unpublishing, navy otherwise
+                const danger = event.submitter?.classList.contains("ap-btn--danger")
+                    || /^(suspend|unpublish)/i.test(form.dataset.apConfirm);
+                ok.className = "ap-btn " + (danger ? "ap-btn--danger" : "ap-btn--primary");
+                ok.textContent = event.submitter?.textContent.trim() || "Confirm";
+                dialog.returnValue = "";
+                dialog.showModal();
+                ok.focus();
+            });
+        });
+    }
 
     // ---------------------------------------------------------------- verification decision
     const decision = document.querySelector("[data-ap-decision]");
@@ -216,7 +257,7 @@
     function render() {
         if (!data) return;
         const width = plot.clientWidth || 600, height = plot.clientHeight || 240;
-        const pad = { top: 12, right: 88, bottom: 26, left: 34 };
+        const pad = { top: 12, right: 100, bottom: 26, left: 34 };
         const n = data.dates.length;
         const max = niceMax(Math.max(1, ...data.series.flatMap(s => s.values)));
         const x = i => pad.left + (n === 1 ? 0 : i * (width - pad.left - pad.right) / (n - 1));
@@ -248,7 +289,13 @@
             ends.push({ s, y: y(s.values[n - 1]) });
         });
         ends.sort((a, b) => a.y - b.y);
-        for (let i = 1; i < ends.length; i++) ends[i].y = Math.max(ends[i].y, ends[i - 1].y + 14);   // no overlap
+        // No overlap: push labels apart, then lift the stack back up if it ran below the x axis
+        const gap = 15, floor = height - pad.bottom - 4;
+        for (let i = 1; i < ends.length; i++) ends[i].y = Math.max(ends[i].y, ends[i - 1].y + gap);
+        for (let i = ends.length - 1; i >= 0; i--) {
+            const limit = i === ends.length - 1 ? floor : ends[i + 1].y - gap;
+            ends[i].y = Math.max(pad.top + 4, Math.min(ends[i].y, limit));
+        }
         ends.forEach(({ s, y: yy }) => {
             const label = el("text", { x: width - pad.right + 8, y: yy + 4, class: "ap-direct-label" });
             label.textContent = s.label;

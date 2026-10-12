@@ -350,3 +350,14 @@ html[data-theme="dark"] .ap-btn--ghost:hover { background: var(--ap-surface-2); 
 .ap-section[hidden] { display: none; }
 .ap-link-btn { padding: 0; border: 0; background: none; font-family: inherit; cursor: pointer; }
 .ap-link-btn[hidden] { display: none; }
+
+/* "Are you sure?" pop-up (admin_panel.js) */
+.ap-confirm {
+    width: min(420px, calc(100vw - 32px)); margin: auto; padding: 22px 22px 18px;
+    border: 1px solid var(--border-light); border-radius: var(--radius-md);
+    background: var(--white); color: var(--text-primary); box-shadow: var(--shadow-soft);
+    font-family: var(--font-primary);
+}
+.ap-confirm::backdrop { background: rgba(10, 18, 34, 0.45); }
+.ap-confirm-text { margin: 0 0 18px; font-size: 15px; line-height: 1.5; }
+.ap-confirm-actions { display: flex; justify-content: flex-end; gap: 10px; }
