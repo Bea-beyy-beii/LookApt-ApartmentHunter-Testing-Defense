@@ -51,6 +51,10 @@ class User(AbstractUser):
     suspended_at = models.DateTimeField(null=True, blank=True)
     suspension_reason = models.TextField(blank=True)
 
+    # Consent at sign-up (step 5): which Terms / Privacy Notice they agreed to, and when
+    terms_version = models.CharField(max_length=20, blank=True)
+    terms_accepted_at = models.DateTimeField(null=True, blank=True)
+
 # ----------------------------------------------------------- TRIGGER FOR USERNAMES
 # ------------------------------- USERNAME FORMAT: firstname.lastname
 

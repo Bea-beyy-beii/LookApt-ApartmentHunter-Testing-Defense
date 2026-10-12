@@ -8,6 +8,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from core.core_accounts.decorators import role_required
 from core.core_reports.models import ALL_CATEGORIES, Report
+from core.core_verification import services as verification
 from core.core_verification.models import VerificationRequest
 from core.models import User
 
@@ -41,12 +42,12 @@ def _verification_tab(params):
 
 
 def _users_tab(params):
-    filters = {k: params.get(k, "") for k in ("role", "verified", "status", "joined", "joined_from", "joined_to")}
+    filters = {k: params.get(k, "") for k in ("role", "status", "joined", "joined_from", "joined_to")}
     query = params.get("q", "").strip()
     return {
         "filters": filters, "query": query, "joined_options": services.JOINED_OPTIONS,
         "params": params, "list_url": reverse("core_admin:user_list"),
-        "page": services.user_list(filters["role"], filters["verified"], filters["status"], query, params.get("page"),
+        "page": services.user_list(filters["role"], filters["status"], query, params.get("page"),
                                    filters["joined"], filters["joined_from"], filters["joined_to"]),
     }
 
@@ -128,6 +129,7 @@ def verification_detail(request, pk):
         "resubmit_reasons": services.RESUBMIT_REASONS,
         "reject_reasons": services.REJECT_REASONS,
         "is_pdf": item.ownership_document.name.lower().endswith(".pdf"),
+        "retention_days": verification.DOCUMENT_RETENTION.days,
     })
 
 
@@ -165,6 +167,10 @@ def user_detail(request, pk):
                 services.warn(account, request.POST.get("message"))
                 messages.success(request, f"Warning sent to {account.display_name}.")
                 return redirect("core_admin:user_detail", pk=pk)
+            elif action == "delete":
+                name = services.delete_account(account, request.POST.get("confirm"), request.POST.get("requested"))
+                messages.success(request, f"{name}'s account was deleted and they were emailed.")
+                return redirect(f"{reverse('core_admin:overview')}?tab=users")
             elif action == "password":
                 sent = services.send_password_help(account)
                 (messages.success if sent else messages.error)(

@@ -1,0 +1,50 @@
+/* =========================================================
+   TERMS AND CONDITIONS / PRIVACY NOTICE TEXT (.legal-doc)
+   Used inside sign-up step 5 and on the /terms/ and /privacy/ pages.
+========================================================= */
+
+.legal-doc {
+    color: var(--text-primary);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.legal-doc h2 {
+    margin: 12px 0 2px;
+    color: var(--navy);
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.legal-doc h3 {
+    margin: 16px 0 6px;
+    color: var(--navy);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.legal-doc p { margin: 0 0 8px; }
+
+.legal-doc ul {
+    margin: 0 0 8px;
+    padding-left: 18px;
+    list-style: disc;
+}
+
+.legal-doc ul ul { margin: 4px 0 2px; list-style: circle; }
+.legal-doc li { margin-bottom: 4px; }
+.legal-doc strong { font-weight: 700; }
+.legal-doc a { color: var(--navy); font-weight: 600; text-decoration: underline; }
+
+.legal-date {
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.legal-note {
+    padding: 8px 12px;
+    border-left: 3px solid var(--gold);
+    border-radius: 0 8px 8px 0;
+    background: rgba(245, 185, 76, 0.12);
+}

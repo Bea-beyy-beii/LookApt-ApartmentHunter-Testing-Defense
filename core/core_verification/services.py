@@ -15,7 +15,9 @@ import logging
 import threading
 from datetime import timedelta
 
+from django.core.cache import cache
 from django.db import close_old_connections, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from .extractors import ai_reader
@@ -28,6 +30,10 @@ Status = VerificationRequest.Status
 
 # A check still "running" after this long was lost (e.g. the server restarted): an admin takes over
 STALE_CHECK = timedelta(minutes=10)
+
+# Privacy Notice: documents from a rejected request, or ones the landlord had to replace,
+# are deleted this long after the decision (approved ones stay while the account exists)
+DOCUMENT_RETENTION = timedelta(days=90)
 
 RESUBMIT_DEFAULT = "We couldn't read one of your documents. Please upload clear photos with all four corners showing."
 
@@ -72,6 +78,7 @@ def landlord_must_verify(user):
 
 def verification_context(user):
     """For the landlord dashboard: the pop-up, the banner and the welcome message."""
+    purge_old_documents_daily()
     state = state_for(user)
     latest = latest_request(user.landlord)
     return {
@@ -213,3 +220,37 @@ def mark_welcome_seen(user):
     if latest and latest.status == Status.APPROVED:
         latest.welcome_seen = True
         latest.save(update_fields=["welcome_seen"])
+
+
+# ------------------------------------------------------------------ deleting old documents
+
+def purge_old_documents():
+    """Delete the files (and what Claude read from them) of rejected / replaced requests
+    older than DOCUMENT_RETENTION. The request row stays, so a rejection still counts.
+    Returns how many requests were cleaned."""
+    cutoff = timezone.now() - DOCUMENT_RETENTION
+    old = (VerificationRequest.objects
+           .filter(status__in=[Status.REJECTED, Status.RESUBMIT])
+           .filter(Q(decided_at__lt=cutoff) | Q(decided_at__isnull=True, created_at__lt=cutoff))
+           .exclude(id_photo=""))
+    count = 0
+    for request in old:
+        files = [f for f in (request.id_photo, request.selfie, request.ownership_document) if f]
+        VerificationRequest.objects.filter(pk=request.pk).update(
+            id_photo="", selfie="", ownership_document="", ai_result=None)
+        for f in files:
+            try:
+                f.storage.delete(f.name)
+            except Exception:
+                logger.exception("Couldn't delete verification file %s", f.name)
+        count += 1
+    return count
+
+
+def purge_old_documents_daily():
+    """purge_old_documents() at most once a day (no cron job needed)."""
+    if cache.add("core_verification:purge", True, timeout=24 * 60 * 60):
+        try:
+            purge_old_documents()
+        except Exception:
+            logger.exception("Purging old verification documents failed")

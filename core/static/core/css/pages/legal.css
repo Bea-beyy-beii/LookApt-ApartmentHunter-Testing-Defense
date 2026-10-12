@@ -1,0 +1,59 @@
+/* =========================================================
+   /terms/ and /privacy/ (core_accounts/legal/page.html)
+   The text itself: components/legal.css
+========================================================= */
+.legal-page {
+    min-height: 100vh;
+    padding: 24px 16px 48px;
+    background: var(--cream);
+}
+
+.legal-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    max-width: 760px;
+    margin: 0 auto 20px;
+}
+
+.legal-header .brand { display: flex; align-items: center; gap: 8px; text-decoration: none; }
+.legal-header .brand-logo { width: 40px; height: auto; }
+.legal-header .brand-name { font-size: 24px; }
+
+.legal-nav { display: flex; gap: 6px; }
+
+.legal-nav a {
+    padding: 6px 14px;
+    border: 1px solid var(--border-light);
+    border-radius: 999px;
+    background: var(--white);
+    color: var(--navy);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.legal-nav a:hover { border-color: var(--gold); }
+.legal-nav a[aria-current="page"] { border-color: var(--navy); background: var(--navy); color: #fff; }
+
+.legal-card {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 12px 32px 28px;
+
+    border: 1px solid var(--border-light);
+    border-radius: 20px;
+    background: var(--white);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+}
+
+.legal-card .legal-doc { font-size: 14.5px; }
+.legal-card .legal-doc h2 { font-size: 28px; }
+.legal-card .legal-doc h3 { font-size: 16px; margin-top: 22px; }
+
+@media (max-width: 560px) {
+    .legal-card { padding: 8px 18px 22px; }
+}

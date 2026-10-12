@@ -153,6 +153,19 @@
                     <button type="submit" class="ap-btn ap-btn--primary ap-btn--block">Reactivate account</button>
                 </form>
                 {% endif %}
+
+                {# Only when the user asked (Terms: deletion is by request to support) #}
+                <details class="ap-action">
+                    <summary class="ap-btn ap-btn--ghost ap-btn--danger-text ap-btn--block">Delete account</summary>
+                    <form method="post" class="ap-form" data-ap-confirm="Delete {{ account.display_name }}'s account for good? Their {% if account.role == 'landlord' %}listings, photos, verification documents, {% else %}applications, saved listings, {% endif %}messages and reports will be deleted. This can't be undone.">
+                        {% csrf_token %}<input type="hidden" name="action" value="delete">
+                        <p class="ap-muted">Only delete an account when its owner asked for it (e.g. by email to support). They'll get an email that it's done.</p>
+                        <label class="ap-check"><input type="checkbox" name="requested" value="1" required> The owner asked us to delete this account</label>
+                        <input type="text" name="confirm" class="ap-input" required autocomplete="off"
+                               placeholder="Type {{ account.username }} to confirm" aria-label="Type the username to confirm">
+                        <button type="submit" class="ap-btn ap-btn--danger">Delete account</button>
+                    </form>
+                </details>
             </div>
         </section>
     </aside>
