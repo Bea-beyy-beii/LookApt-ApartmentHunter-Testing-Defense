@@ -1,7 +1,7 @@
 {% comment %}
     One unit in the complex page's "Units" tab. The whole row opens the unit page.
 {% endcomment %}
-{% load listing_tags %}
+{% load listing_tags review_tags %}
 
 <article class="ld-unit-row" data-unit-type="{{ unit.bedroom_type }}">
 
@@ -32,7 +32,10 @@
         </p>
     </div>
 
-    <p class="ld-unit-price">₱{{ unit.price|floatformat:"0g" }} <small>/ month</small></p>
+    <div class="ld-unit-price">
+        <p>₱{{ unit.price|floatformat:"0g" }} <small>/ month</small></p>
+        {% if unit.rating %}{% star_rating unit.rating.avg unit.rating.count %}{% endif %}
+    </div>
 
     {# No per-unit Inquire here: the complex's one Inquire button (right column) handles all questions #}
     {% include "core_listings/renters/detail/unit_actions.html" with hide_inquiry=True %}

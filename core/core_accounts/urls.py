@@ -26,4 +26,5 @@ urlpatterns = [
     path('account/password/', views.account_password_view, name='account_password'),
     path('account/notifications/', views.notifications_view, name='account_notifications'),
     path('account/notifications/seen/', views.notifications_seen_view, name='account_notifications_seen'),
+    path('account/notifications/clear/', views.notifications_clear_view, name='account_notifications_clear'),
 ]   

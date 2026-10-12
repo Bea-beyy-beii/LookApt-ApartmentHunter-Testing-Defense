@@ -921,6 +921,16 @@
     color: var(--navy);
 }
 
+/* Price, then the unit's stars under it */
+.ld-unit-price { display: grid; justify-items: end; gap: 4px; }
+.ld-unit-price p { margin: 0; }
+.ld-price-box { display: grid; justify-items: end; gap: 4px; }
+
+/* Complex stars beside the name (opens the Reviews tab) */
+.ld-rating { padding: 0; border: 0; background: none; font: inherit; cursor: pointer; }
+.ld-rating:hover b { text-decoration: underline; }
+.ld-landlord-name-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+
 .ld-unit-price {
     color: var(--navy);
     font-size: 18px;

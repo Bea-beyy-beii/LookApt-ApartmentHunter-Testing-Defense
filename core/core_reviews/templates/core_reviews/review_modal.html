@@ -1,0 +1,99 @@
+{% comment %}
+    "Write a Review" pop-up (Rental History). Opened by core_reviews/review_button.html;
+    reviews.js fills in the rental and, when editing, the saved review.
+    Layout: lm-* from core_inquiries/listing_modals.css, rv-* from core_reviews/reviews.css.
+    Needs review_parts, review_max_photos, review_max_mb, review_feedback_max
+    (core_reviews.services.review_form_context).
+{% endcomment %}
+{% load listing_tags %}
+
+<dialog class="lm-modal rv-modal" data-review-modal aria-labelledby="rv-modal-title">
+    <form class="lm-form" data-review-form novalidate
+          data-max-photos="{{ review_max_photos }}" data-max-mb="{{ review_max_mb }}">
+        {% csrf_token %}
+
+        <header class="lm-header">
+            <span class="lm-header-icon">{% feature_icon "star" %}</span>
+            <div>
+                <h2 id="rv-modal-title" data-review-title>Write a Review</h2>
+                <p>Share your experience to help other renters in the LookApt community.</p>
+            </div>
+            <button type="button" class="lm-close" data-modal-close aria-label="Close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            </button>
+        </header>
+
+        <div class="lm-body">
+            <p class="lm-alert" data-form-error role="alert" hidden></p>
+
+            <!-- The rental being reviewed -->
+            <div class="rv-rental">
+                <span class="rv-rental-cover" data-review-cover>{% feature_icon "unit_type" %}</span>
+                <div>
+                    <strong data-review-complex></strong>
+                    <small>{% feature_icon "location" %} <span data-review-address></span></small>
+                    <small>{% feature_icon "unit_type" %} <span data-review-unit></span></small>
+                </div>
+            </div>
+
+            <!-- Complex / Unit / Landlord -->
+            {% for part in review_parts %}
+                <section class="lm-section rv-part">
+                    <div class="rv-part-head">
+                        <span class="rv-part-icon">{% feature_icon part.icon %}</span>
+                        <div>
+                            <h3>{{ part.label }} Review</h3>
+                            <p>{{ part.hint }}</p>
+                        </div>
+                    </div>
+
+                    <div class="rv-part-rating">
+                        <span class="rv-label">Your Rating <span class="rp-req">*</span></span>
+                        {# 5 → 1 in the markup so CSS can fill a star and every one before it #}
+                        <div class="rv-stars" role="radiogroup" aria-label="{{ part.label }} rating">
+                            {% for n in "54321" %}
+                                <input type="radio" id="rv-{{ part.key }}-{{ n }}" name="{{ part.key }}_rating" value="{{ n }}">
+                                <label for="rv-{{ part.key }}-{{ n }}" title="{{ n }} star{{ n|pluralize }}">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3L2.9 9.5l6.3-.9z"/></svg>
+                                    <span class="sr-only">{{ n }} star{{ n|pluralize }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                        <p class="lm-field-error" data-error-for="{{ part.key }}_rating" hidden></p>
+                    </div>
+
+                    <div class="rv-part-feedback">
+                        <span class="rv-label">Your Feedback <span class="rp-optional">(Optional)</span></span>
+                        <textarea name="{{ part.key }}_feedback" rows="3" maxlength="{{ review_feedback_max }}"
+                                  placeholder="{{ part.placeholder }}" aria-label="{{ part.label }} feedback"></textarea>
+                        <div class="rv-row">
+                            <p class="lm-field-error" data-error-for="{{ part.key }}_feedback" hidden></p>
+                            <small class="rv-counter" data-counter-for="{{ part.key }}_feedback">0/{{ review_feedback_max }}</small>
+                        </div>
+                    </div>
+                </section>
+            {% endfor %}
+
+            <!-- Photos -->
+            <section class="rv-photos-section">
+                <h3>Add Photos <span class="rp-optional">(Optional)</span></h3>
+                <p class="rv-hint">You can upload up to {{ review_max_photos }} photos.</p>
+                <div class="rv-photos" data-review-photos>
+                    <label class="rv-upload" data-review-upload>
+                        <input type="file" accept="image/png,image/jpeg" multiple hidden data-review-input>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 17-5-5-9 8"/></svg>
+                        <strong>Upload Photos</strong>
+                        <small>PNG, JPG (max {{ review_max_mb }} MB each)</small>
+                    </label>
+                    {# Thumbnails / empty "+" slots are drawn by reviews.js #}
+                </div>
+                <p class="lm-field-error" data-error-for="photos" hidden></p>
+            </section>
+        </div>
+
+        <footer class="lm-footer rt-modal-footer">
+            <button type="button" class="rt-btn rt-btn--ghost" data-modal-close>Cancel</button>
+            <button type="submit" class="rt-btn rt-btn--primary" data-submit>Submit Review</button>
+        </footer>
+    </form>
+</dialog>

@@ -138,6 +138,7 @@
     hidden
 >
     {% include "core_rentals/renter_rentals.html" %}
+    {% include "core_reviews/review_modal.html" %}
 </section>
 
 
@@ -179,6 +180,7 @@
     <link rel="stylesheet" href="{% static 'core_rentals/rental_history.css' %}">
     <link rel="stylesheet" href="{% static 'core_inquiries/requests.css' %}">
     <link rel="stylesheet" href="{% static 'core_reports/reports.css' %}">
+    <link rel="stylesheet" href="{% static 'core_reviews/reviews.css' %}">
     <link rel="stylesheet" href="{% static 'core_calendar/calendar_ui.css' %}">
 {% endblock %}
 
@@ -188,5 +190,6 @@
     <script src="{% static 'core_inquiries/listing_modals.js' %}" defer></script>
     <script src="{% static 'core_inquiries/requests.js' %}" defer></script>
     <script src="{% static 'core_reports/reports.js' %}" defer></script>
+    <script src="{% static 'core_reviews/reviews.js' %}" defer></script>
     <script src="{% static 'core_calendar/calendar.js' %}" defer></script>
 {% endblock %}

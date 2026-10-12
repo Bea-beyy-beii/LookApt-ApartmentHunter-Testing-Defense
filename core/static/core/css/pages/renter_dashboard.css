@@ -1289,6 +1289,7 @@
 }
 
 @media (max-width: 640px) {
+    .home-side { order: 1; }       /* phones: the listings first, the schedule below them */
     .near-banner { flex-wrap: wrap; padding: 14px 16px; }
     .near-banner-btn { width: 100%; justify-content: center; }
 }

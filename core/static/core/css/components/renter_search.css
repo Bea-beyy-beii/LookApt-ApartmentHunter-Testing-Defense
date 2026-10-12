@@ -205,7 +205,10 @@
 /* ---------- Small screens ---------- */
 
 @media (max-width: 640px) {
-    .filter-wrap { flex: 1; }
+    /* Phones: bell + profile first, then the search bar, then Filter by */
+    .renter-dashboard .topbar-right { order: 0; margin-left: auto; }
+    .renter-dashboard .dashboard-search { order: 1; }
+    .filter-wrap { order: 2; flex: 1 1 100%; }
     .filter-wrap .filter-button { width: 100%; }
     .filter-panel { position: fixed; top: 80px; left: 16px; right: 16px; width: auto; }
     .filter-grid { grid-template-columns: 1fr; }

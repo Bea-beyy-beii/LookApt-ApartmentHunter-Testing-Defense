@@ -68,6 +68,25 @@ body[data-tab]:not([data-tab=""]):not([data-tab="myListings"]) .landlord-dashboa
 .topbar-menu[hidden] { display: none; }
 .topbar-menu--notifs { width: 340px; max-height: min(70vh, 520px); overflow-y: auto; }
 
+/* Title + "Clear all" */
+.topbar-menu-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+
+.topbar-menu-clear {
+    margin: 4px 8px 6px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: #2f73bd;
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.topbar-menu-clear:hover { text-decoration: underline; }
+.topbar-menu-clear:disabled { opacity: 0.5; cursor: progress; }
+html[data-theme="dark"] .topbar-menu-clear { color: #8fb0e8; }
+
 .topbar-menu-title {
     margin: 4px 8px 6px;
     color: var(--navy);

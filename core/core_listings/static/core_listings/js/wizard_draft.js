@@ -119,8 +119,12 @@
                 else el.value = value;
             }
 
-            // Re-open the wizard on the dashboard (the unit page has no list view)
-            if (draft.formOpen && document.getElementById("listings-form-view") && typeof showPropertyForm === "function") {
+            // Re-open the wizard on the dashboard (the unit page has no list view), but only
+            // after a reload or Back/Forward. Arriving from a link (e.g. the "My Listings"
+            // breadcrumb on the unit form) shows the list; the draft waits for "Add Property".
+            const navigation = performance.getEntriesByType?.("navigation")[0];
+            const reopened = !navigation || navigation.type !== "navigate";
+            if (reopened && draft.formOpen && document.getElementById("listings-form-view") && typeof showPropertyForm === "function") {
                 showPropertyForm();
             }
             goToStep(draft.step || 1);   // after showPropertyForm(), which resets to step 1

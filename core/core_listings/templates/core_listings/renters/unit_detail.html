@@ -1,5 +1,5 @@
 {% extends "core_renters/base.html" %}
-{% load static listing_tags %}
+{% load static listing_tags review_tags %}
 
 {% block title %}LookApt — {{ unit.unit_name }}, {{ complex.complex_name }}{% endblock %}
 
@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="{% static 'core_listings/css/listing_detail.css' %}">
     <link rel="stylesheet" href="{% static 'core_inquiries/chat.css' %}">
     <link rel="stylesheet" href="{% static 'core_inquiries/listing_modals.css' %}">
+    <link rel="stylesheet" href="{% static 'core_reviews/reviews.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -36,7 +37,10 @@
                         <a class="ld-subtitle" href="{% url 'core_listings:renter_complex_detail' complex.pk %}?from={{ origin }}">{{ complex.complex_name }}</a>
                     </div>
 
-                    <p class="ld-price">₱{{ unit.price|floatformat:"0g" }} <small>/ month</small></p>
+                    <div class="ld-price-box">
+                        <p class="ld-price">₱{{ unit.price|floatformat:"0g" }} <small>/ month</small></p>
+                        {% if unit.rating.count %}{% star_rating unit.rating.avg unit.rating.count %}{% endif %}
+                    </div>
                 </div>
 
                 <p class="ld-address">

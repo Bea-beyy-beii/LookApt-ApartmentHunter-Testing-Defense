@@ -2,7 +2,7 @@
     "About the Landlord" card (right column of both listing pages).
     `landlord` comes from detail_services.landlord_summary().
 {% endcomment %}
-{% load listing_tags %}
+{% load listing_tags review_tags %}
 
 <section class="ld-card ld-landlord">
 
@@ -13,7 +13,10 @@
         <span class="ld-landlord-avatar avatar--landlord" aria-hidden="true">{% if landlord.avatar_url %}<img src="{{ landlord.avatar_url }}" alt="">{% else %}{{ landlord.initials }}{% endif %}</span>
 
         <div class="ld-landlord-info">
-            <strong class="ld-landlord-name">{{ landlord.name }}</strong>
+            <div class="ld-landlord-name-row">
+                <strong class="ld-landlord-name">{{ landlord.name }}</strong>
+                {% if landlord.rating.count %}{% star_rating landlord.rating.avg landlord.rating.count %}{% endif %}
+            </div>
 
             {% if landlord.is_verified %}
                 <span class="ld-badge ld-badge--verified">

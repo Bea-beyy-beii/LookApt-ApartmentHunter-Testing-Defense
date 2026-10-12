@@ -404,3 +404,14 @@ def notifications_seen_view(request):
     request.user.notifications_seen_at = timezone.now()
     request.user.save(update_fields=['notifications_seen_at'])
     return JsonResponse({'new_count': 0})
+
+
+@login_required
+@require_POST
+def notifications_clear_view(request):
+    """"Clear all" (bell + Inquiries panel): hides everything so far; newer ones still show."""
+    now = timezone.now()
+    request.user.notifications_cleared_at = now
+    request.user.notifications_seen_at = now
+    request.user.save(update_fields=['notifications_cleared_at', 'notifications_seen_at'])
+    return JsonResponse({'cleared': True})

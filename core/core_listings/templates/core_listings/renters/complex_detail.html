@@ -1,5 +1,5 @@
 {% extends "core_renters/base.html" %}
-{% load static listing_tags core_maps %}
+{% load static listing_tags core_maps review_tags %}
 
 {% block title %}LookApt — {{ complex.complex_name }}{% endblock %}
 
@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="{% static 'core_listings/css/listing_detail.css' %}">
     <link rel="stylesheet" href="{% static 'core_inquiries/chat.css' %}">
     <link rel="stylesheet" href="{% static 'core_inquiries/listing_modals.css' %}">
+    <link rel="stylesheet" href="{% static 'core_reviews/reviews.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -28,7 +29,17 @@
             <header class="ld-header" data-listing-card data-complex-id="{{ complex.pk }}">
 
                 <div class="ld-header-row">
-                    <h1 class="ld-title">{{ complex.complex_name }}</h1>
+                    <div class="ld-title-row">
+                        <h1 class="ld-title">{{ complex.complex_name }}</h1>
+                        {# Complex stars: opens the Reviews tab #}
+                        <button type="button" class="ld-rating" data-show-tab="reviews">
+                            {% if complex_rating.count %}
+                                {% star_rating complex_rating.avg complex_rating.count size="md" %}
+                            {% else %}
+                                <span class="star-rating-none">No reviews yet</span>
+                            {% endif %}
+                        </button>
+                    </div>
 
                     <!-- Save (same ribbon + script as the listing cards) -->
                     <button type="button"
@@ -177,13 +188,9 @@
             </section>
 
 
-            <!-- REVIEWS (built later) -->
+            <!-- REVIEWS (from renters' Rental History) -->
             <section class="ld-card ld-panel" role="tabpanel" data-panel="reviews" hidden>
-                <div class="ld-placeholder">
-                    {% feature_icon "star" %}
-                    <h3>No reviews yet</h3>
-                    <p>Reviews from past and current renters will show up here.</p>
-                </div>
+                {% include "core_reviews/reviews_panel.html" %}
             </section>
 
 

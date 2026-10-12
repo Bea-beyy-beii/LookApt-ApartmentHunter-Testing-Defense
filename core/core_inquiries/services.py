@@ -602,6 +602,11 @@ def _notifications(user, conversations, applications):
         items.append(_notification(f"n-{notice.pk}", notice.title, notice.message, notice.created_at,
                                    notice.tone, type_="account"))
 
+    # "Clear all" hides everything up to that moment
+    cleared = user.notifications_cleared_at
+    if cleared:
+        items = [item for item in items if item["created_at"] and item["created_at"] > cleared]
+
     items.sort(key=lambda item: item["created_at"], reverse=True)
     return items[:MAX_NOTIFICATIONS]
 
