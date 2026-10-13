@@ -255,7 +255,6 @@ class LandmarksKeptOnSaveTests(ListingFormSetup):
         return ComplexForm(data, instance=self.complex, landlord=self.user.landlord)
 
     def test_blank_list_keeps_landmarks_and_empty_list_clears_them(self):
-        from core.core_listings.views import _save_property
         from core.core_maps.maps.services import ComplexLandmarks
         self.complex.latitude, self.complex.longitude = 7.06, 125.597
         self.complex.save()
@@ -265,19 +264,19 @@ class LandmarksKeptOnSaveTests(ListingFormSetup):
 
         form = self.form(landmarks_json="")
         self.assertTrue(form.is_valid(), form.errors)
-        _save_property(form, self.user.landlord)
+        form.save_listing()
         self.assertEqual([item["name"] for item in ComplexLandmarks(self.complex).as_list()], ["Gaisano"])
 
         # Pin moved without a new list: same landmarks, distances from the new spot
         before = ComplexLandmarks(self.complex).as_list()[0]["distance_m"]
         form = self.form(landmarks_json="", latitude="7.07", longitude="125.61")
         self.assertTrue(form.is_valid(), form.errors)
-        _save_property(form, self.user.landlord)
+        form.save_listing()
         self.assertNotEqual(ComplexLandmarks(self.complex).as_list()[0]["distance_m"], before)
 
         form = self.form(landmarks_json="[]")
         self.assertTrue(form.is_valid(), form.errors)
-        _save_property(form, self.user.landlord)
+        form.save_listing()
         self.assertEqual(ComplexLandmarks(self.complex).as_list(), [])
 
 
@@ -336,3 +335,34 @@ class BulkUnitTests(ListingFormSetup):
                 "advance_months": "1", "deposit_months": "1", "photos": [jpg(), jpg("b.jpg")]}
         self.assertEqual(self.client.post(self.url, data).status_code, 302)
         self.assertEqual(list(self.complex.units.values_list("identifier", flat=True)), [7])
+
+
+@override_settings(STORAGES={
+    "default": {"BACKEND": "django.core.files.storage.InMemoryStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+})
+class PropertyWizardTests(ListingFormSetup):
+    """The Add / Edit Property pages save the form and go back to My Listings."""
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.user)
+
+    def test_unverified_landlord_saves_it_unpublished(self):
+        self.user.is_verified = False
+        self.user.save()
+        data = {**self.complex_data(), "visibility": "active", "photos": [jpg(), jpg("b.jpg")]}
+        response = self.client.post(reverse("core_listings:property_create"), data)
+        self.assertRedirects(response, reverse("core_landlords:dashboard") + "?tab=myListings&saved=1",
+                             fetch_redirect_response=False)
+        created = Complex.objects.get(complex_name="Moonlight")
+        self.assertEqual((created.status, created.pictures.count()), ("unpublished", 2))
+        texts = [str(m) for m in response.wsgi_request._messages]
+        self.assertEqual(texts[0], "Moonlight was created.")
+        self.assertIn("saved as unpublished", texts[1])
+
+    def test_edit_page_is_only_for_the_owner(self):
+        url = reverse("core_listings:property_edit", args=[self.complex.pk])
+        self.assertEqual(self.client.get(url).context["property"], self.complex)
+        self.client.force_login(make_landlord("other", "09222222222"))
+        self.assertEqual(self.client.get(url).status_code, 404)

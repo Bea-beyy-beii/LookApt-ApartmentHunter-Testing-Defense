@@ -1,9 +1,14 @@
 # core_listings/models.py
+import logging
 import uuid
+from django.conf import settings
 from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models import Q
+from django.utils import timezone
 from decimal import Decimal
+
+logger = logging.getLogger(__name__)
 
 
 class SexRestriction(models.TextChoices):
@@ -49,7 +54,102 @@ class Area(models.Model):
 
 
 
-class Complex(models.Model):
+class ListingChangeRefused(Exception):
+    """A landlord asked for something the listing doesn't allow (e.g. unpublishing a rented unit).
+    `status` is the JSON error code; `flash` = also show the error as a message."""
+
+    def __init__(self, error, status=400, flash=True):
+        super().__init__(error)
+        self.error = error
+        self.status = status
+        self.flash = flash
+
+
+class Listing(models.Model):
+    """Parent of Complex and Unit (abstraction + polymorphism): the landlord's
+    menu deletes or (un)publishes either one the same way, each subclass fills
+    in its own name, renter check, files and status."""
+
+    DELETE_REFUSED = ""         # set by the subclasses, "{name} ... can't be deleted"
+    UNPUBLISH_REFUSED = ""      # "{name} ... can't be unpublished"
+
+    class Meta:
+        abstract = True
+
+    @property
+    def listing_name(self):
+        raise NotImplementedError
+
+    @property
+    def has_renter(self):
+        raise NotImplementedError
+
+    def media_files(self):
+        """Every stored photo/video file of this listing."""
+        raise NotImplementedError
+
+    def apply_status_button(self, choice, may_publish=True):
+        """Use the status of the Save button the landlord clicked (not saved yet)."""
+        raise NotImplementedError
+
+    def set_status(self, value, may_publish=True):
+        """The menu's publish / unpublish; raises ListingChangeRefused."""
+        raise NotImplementedError
+
+    def status_payload(self):
+        """The JSON the menu gets back after set_status()."""
+        raise NotImplementedError
+
+    def add_photos(self, photos):
+        """Save uploaded photos in order; the first becomes cover if there isn't one yet."""
+        has_cover = self.pictures.filter(is_cover=True).exists()
+        start_position = self.pictures.count()
+
+        for index, photo in enumerate(photos):
+            # the model allows only one cover per listing
+            self.pictures.create(image=photo, position=start_position + index,
+                                 is_cover=(not has_cover and index == 0))
+
+    def delete_with_media(self):
+        """Delete the listing and its files. Refused while a renter has a contract
+        (that would also wipe the contracts and payments)."""
+        if self.has_renter:
+            raise ListingChangeRefused(self.DELETE_REFUSED.format(name=self.listing_name))
+        files = self.media_files()
+        self.delete()       # cascades to units, pictures, videos, landmarks
+        self._delete_files(files)
+
+    @staticmethod
+    def _delete_files(files):
+        """Remove files from storage (S3). Deleting rows does NOT delete their files."""
+        for file in files:
+            try:
+                file.delete(save=False)
+            except Exception as error:
+                # Don't block the delete, but don't hide the problem either
+                logger.warning("Could not delete %s: %s", file.name, error)
+
+
+class ComplexQuerySet(models.QuerySet):
+
+    def owned_by(self, user):
+        # a landlord can only touch their own complexes
+        return self.filter(landlord__user=user)
+
+    def renter_visible(self):
+        """Complexes renters are allowed to see.
+
+        TEMPORARY: while settings.LISTINGS_REQUIRE_APPROVAL is False, every
+        active complex is shown right away (no admin approval yet).
+        """
+        # Suspended landlords' listings are hidden too (core_admin)
+        complexes = self.filter(status=Complex.ComplexStatus.ACTIVE, landlord__user__is_active=True)
+        if getattr(settings, "LISTINGS_REQUIRE_APPROVAL", True):
+            complexes = complexes.filter(approval_status=Complex.Approval.APPROVED)
+        return complexes
+
+
+class Complex(Listing):
     class ComplexStatus(models.TextChoices):
         ACTIVE = "active", "Active"
         UNPUBLISHED = "unpublished", "Unpublished"
@@ -100,6 +200,12 @@ class Complex(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    objects = ComplexQuerySet.as_manager()
+
+    UNPUBLISH_REFUSED = "{name} has units with renters, so it can't be unpublished. End their contracts in Manage Rentals first."
+    DELETE_REFUSED = "{name} has units with renters, so it can't be deleted. End their contracts in Manage Rentals first."
+    NOT_VERIFIED = "Verify your account first: listings can be published once you're approved."
+
     class Meta:
         verbose_name_plural = "complexes"
         constraints = [
@@ -116,7 +222,52 @@ class Complex(models.Model):
         required = {SexRestriction.MALE_ONLY: "male", SexRestriction.FEMALE_ONLY: "female"}.get(self.sex_restriction)
         return required is None or getattr(user, "sex", None) == required
 
-        # Counted in Python from self.units.all(), so the listings page's
+    @property
+    def listing_name(self):
+        return self.complex_name
+
+    @property
+    def has_renter(self):
+        """Some unit has an active contract (Manage Rentals)."""
+        return self.units.filter(tenancies__status="active").exists()
+
+    def media_files(self):
+        files = [picture.image for picture in self.pictures.all()]
+        files += [picture.image for picture in UnitPicture.objects.filter(unit__complex=self)]
+        files += [clip.video for clip in UnitVideo.objects.filter(unit__complex=self)]
+        return files
+
+    def apply_status_button(self, choice, may_publish=True):
+        # "unpublished" or "active"; landlords who aren't verified yet can only save it unpublished
+        if choice == self.ComplexStatus.ACTIVE and not may_publish:
+            choice = self.ComplexStatus.UNPUBLISHED
+        if choice in self.ComplexStatus.values:
+            self.status = choice
+
+    def set_status(self, visibility, may_publish=True):
+        if visibility not in self.ComplexStatus.values:
+            raise ListingChangeRefused("Invalid visibility.", flash=False)
+        if visibility == self.ComplexStatus.ACTIVE and not may_publish:
+            raise ListingChangeRefused(self.NOT_VERIFIED, status=403)
+        if visibility == self.ComplexStatus.UNPUBLISHED and self.has_renter:
+            raise ListingChangeRefused(self.UNPUBLISH_REFUSED.format(name=self.complex_name))
+        self.status = visibility
+        self.save(update_fields=["status", "updated_at"])
+
+    def status_payload(self):
+        return {
+            "status": self.status,
+            "label": self.get_status_display(),
+            "approval_status": self.approval_status,
+        }
+
+    @property
+    def next_unit_identifier(self):
+        """Suggested first number for Bulk listing: one after the highest unit number."""
+        highest = self.units.order_by("-identifier").values_list("identifier", flat=True).first()
+        return (highest or 0) + 1
+
+    # Counted in Python from self.units.all(), so the listings page's
     # prefetch_related("units") answers them without extra queries.
     # An unpublished complex counts all its units as unpublished (see Unit.listed_availability).
     def _count_units(self, availability=None):
@@ -159,10 +310,31 @@ class Complex(models.Model):
         """Ticked features, e.g. [{"key": "pet_friendly", "label": "Pet Friendly"}]."""
         return [{"key": key, "label": label} for key, label in self.FEATURE_LABELS.items() if getattr(self, key)]
 
+    def feature_checklist(self):
+        """Every feature, ticked or not, e.g. for the amenities tab."""
+        return [
+            {"key": key, "label": label, "has": getattr(self, key)}
+            for key, label in self.FEATURE_LABELS.items()
+        ]
 
 
 
-class Unit(models.Model):
+
+class UnitQuerySet(models.QuerySet):
+
+    def owned_by(self, user):
+        return self.filter(complex__landlord__user=user)
+
+    def for_renters(self):
+        # Renters never see unpublished units
+        return (
+            self.exclude(availability=Unit.Availability.UNPUBLISHED)
+            .prefetch_related("pictures")
+            .order_by("identifier")
+        )
+
+
+class Unit(Listing):
     class Availability(models.TextChoices):
         AVAILABLE = "available", "Available"
         OCCUPIED = "occupied", "Occupied"
@@ -219,6 +391,12 @@ class Unit(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    objects = UnitQuerySet.as_manager()
+
+    UNPUBLISH_REFUSED = "{name} has a renter, so it can't be unpublished. End the contract in Manage Rentals first."
+    DELETE_REFUSED = "{name} has a renter, so it can't be deleted. End the contract in Manage Rentals first."
+    COMPLEX_UNPUBLISHED = "This complex is unpublished. Publish it first to change its units' status."
+
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=["complex", "identifier"], name="unique_unit_identifier_per_complex")
@@ -229,7 +407,11 @@ class Unit(models.Model):
 
     @property
     def unit_name(self):
-            return f"Unit {self.identifier}"
+        return f"Unit {self.identifier}"
+
+    @property
+    def listing_name(self):
+        return self.unit_name
 
     @property
     def complex_unpublished(self):
@@ -247,6 +429,60 @@ class Unit(models.Model):
 
     def get_listed_availability_display(self):
         return self.Availability(self.listed_availability).label
+
+    def media_files(self):
+        return [picture.image for picture in self.pictures.all()] + [clip.video for clip in self.videos.all()]
+
+    def apply_status_button(self, choice, may_publish=True):
+        # "available" (vacant), "occupied" or "unpublished".
+        # A unit with a renter stays occupied (UnitForm already refuses unpublishing it).
+        if not self._state.adding and self.has_renter:
+            self.availability = self.Availability.OCCUPIED
+        elif choice in self.Availability.values:
+            self.availability = choice
+
+    def set_status(self, availability, may_publish=True):
+        if availability not in self.Availability.values:
+            raise ListingChangeRefused("Invalid status.", flash=False)
+        if self.complex_unpublished:
+            raise ListingChangeRefused(self.COMPLEX_UNPUBLISHED)
+        if availability == self.Availability.UNPUBLISHED and self.has_renter:
+            raise ListingChangeRefused(self.UNPUBLISH_REFUSED.format(name=self.unit_name))
+
+        # Occupied / available follow the contracts in Manage Rentals; the landlord
+        # only publishes or unpublishes the unit
+        if availability != self.Availability.UNPUBLISHED:
+            availability = self.Availability.OCCUPIED if self.has_renter else self.Availability.AVAILABLE
+
+        self.availability = availability
+        self.save(update_fields=["availability", "updated_at"])
+
+    def status_payload(self):
+        return {"availability": self.availability, "label": self.get_availability_display()}
+
+    def add_videos(self, videos):
+        start = self.videos.count()
+        for index, clip in enumerate(videos):
+            self.videos.create(video=clip, position=start + index)
+
+    def amenity_checklist(self):
+        """Every amenity, ticked or not (the unit page)."""
+        return [
+            {"key": name, "label": self._meta.get_field(name).verbose_name, "has": getattr(self, name)}
+            for name in self.AMENITY_FIELDS
+        ]
+
+    def payment_summary(self):
+        advance = self.price * self.advance_months
+        deposit = self.price * self.deposit_months
+        return {
+            "advance_months": self.advance_months,
+            "advance": advance,
+            "deposit_months": self.deposit_months,
+            "deposit": deposit,
+            # Move-in = advance + deposit; with neither, just the first month
+            "total": (advance + deposit) or self.price,
+        }
 
     def amenity_list(self):
         """Ticked amenities, e.g. [{"key": "wifi_ready", "label": "Wi-Fi Ready"}]."""
@@ -371,6 +607,18 @@ class SavedListing(models.Model):
     def __str__(self):
         return f"{self.renter.user} saved {self.complex}"
 
+    @classmethod
+    def toggle(cls, renter, complex_obj):
+        """Save the listing, or unsave it on the second click. True = now saved."""
+        saved, created = cls.objects.get_or_create(renter=renter, complex=complex_obj)
+        if not created:
+            saved.delete()
+        return created
+
+    @classmethod
+    def is_saved(cls, user, complex_obj):
+        return cls.objects.filter(renter__user=user, complex=complex_obj).exists()
+
 
 # --------------------------------------------------------------------------------------------------------------- LISTING VIEWS (landlord dashboard)
 
@@ -388,3 +636,8 @@ class ListingView(models.Model):
 
     def __str__(self):
         return f"{self.viewer} viewed {self.unit or self.complex} on {self.viewed_on}"
+
+    @classmethod
+    def record(cls, user, complex_obj, unit=None):
+        """Count a renter's visit for the landlord's "Views" (once per page per day)."""
+        cls.objects.get_or_create(complex=complex_obj, unit=unit, viewer=user, viewed_on=timezone.localdate())

@@ -3,8 +3,7 @@
 # listing page's "Other Listings" tab.
 from django.db.models import Prefetch
 
-from core.core_listings.models import SavedListing, Unit
-from core.core_listings.services import renter_visible_complexes
+from core.core_listings.models import Complex, SavedListing, Unit
 
 
 class ListingCards:
@@ -50,7 +49,7 @@ class ListingCards:
     def other_listings(self, complex_obj):
         """The listing page's "Other Listings" tab: the landlord's other complexes, as cards."""
         complexes = (
-            renter_visible_complexes()
+            Complex.objects.renter_visible()
             .filter(landlord=complex_obj.landlord)
             .exclude(pk=complex_obj.pk)
             .prefetch_related("pictures", self._published_units())
@@ -62,7 +61,7 @@ class ListingCards:
         """(every matching card, the saved ones) for the Home and Saved Listings tabs."""
         # Only the published units that match the unit filters (type, budget, occupants ...)
         complexes = (
-            search.filter_complexes(renter_visible_complexes())
+            search.filter_complexes(Complex.objects.renter_visible())
             .prefetch_related("pictures", self._published_units(search))
             .order_by("-created_at")
         )

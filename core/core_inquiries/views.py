@@ -11,8 +11,7 @@ from django.urls import reverse
 from django.views import View
 
 from core.core_accounts.mixins import LandlordRequiredMixin, RenterRequiredMixin
-from core.core_listings.models import Unit
-from core.core_listings.services import renter_visible_complexes
+from core.core_listings.models import Complex, Unit
 from core.models import Renter
 
 from . import workflow
@@ -64,7 +63,7 @@ class InquiryViewMixin(JsonViewMixin):
         return (
             Unit.objects
             .exclude(availability=Unit.Availability.UNPUBLISHED)
-            .filter(complex__in=renter_visible_complexes())
+            .filter(complex__in=Complex.objects.renter_visible())
             .select_related("complex__landlord__user")
         )
 
@@ -91,7 +90,7 @@ class InquiryViewMixin(JsonViewMixin):
         if params.get("unit"):
             return get_object_or_404(self.renter_units(), pk=params["unit"]), None
         if params.get("complex"):
-            return None, get_object_or_404(renter_visible_complexes(), pk=params["complex"])
+            return None, get_object_or_404(Complex.objects.renter_visible(), pk=params["complex"])
         raise ValidationError({"__all__": "Pick a unit or a property."})
 
     def chat(self):

@@ -155,18 +155,15 @@ class AccountPopupTests(TestCase):
         self.assertEqual(self.client.get(reverse("core_renters:dashboard")).status_code, 200)   # still logged in
 
     def test_landlord_contact_on_listing_card(self):
-        from core.core_listings.detail_services import landlord_summary
+        from core.core_listings.detail_services import LandlordSummary
         landlord = User.objects.create_user(username="liza", password="pw-12345!", first_name="Liza", last_name="Test",
                                             phone_number="09111111111", sex="female", role="landlord",
                                             email="liza@example.com")
         Landlord.objects.create(user=landlord)
-        complex_obj = _mock.Mock(landlord=landlord.landlord)
-        with _mock.patch("core.core_listings.detail_services.renter_visible_complexes") as visible:
-            visible.return_value.filter.return_value.count.return_value = 1
-            hidden = landlord_summary(complex_obj)
-            landlord.share_phone = True
-            landlord.save()
-            shown = landlord_summary(complex_obj)
+        hidden = LandlordSummary(landlord.landlord).as_dict()
+        landlord.share_phone = True
+        landlord.save()
+        shown = LandlordSummary(landlord.landlord).as_dict()
         self.assertEqual((hidden["email"], hidden["phone"]), ("", ""))
         self.assertEqual((shown["email"], shown["phone"]), ("", "09111111111"))
 

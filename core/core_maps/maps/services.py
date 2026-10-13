@@ -8,8 +8,7 @@ import logging
 from django.db import transaction
 from django.urls import reverse
 
-from core.core_listings.models import Area, ComplexLandmark, Landmark
-from core.core_listings.services import renter_visible_complexes
+from core.core_listings.models import Area, Complex, ComplexLandmark, Landmark
 
 from .categories import CategoryStyle
 from .geo import GeoPoint, TravelEstimate, TravelMode
@@ -249,7 +248,7 @@ class ComplexSearch:
     @staticmethod
     def searchable():
         """Only listings renters are allowed to see (and that have a map pin)."""
-        return renter_visible_complexes().filter(latitude__isnull=False, longitude__isnull=False)
+        return Complex.objects.renter_visible().filter(latitude__isnull=False, longitude__isnull=False)
 
     def _queryset(self):
         min_lat, max_lat, min_lng, max_lng = self.point.bounding_box(self.radius.km)
