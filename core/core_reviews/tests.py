@@ -130,3 +130,4 @@ class ReviewTests(TestCase):
         response = self.client.get(reverse("core_listings:renter_complex_detail", args=[self.complex.pk]))
         self.assertContains(response, "No reviews yet")
         self.assertIsNone(response.context["units"][0].rating)
+        self.assertContains(response, "No ratings yet")          # beside the landlord's name

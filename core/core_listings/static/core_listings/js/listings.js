@@ -269,9 +269,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // ---------------------------------------------------------
 // "CREATING…" OVERLAY (shown while the form uploads)
-// Messages come from the form's data-saving-messages attribute.
+// Messages come from the form's data-saving-messages attribute. Each one
+// stays SAVING_MESSAGE_MS; the last one stays until the page changes.
 // ---------------------------------------------------------
 
+const SAVING_MESSAGE_MS = 4000;
 let savingTimer = null;
 
 function showSavingOverlay(form) {
@@ -307,13 +309,15 @@ function showSavingOverlay(form) {
         setTimeout(() => {
             text.textContent = messages[index];
             text.classList.add('is-visible');
-            index = (index + 1) % messages.length;   // loop through the messages
-        }, 200);
+            index += 1;
+            // Stay on the last message ("Almost done…") instead of starting over
+            if (index >= messages.length) clearInterval(savingTimer);
+        }, 300);
     }
 
     clearInterval(savingTimer);
     showMessage();
-    savingTimer = setInterval(showMessage, 2200);
+    savingTimer = setInterval(showMessage, SAVING_MESSAGE_MS);
     overlay.hidden = false;
 }
 

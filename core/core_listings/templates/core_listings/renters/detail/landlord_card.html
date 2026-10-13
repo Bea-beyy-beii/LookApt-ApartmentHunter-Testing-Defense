@@ -15,7 +15,11 @@
         <div class="ld-landlord-info">
             <div class="ld-landlord-name-row">
                 <strong class="ld-landlord-name">{{ landlord.name }}</strong>
-                {% if landlord.rating.count %}{% star_rating landlord.rating.avg landlord.rating.count %}{% endif %}
+                {% if landlord.rating.count %}
+                    {% star_rating landlord.rating.avg landlord.rating.count %}
+                {% else %}
+                    <span class="star-rating-none">No ratings yet</span>
+                {% endif %}
             </div>
 
             {% if landlord.is_verified %}
