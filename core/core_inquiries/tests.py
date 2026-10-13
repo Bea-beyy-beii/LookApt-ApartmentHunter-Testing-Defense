@@ -13,8 +13,14 @@ from django.urls import reverse
 from core.core_listings.models import Area, Complex, Unit
 from core.models import Landlord, Renter, User
 
-from . import services
 from .models import Application, Conversation, Message
+from .sections import InquiriesSection
+from .services import LeaseSchedule, TenantApplication, WaitlistApplication
+from .workflow import ApproveWaitlist
+
+
+def inquiries_tab(user):
+    return InquiriesSection(user).context()
 
 
 def make_user(username, role, phone):
@@ -59,20 +65,20 @@ class MoveInDateTests(Base):
 
     def test_waitlist_date_is_lease_end_plus_turnover(self):
         # Oct 26, 2025 + 1 year lease + 7 days of preparation
-        self.assertEqual(services.earliest_move_in(self.occupied, on=date(2026, 10, 6)), date(2026, 11, 2))
+        self.assertEqual(LeaseSchedule(self.occupied, on=date(2026, 10, 6)).earliest_move_in, date(2026, 11, 2))
 
     def test_renewed_lease_uses_the_next_end_date(self):
         self.complex.lease_term = "monthly"
         self.complex.save()
         # Monthly lease from Oct 26, 2025: on Mar 1, 2026 the current term ends Mar 26
-        self.assertEqual(services.current_lease_end(self.occupied, on=date(2026, 3, 1)), date(2026, 3, 26))
+        self.assertEqual(LeaseSchedule(self.occupied, on=date(2026, 3, 1)).current_end, date(2026, 3, 26))
 
     def test_unknown_lease_start_falls_back_to_turnover_from_today(self):
         self.occupied.occupied_since = None
-        self.assertEqual(services.earliest_move_in(self.occupied, on=date(2026, 1, 1)), date(2026, 1, 8))
+        self.assertEqual(LeaseSchedule(self.occupied, on=date(2026, 1, 1)).earliest_move_in, date(2026, 1, 8))
 
     def test_available_unit_can_move_in_today(self):
-        self.assertEqual(services.earliest_move_in(self.available, on=date(2026, 1, 1)), date(2026, 1, 1))
+        self.assertEqual(LeaseSchedule(self.available, on=date(2026, 1, 1)).earliest_move_in, date(2026, 1, 1))
 
 
 class ApplicationTests(Base):
@@ -155,7 +161,7 @@ class ApplicationTests(Base):
     def test_application_shows_in_landlord_requests(self):
         self.apply(self.available)
         self.client.force_login(self.landlord_user)
-        context = services.get_inquiries_context(self.landlord_user)
+        context = inquiries_tab(self.landlord_user)
         self.assertEqual(len(context["pending_requests"]), 1)
         self.assertEqual(context["pending_requests_count"], 1)
 
@@ -192,7 +198,7 @@ class MessageTests(Base):
         self.assertEqual(conversation.landlord, self.landlord)
         self.assertEqual(conversation.messages.count(), 2)
 
-        landlord_tab = services.get_inquiries_context(self.landlord_user)
+        landlord_tab = inquiries_tab(self.landlord_user)
         self.assertEqual(landlord_tab["unread_messages_count"], 2)
 
     def test_landlord_can_reply_after_renter_wrote(self):
@@ -353,10 +359,10 @@ class RequestWorkflowTests(Base):
 
     def setUp(self):
         super().setUp()
-        self.application = services.create_application(
-            self.renter_user, self.available, "apply", ["", "Elise Tan"],
+        self.application = TenantApplication(
+            self.renter_user, self.available, ["", "Elise Tan"],
             date.today() + timedelta(days=20), date.today() + timedelta(days=3), time_of(14),
-        )
+        ).submit()
 
     def as_landlord(self):
         self.client.force_login(self.landlord_user)
@@ -369,9 +375,9 @@ class RequestWorkflowTests(Base):
         return self.application
 
     def waitlist_request(self, renter_user=None):
-        return services.create_application(
-            renter_user or self.renter_user, self.occupied, "waitlist", [""], date(2026, 12, 1),
-        )
+        return WaitlistApplication(
+            renter_user or self.renter_user, self.occupied, [""], date(2026, 12, 1),
+        ).submit()
 
     # ---------- reject / cancel ----------
 
@@ -389,7 +395,7 @@ class RequestWorkflowTests(Base):
         self.assertEqual(application.status, Application.Status.DECLINED)
         self.assertEqual(application.reason_note, "Need 2 IDs")
 
-        tabs = services.get_inquiries_context(self.renter_user)
+        tabs = inquiries_tab(self.renter_user)
         self.assertEqual(tabs["pending_requests_count"], 0)
         self.assertEqual([a.pk for a in tabs["archived_requests"]], [application.pk])
 
@@ -408,7 +414,7 @@ class RequestWorkflowTests(Base):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(self.refresh().status, Application.Status.WITHDRAWN)
         # ...and shows up in the landlord's archive as cancelled
-        archive = services.get_inquiries_context(self.landlord_user)["archived_requests"]
+        archive = inquiries_tab(self.landlord_user)["archived_requests"]
         self.assertEqual(archive[0].get_status_display(), "Cancelled")
 
     def test_renter_cannot_touch_someone_elses_request(self):
@@ -428,7 +434,7 @@ class RequestWorkflowTests(Base):
         Application.objects.filter(pk=self.application.pk).update(
             decided_at=self.refresh().decided_at - timedelta(days=31),
         )
-        self.assertEqual(services.get_inquiries_context(self.renter_user)["archive_count"], 0)
+        self.assertEqual(inquiries_tab(self.renter_user)["archive_count"], 0)
 
     # ---------- edit ----------
 
@@ -446,7 +452,7 @@ class RequestWorkflowTests(Base):
 
     def test_bell_colours(self):
         # New request -> yellow
-        tones = {n["title"]: n["tone"] for n in services.get_inquiries_context(self.landlord_user)["notifications"]}
+        tones = {n["title"]: n["tone"] for n in inquiries_tab(self.landlord_user)["notifications"]}
         self.assertEqual(tones, {"New tenant application": "yellow"})
 
         # Renter changes the dates -> yellow "Request updated" with the new values
@@ -454,14 +460,14 @@ class RequestWorkflowTests(Base):
             "occupants": [""], "move_in_date": (date.today() + timedelta(days=25)).isoformat(),
             "site_visit_date": (date.today() + timedelta(days=4)).isoformat(), "site_visit_time": "10:30",
         })
-        note = services.get_inquiries_context(self.landlord_user)["notifications"][0]
+        note = inquiries_tab(self.landlord_user)["notifications"][0]
         self.assertEqual((note["title"], note["tone"]), ("Request updated", "yellow"))
         self.assertIn("10:30 AM", note["message"])
 
         # Renter messages -> green; renter cancels -> red
         self.post(reverse("core_inquiries:send_inquiry"), {"unit": str(self.available.pk), "body": "Hi!"})
         self.post(self.url("cancel_request"), {})
-        tones = {n["title"]: n["tone"] for n in services.get_inquiries_context(self.landlord_user)["notifications"]}
+        tones = {n["title"]: n["tone"] for n in inquiries_tab(self.landlord_user)["notifications"]}
         self.assertEqual(tones, {"New message": "green", "Request cancelled": "red"})
 
     def test_edit_without_visit_clears_it(self):
@@ -485,7 +491,7 @@ class RequestWorkflowTests(Base):
     def test_approve_as_tenant_creates_tenancy_and_closes_others(self):
         other = make_user("bea", "renter", "09333333333")
         Renter.objects.create(user=other)
-        rival = services.create_application(other, self.available, "apply", [""], date.today() + timedelta(days=10))
+        rival = TenantApplication(other, self.available, [""], date.today() + timedelta(days=10)).submit()
 
         self.as_landlord()
         response = self.post(reverse("core_rentals:assign_tenant", args=[self.available.pk]), {
@@ -508,7 +514,7 @@ class RequestWorkflowTests(Base):
         application.refresh_from_db()
         self.assertEqual(application.status, Application.Status.WAITLISTED)
 
-        tabs = services.get_inquiries_context(self.landlord_user)
+        tabs = inquiries_tab(self.landlord_user)
         group = tabs["waitlist_groups"][0]
         self.assertEqual(group["unit"], self.occupied)
         self.assertEqual(group["outlook"]["key"], "occupied")
@@ -532,7 +538,7 @@ class RequestWorkflowTests(Base):
 
         self.occupied.availability = Unit.Availability.AVAILABLE
         self.occupied.save()
-        tabs = services.get_inquiries_context(self.landlord_user)
+        tabs = inquiries_tab(self.landlord_user)
         self.assertTrue(tabs["waitlist_groups"][0]["applications"][0].can_notify)
 
         response = self.post(self.url("notify_applicant", application), {})
@@ -598,8 +604,7 @@ def time_of(hour):
 
 
 def workflow_approve(application):
-    from .workflow import approve_waitlist
-    approve_waitlist(application)
+    ApproveWaitlist(application).run()
 
 
 class ClearNotificationsTests(Base):

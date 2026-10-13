@@ -15,7 +15,7 @@ from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
-from core.core_inquiries.services import notifications_for
+from core.core_inquiries.services import NotificationFeed
 from core.core_reports.services import SUPPORT_EMAIL
 from core.core_admin import notify
 
@@ -393,7 +393,7 @@ def theme_view(request):
 @require_GET
 def notifications_view(request):
     """The bell's dropdown list (rendered HTML) + how many arrived since it was last opened."""
-    items = notifications_for(request.user)
+    items = NotificationFeed.for_user(request.user).items()
     html = render_to_string('core_accounts/partials/notification_items.html',
                             {'notifications': items[:5]}, request=request)
     return JsonResponse({'html': html, 'new_count': sum(1 for n in items if n['is_new'])})

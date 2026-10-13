@@ -235,8 +235,8 @@ class PhotosEverywhereTests(TestCase):
         self.assertContains(response, f'data-avatar="{self.renter.avatar_url}"')
 
     def test_chat_threads_carry_the_photo(self):
-        from core.core_inquiries.services import inbox_json
-        thread = inbox_json(self.landlord)["threads"][0]
+        from core.core_inquiries.services import Inbox
+        thread = Inbox(self.landlord).to_json()["threads"][0]
         self.assertEqual((thread["other_avatar"], thread["other_role"]), (self.renter.avatar_url, "renter"))
         self.client.force_login(self.renter)
         response = self.client.get(reverse("core_renters:dashboard") + "?tab=inquiries")
