@@ -163,7 +163,8 @@ def unit_ratings(units):
 def _reviewer_name(user):
     """"Rina T." — first name and last initial only."""
     last = (user.last_name or "").strip()
-    return f"{user.first_name} {last[0]}." if last else user.first_name or "LookApt renter"
+    first=(user.first_name or "").strip()
+    return f"{first[0]}. {last[0]}." if last else user.first_name or "LookApt renter"
 
 
 def complex_reviews_context(complex_obj):
