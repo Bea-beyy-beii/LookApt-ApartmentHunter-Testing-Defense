@@ -898,6 +898,9 @@
 @media (max-width: 980px)  { .saved-listing-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px)  { .saved-listing-grid { grid-template-columns: 1fr; } }
 
+/* A short last page keeps a full page's height (paginate.js): its cards stay at the top */
+.listing-grid[data-paginate] { align-content: start; }
+
 /* Cards on other pages (core/js/paginate.js) */
 .listing-card.is-paged-out { display: none; }
 
