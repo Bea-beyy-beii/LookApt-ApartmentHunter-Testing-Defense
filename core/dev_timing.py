@@ -9,25 +9,28 @@ import time
 from django.conf import settings
 from django.db import connection
 
-SKIP_PREFIXES = ("/static/", "/media/", "/favicon")
-
-
 class RequestTimingMiddleware:
+    SKIP_PREFIXES = ("/static/", "/media/", "/favicon")
+
     def __init__(self, get_response):
         self.get_response = get_response
 
-    def __call__(self, request):
+    def _skip(self, request):
         # settings.DEBUG is checked per request: tests switch it off at runtime
-        if not settings.DEBUG or request.path.startswith(SKIP_PREFIXES):
+        return not settings.DEBUG or request.path.startswith(self.SKIP_PREFIXES)
+
+    def __call__(self, request):
+        if self._skip(request):
             return self.get_response(request)
 
         start = time.perf_counter()
         first_query = len(connection.queries)   # Django records queries when DEBUG = True
         response = self.get_response(request)
+        self._report(request, response, start, connection.queries[first_query:])
+        return response
 
-        queries = connection.queries[first_query:]
+    def _report(self, request, response, start, queries):
         total_ms = (time.perf_counter() - start) * 1000
         db_ms = sum(float(q["time"]) for q in queries) * 1000
         print(f"[timing] {request.method} {request.path} {response.status_code} — "
               f"{total_ms:.0f} ms total, {len(queries)} queries ({db_ms:.0f} ms in the database)")
-        return response

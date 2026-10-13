@@ -3,7 +3,7 @@ Comes after the other sections, so it reuses their data from `shared`
 (Manage Rentals' rental groups, the Inquiries tab's pending requests ...)."""
 import json
 
-from core.core_accounts.services import AccountService
+from core.core_accounts.services import SignIn
 from core.core_inquiries.services import today
 from core.core_reports.services import SUPPORT_EMAIL
 from core.sections import DashboardSection
@@ -30,7 +30,7 @@ class HomeSection(DashboardSection):
             "performance": chart,
             "performance_json": json.dumps(chart),
             "support_email": SUPPORT_EMAIL,
-            "first_visit": self.request.session.get(AccountService.FIRST_VISIT, False),
+            "first_visit": SignIn(self.request).first_visit,
         }
 
     @property

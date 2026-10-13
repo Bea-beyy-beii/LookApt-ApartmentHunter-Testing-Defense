@@ -7,7 +7,7 @@ from django.views.generic import TemplateView
 
 from core.core_accounts.mixins import RenterRequiredMixin
 from core.core_inquiries.sections import InquiriesSection
-from core.core_preview.access import is_previewing
+from core.core_preview.access import PreviewAccess
 from core.core_rentals.sections import RenterRentalsSection
 from core.core_reports.sections import ReportsSection
 from core.sections import SectionedDashboardMixin
@@ -31,7 +31,7 @@ class SearchListingsView(View):
             if user.role != "renter":
                 raise PermissionDenied
             return user
-        if is_previewing(self.request):
+        if PreviewAccess(self.request).is_previewing:
             return None
         raise PermissionDenied
 

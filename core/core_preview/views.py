@@ -9,65 +9,88 @@ The previews reuse the real dashboard templates with logged-out data.
 preview.js turns every other click (other tabs, a listing, Save, Publish ...)
 into a "Create an account" prompt.
 """
-from django.shortcuts import redirect, render
+from abc import ABC, abstractmethod
+
+from django.shortcuts import redirect
+from django.views.generic import TemplateView
 
 from core.core_listings.forms import ComplexForm
 from core.core_renters.sections import RenterListingsSection
 from core.core_reports.services import SUPPORT_EMAIL
 
-from . import demo
-from .access import start_preview
-
-RENTER_TABS = ("home", "findNear")
-LANDLORD_TABS = ("home", "myListings")
+from .access import PreviewAccess
+from .demo import LandlordHomeDemo
 
 
-def _signed_in_home(request):
+class SignedOutOnlyMixin:
     """Signed-in users go straight to their own dashboard."""
-    if request.user.is_authenticated:
-        return redirect(request.user.home_url_name)
-    return None
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            return redirect(request.user.home_url_name)
+        return super().dispatch(request, *args, **kwargs)
 
 
-def landing(request):
-    return _signed_in_home(request) or render(request, "core_preview/landing.html", {
-        "support_email": SUPPORT_EMAIL,
-    })
+class LandingView(SignedOutOnlyMixin, TemplateView):
+    template_name = "core_preview/landing.html"
+    extra_context = {"support_email": SUPPORT_EMAIL}
 
 
-def _tab(request, allowed):
-    tab = request.GET.get("tab", "home")
-    return tab if tab in allowed else "home"
+class PreviewView(SignedOutOnlyMixin, ABC, TemplateView):
+    """One role's dashboard preview. Each subclass gives its tabs and its sample data."""
+
+    preview = None        # 'renter' / 'landlord'
+    tabs = ()
+
+    def get(self, request, *args, **kwargs):
+        PreviewAccess(request).start()
+        return super().get(request, *args, **kwargs)
+
+    @property
+    def active_tab(self):
+        """The ?tab= in the address, if this preview has it (otherwise Home)."""
+        tab = self.request.GET.get("tab", "home")
+        return tab if tab in self.tabs else "home"
+
+    @abstractmethod
+    def preview_context(self):
+        """The dashboard data for this preview."""
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({
+            "preview": self.preview,
+            "preview_tabs": ",".join(self.tabs),
+            "active_tab": self.active_tab,
+            **self.preview_context(),
+        })
+        return context
 
 
-def renter_preview(request):
-    if response := _signed_in_home(request):
-        return response
-    start_preview(request)
-    return render(request, "core_preview/renter_preview.html", {
-        "preview": "renter",
-        "preview_tabs": ",".join(RENTER_TABS),
-        "active_tab": _tab(request, RENTER_TABS),
-        **RenterListingsSection(None, request).context(),   # every published listing, nothing saved
-    })
+class RenterPreviewView(PreviewView):
+    template_name = "core_preview/renter_preview.html"
+    preview = "renter"
+    tabs = ("home", "findNear")
+
+    def preview_context(self):
+        return RenterListingsSection(None, self.request).context()   # every published listing, nothing saved
 
 
-def landlord_preview(request):
-    if response := _signed_in_home(request):
-        return response
-    start_preview(request)
-    return render(request, "core_preview/landlord_preview.html", {
-        "preview": "landlord",
-        "preview_tabs": ",".join(LANDLORD_TABS),
-        "active_tab": _tab(request, LANDLORD_TABS),
-        # My Listings: no properties yet, an empty Add Property form
-        "properties": [],
-        "property_counts": {"all": 0, "active": 0, "unpublished": 0},
-        "form": ComplexForm(),
-        "property": None,
-        "current_step": 1,
-        # Verified, so no verification banner or pop-up
-        "verification": {"state": "approved", "request": None, "can_submit": False, "show_welcome": False},
-        "support_email": SUPPORT_EMAIL,
-        **demo.landlord_home(),
-    })
+class LandlordPreviewView(PreviewView):
+    template_name = "core_preview/landlord_preview.html"
+    preview = "landlord"
+    tabs = ("home", "myListings")
+
+    def preview_context(self):
+        return {
+            # My Listings: no properties yet, an empty Add Property form
+            "properties": [],
+            "property_counts": {"all": 0, "active": 0, "unpublished": 0},
+            "form": ComplexForm(),
+            "property": None,
+            "current_step": 1,
+            # Verified, so no verification banner or pop-up
+            "verification": {"state": "approved", "request": None, "can_submit": False, "show_welcome": False},
+            "support_email": SUPPORT_EMAIL,
+            **LandlordHomeDemo().context(),
+        }

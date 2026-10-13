@@ -317,7 +317,7 @@ class EmailTests(TestCase):
         self.assertIn("https://lookapt.example/login/", html)
 
     def test_email_failure_does_not_break_anything(self):
-        from core.core_accounts.emails import send_email
+        from core.core_accounts.emails import NoticeEmail
         user = make_user("nina", "renter", "09444444444")
         with mock.patch("core.core_accounts.emails.EmailWithInlineLogo.send", side_effect=OSError("SMTP down")):
-            self.assertFalse(send_email(user, "Hi", ["Hello"]))
+            self.assertFalse(NoticeEmail(user, "Hi", ["Hello"]).send())

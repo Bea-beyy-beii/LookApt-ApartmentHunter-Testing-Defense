@@ -1,419 +1,396 @@
-import secrets
-from datetime import datetime, timedelta
-from urllib.parse import urlencode
-import requests
-from django.conf import settings
-from django.urls import reverse
-from core.models import User
+from abc import ABC, abstractmethod
+
 from django.contrib import messages
-from django.contrib.auth import authenticate, logout, update_session_auth_hash
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth import logout, update_session_auth_hash
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
-from django.core.validators import validate_email
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
-from django.utils import timezone
-from django.views.decorators.http import require_GET, require_POST
+from django.urls import reverse
+from django.views import View
+from django.views.generic import RedirectView, TemplateView
 from core.core_inquiries.services import NotificationFeed
 from core.core_reports.services import SUPPORT_EMAIL
 from core.core_admin import notify
 
-from . import account, otp
-from .legal import legal_context
-from .services import AccountService
+from .account import Account
+from .legal import LegalContextMixin
+from .otp import OTPError
+from .services import (GoogleSignIn, GoogleSignInError, NewPasswordStep, PasswordReset, SignIn, SignUp,
+                       SignUpForm)
 
+
+# ------------------------------------------------------------------ shared by the code pages
+
+class EmailCodeFlowMixin:
+    """For views of an EmailCodeFlow (sign-up or forgot password): `self.flow` is
+    that flow, `start_url` is its first page and `code_url` its code page."""
+
+    flow_class = None
+    start_url = None
+    code_url = None
+
+    def setup(self, request, *args, **kwargs):
+        super().setup(request, *args, **kwargs)
+        self.flow = self.flow_class(request)
+
+    def send_code(self):
+        """Email a code. True if sent; otherwise the reason is shown as a message."""
+        try:
+            self.flow.send_code()
+        except OTPError as e:
+            messages.error(self.request, str(e))
+            return False
+        return True
+
+    def not_started(self):
+        return redirect(self.start_url)
+
+
+class SignUpFlowMixin(EmailCodeFlowMixin):
+    flow_class = SignUp
+    start_url = 'signup'
+    code_url = 'otp'
+
+
+class PasswordResetFlowMixin(EmailCodeFlowMixin):
+    flow_class = PasswordReset
+    start_url = 'forgot_password'
+    code_url = 'forgot_password_code'
+
+
+class CodePageView(ABC, View):
+    """Enter the 6-digit code (sign-up and forgot password share otp.html).
+    Template Method: subclasses say what happens once the code is right."""
+
+    def get(self, request):
+        if not self.flow.started:
+            return self.not_started()
+        return render(request, 'core_accounts/otp.html', self.page_context())
+
+    def post(self, request):
+        if not self.flow.started:
+            return self.not_started()
+        code = request.POST.get('code') or ''.join(request.POST.get(f'otp_{i}', '') for i in range(1, 7))
+        try:
+            self.flow.verify(code)
+        except OTPError as e:
+            messages.error(request, str(e))
+            return redirect(self.code_url)
+        return self.verified()
+
+    def page_context(self):
+        code = self.flow.code
+        return {
+            'masked_target': code.masked_target,
+            'expires_in': code.seconds_until_expiry,
+            'resend_in': code.seconds_until_resend,
+        }
+
+    @abstractmethod
+    def verified(self):
+        """The code was right: the response to send."""
+
+
+class CodeResendView(View):
+    """Resend: email a new code (allowed 60 s after the last one)."""
+
+    def post(self, request):
+        if not self.flow.started:
+            return redirect(self.start_url)
+        if self.send_code():
+            messages.success(request, "We sent a new code to your email.")
+        return redirect(self.code_url)
+
+
+# ------------------------------------------------------------------ SIGN-UP
 
 SIGNUP_FIELDS = ('first_name', 'last_name', 'phone_number', 'email', 'sex', 'role', 'agree_terms')
 
 
-def signup_view(request):
+class SignUpView(LegalContextMixin, SignUpFlowMixin, TemplateView):
     """Sign-up in 5 steps (Name, Contact, Profile, Security, Terms) on one page.
-    Next / Back are handled by signup.js; each Next is checked by signup_check_view.
+    Next / Back are handled by signup.js; each Next is checked by SignUpCheckView.
     "Create Account" checks everything again, keeps the sign-up in the session
     and sends the user to the OTP page, which creates the account
-    (AccountService.create_pending_account) once the code is verified."""
-    if request.method == 'POST':
-        cleaned, errors, first_bad = AccountService.clean_signup(request.POST)
+    (SignUp.create_account) once the code is verified."""
+
+    template_name = 'core_accounts/signup.html'
+
+    def get_context_data(self, **kwargs):
+        # Coming back from the OTP page: keep what they typed (except the password).
+        # From the preview's "Sign up" buttons (?role=renter / landlord): that role is picked already.
+        kwargs.setdefault('form_data', self.flow.pending or {'role': self.request.GET.get('role', '')})
+        kwargs.setdefault('start_step', 1)
+        return super().get_context_data(**kwargs)
+
+    def post(self, request):
+        cleaned, errors, first_bad = SignUpForm(request.POST).check()
         if errors:
-            return render(request, 'core_accounts/signup.html', {
-                'form_data': {f: request.POST.get(f, '') for f in SIGNUP_FIELDS},
-                'errors': errors,
-                'start_step': first_bad,
-                **legal_context(),
-            })
-        AccountService.start_pending_signup(request, cleaned)
-        _send_signup_code(request)
+            return self.render_to_response(self.get_context_data(
+                form_data={f: request.POST.get(f, '') for f in SIGNUP_FIELDS},
+                errors=errors,
+                start_step=first_bad,
+            ))
+        self.flow.start(cleaned)
+        self.send_code()
         return redirect('otp')
 
-    # Coming back from the OTP page: keep what they typed (except the password).
-    # From the preview's "Sign up" buttons (?role=renter / landlord): that role is picked already.
-    return render(request, 'core_accounts/signup.html', {
-        'form_data': AccountService.pending_signup(request) or {'role': request.GET.get('role', '')},
-        'start_step': 1,
-        **legal_context(),
-    })
 
-
-def terms_view(request):
-    return render(request, 'core_accounts/legal/page.html',
-                  {'page': 'terms', 'page_title': 'Terms and Conditions', **legal_context()})
-
-
-def privacy_view(request):
-    return render(request, 'core_accounts/legal/page.html',
-                  {'page': 'privacy', 'page_title': 'Privacy Notice', **legal_context()})
-
-
-def finish_signup(request):
-    """For the OTP view: call this once the code is verified.
-    Creates the account from the pending sign-up, logs in, opens the dashboard."""
-    try:
-        user = AccountService.create_pending_account(request)
-    except ValidationError as e:
-        messages.error(request, "; ".join(e.messages))
-        return redirect('signup')
-    notify.welcome(user)
-    AccountService.sign_in(request, user)
-    return redirect(user.home_url_name)
-
-
-@require_POST
-def signup_check_view(request):
+class SignUpCheckView(View):
     """Next button: check one step. {"ok": true} or {"ok": false, "errors": {field: message}}."""
-    try:
-        step = int(request.POST.get('step', ''))
-    except ValueError:
-        step = 0
-    if step not in AccountService.STEPS:
-        return JsonResponse({'ok': False, 'errors': {'step': 'Unknown step.'}}, status=400)
 
-    earlier = {}
-    if step == 4:   # the password can't be too similar to the name / email
-        for previous in (1, 2):
-            values, _ = AccountService.clean_step(previous, request.POST)
-            earlier.update({k: v for k, v in values.items() if k != 'phone_number'})
-    _, errors = AccountService.clean_step(step, request.POST, earlier)
-    return JsonResponse({'ok': not errors, 'errors': errors})
+    def post(self, request):
+        try:
+            step = int(request.POST.get('step', ''))
+        except ValueError:
+            step = 0
+        if step not in SignUpForm.STEPS:
+            return JsonResponse({'ok': False, 'errors': {'step': 'Unknown step.'}}, status=400)
+        errors = SignUpForm(request.POST).check_step(step)
+        return JsonResponse({'ok': not errors, 'errors': errors})
 
-def login_view(request):
-    if request.method == 'POST':
-        user = authenticate(
-            request,
-            username=request.POST.get('identifier', ''),
-            password=request.POST.get('password', ''),
-        )
+
+class SignUpCodeView(SignUpFlowMixin, CodePageView):
+    """Enter the 6-digit code sent after "Create Account"; a right code creates the account."""
+
+    def not_started(self):
+        messages.error(self.request, "Please fill in the sign-up form first.")
+        return super().not_started()
+
+    def verified(self):
+        """Creates the account from the pending sign-up, logs in, opens the dashboard."""
+        try:
+            user = self.flow.create_account()
+        except ValidationError as e:
+            messages.error(self.request, "; ".join(e.messages))
+            return redirect('signup')
+        notify.welcome(user)
+        SignIn(self.request).log_in(user)
+        return redirect(user.home_url_name)
+
+
+class SignUpResendView(SignUpFlowMixin, CodeResendView):
+    pass
+
+
+class LegalPageView(LegalContextMixin, TemplateView):
+    template_name = 'core_accounts/legal/page.html'
+    page = None
+    page_title = None
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(page=self.page, page_title=self.page_title, **kwargs)
+
+
+class TermsView(LegalPageView):
+    page = 'terms'
+    page_title = 'Terms and Conditions'
+
+
+class PrivacyView(LegalPageView):
+    page = 'privacy'
+    page_title = 'Privacy Notice'
+
+
+# ------------------------------------------------------------------ LOG IN / OUT
+
+class LoginView(View):
+    template_name = 'core_accounts/login.html'
+
+    def get(self, request):
+        return render(request, self.template_name)
+
+    def post(self, request):
+        identifier, password = request.POST.get('identifier', ''), request.POST.get('password', '')
+        sign_in = SignIn(request)
+        user = sign_in.authenticate(identifier, password)
         if user:
-            AccountService.sign_in(request, user)
+            sign_in.log_in(user)
             return redirect(user.home_url_name)
-        if AccountService.is_suspended(request.POST.get('identifier', ''), request.POST.get('password', '')):
+        if sign_in.is_suspended(identifier, password):
             messages.error(request, f"Your account is suspended. Please contact {SUPPORT_EMAIL}.")
         else:
             messages.error(request, "Invalid phone/username or password.")
-    return render(request, 'core_accounts/login.html')
-
-def logout_view(request):
-    # Ends the session (the sidebar "Log Out" link used to only open the login page)
-    logout(request)
-    return redirect('login')
-
-# ------------------------------------------------------------------ SIGN-UP CODE (5th step, by email)
-
-def _send_signup_code(request):
-    """Email a sign-up code to the pending sign-up's email. True if sent."""
-    pending = AccountService.pending_signup(request)
-    try:
-        otp.send_code(otp.Purpose.SIGNUP, pending['email'], name=pending['first_name'])
-    except otp.OTPError as e:
-        messages.error(request, str(e))
-        return False
-    return True
+        return render(request, self.template_name)
 
 
-def otp_view(request):
-    """Enter the 6-digit code sent after "Create Account"; a right code creates the account."""
-    pending = AccountService.pending_signup(request)
-    if not pending:
-        messages.error(request, "Please fill in the sign-up form first.")
-        return redirect('signup')
+class LogoutView(RedirectView):
+    """Ends the session (the sidebar "Log Out" link used to only open the login page)."""
 
-    email = pending['email']
+    pattern_name = 'login'
 
-    if request.method == 'POST':
-        code = request.POST.get('code') or ''.join(request.POST.get(f'otp_{i}', '') for i in range(1, 7))
-        try:
-            otp.verify_code(otp.Purpose.SIGNUP, email, code)
-        except otp.OTPError as e:
-            messages.error(request, str(e))
-            return redirect('otp')
-        return finish_signup(request)
+    def get_redirect_url(self, *args, **kwargs):
+        logout(self.request)
+        return super().get_redirect_url(*args, **kwargs)
 
-    return render(request, 'core_accounts/otp.html', {
-        'masked_target': otp.mask(email),
-        'expires_in': otp.seconds_until_expiry(otp.Purpose.SIGNUP, email),
-        'resend_in': otp.seconds_until_resend(otp.Purpose.SIGNUP, email),
-    })
-
-
-@require_POST
-def otp_resend_view(request):
-    """Resend: email a new code (allowed 60 s after the last one)."""
-    if not AccountService.pending_signup(request):
-        return redirect('signup')
-    if _send_signup_code(request):
-        messages.success(request, "We sent a new code to your email.")
-    return redirect('otp')
 
 # ------------------------------------------------------------------ FORGOT PASSWORD
 # 1 Account (email + phone number) -> 2 Code (emailed, same page as sign-up's OTP) -> 3 New password
 
-RESET = 'password_reset'               # session: {'user_id', 'email', 'name', 'verified_at'}
-RESET_WINDOW = timedelta(minutes=10)   # time to choose a new password after the code
-
-
-def _reset_data(request):
-    return request.session.get(RESET)
-
-
-def _send_reset_code(request, data):
-    try:
-        otp.send_code(otp.Purpose.RESET, data['email'], name=data['name'])
-    except otp.OTPError as e:
-        messages.error(request, str(e))
-        return False
-    return True
-
-
-def forgot_password_view(request):
+class ForgotPasswordView(PasswordResetFlowMixin, View):
     """Step 1: which account? The email and the phone number must both be that account's.
     Then a code goes to the account's email."""
-    values, errors = {'email': '', 'phone_number': ''}, {}
-    if request.method == 'POST':
-        values = {name: request.POST.get(name, '').strip() for name in values}
-        if not values['email']:
-            errors['email'] = "Enter the email on your account."
-        else:
-            try:
-                validate_email(values['email'])
-            except ValidationError:
-                errors['email'] = "Enter a valid email address."
-        if not values['phone_number']:
-            errors['phone_number'] = "Enter the phone number on your account."
 
-        if not errors:
-            user = AccountService.find_account(values['email'], values['phone_number'])
-            if user is None:
-                # Same message whether the email exists or not: it doesn't tell who has an account
-                errors['email'] = "That email and phone number don't belong to the same account."
-            else:
-                data = {'user_id': str(user.pk), 'email': user.email.lower(), 'name': user.first_name, 'verified_at': None}
-                request.session[RESET] = data
-                _send_reset_code(request, data)
-                return redirect('forgot_password_code')
+    def get(self, request):
+        return self.page({'email': '', 'phone_number': ''}, {})
 
-    return render(request, 'core_accounts/forgot_password.html', {'step': 1, 'errors': errors, **values})
+    def post(self, request):
+        values = {name: request.POST.get(name, '').strip() for name in ('email', 'phone_number')}
+        user, errors = self.flow.check_account(values)
+        if errors:
+            return self.page(values, errors)
+        self.flow.start(user)
+        self.send_code()
+        return redirect(self.code_url)
+
+    def page(self, values, errors):
+        return render(self.request, 'core_accounts/forgot_password.html', {'step': 1, 'errors': errors, **values})
 
 
-def forgot_password_code_view(request):
+class ForgotPasswordCodeView(PasswordResetFlowMixin, CodePageView):
     """Step 2: the 6-digit code (sign-up's OTP page, reset wording)."""
-    data = _reset_data(request)
-    if not data:
-        return redirect('forgot_password')
 
-    if request.method == 'POST':
-        code = request.POST.get('code') or ''.join(request.POST.get(f'otp_{i}', '') for i in range(1, 7))
-        try:
-            otp.verify_code(otp.Purpose.RESET, data['email'], code)
-        except otp.OTPError as e:
-            messages.error(request, str(e))
-            return redirect('forgot_password_code')
-        data['verified_at'] = timezone.now().isoformat()
-        request.session[RESET] = data
+    def page_context(self):
+        return {'reset': True, **super().page_context(), 'resend_url': reverse('forgot_password_resend')}
+
+    def verified(self):
+        self.flow.mark_verified()
         return redirect('forgot_password_new')
 
-    return render(request, 'core_accounts/otp.html', {
-        'reset': True,
-        'masked_target': otp.mask(data['email']),
-        'expires_in': otp.seconds_until_expiry(otp.Purpose.RESET, data['email']),
-        'resend_in': otp.seconds_until_resend(otp.Purpose.RESET, data['email']),
-        'resend_url': reverse('forgot_password_resend'),
-    })
+
+class ForgotPasswordResendView(PasswordResetFlowMixin, CodeResendView):
+    pass
 
 
-@require_POST
-def forgot_password_resend_view(request):
-    data = _reset_data(request)
-    if not data:
-        return redirect('forgot_password')
-    if _send_reset_code(request, data):
-        messages.success(request, "We sent a new code to your email.")
-    return redirect('forgot_password_code')
-
-
-def forgot_password_new_view(request):
+class ForgotPasswordNewView(PasswordResetFlowMixin, View):
     """Step 3: a new password (only right after a correct code)."""
-    data = _reset_data(request)
-    verified_at = data and data.get('verified_at')
-    if not verified_at or timezone.now() - datetime.fromisoformat(verified_at) > RESET_WINDOW:
-        messages.error(request, "Please verify your email first." if not verified_at
-                       else "That took too long. Please request a new code.")
-        return redirect('forgot_password')
-    user = User.objects.filter(pk=data['user_id'], is_active=True).first()
-    if user is None:
-        request.session.pop(RESET, None)
-        return redirect('forgot_password')
 
-    errors = {}
-    if request.method == 'POST':
-        password, errors = AccountService.clean_new_password(user, request.POST)
-        if not errors:
-            user.set_password(password)              # also signs the account out everywhere else
-            user.save(update_fields=['password'])
-            request.session.pop(RESET, None)
-            messages.success(request, "Your password has been updated. Log in with your new password.")
-            return redirect('login')
+    def dispatch(self, request, *args, **kwargs):
+        verified_at = self.flow.verified_at
+        if not verified_at or self.flow.expired:
+            messages.error(request, "Please verify your email first." if not verified_at
+                           else "That took too long. Please request a new code.")
+            return redirect(self.start_url)
+        self.user = self.flow.user
+        if self.user is None:
+            self.flow.cancel()
+            return redirect(self.start_url)
+        return super().dispatch(request, *args, **kwargs)
 
-    return render(request, 'core_accounts/forgot_password.html', {'step': 3, 'errors': errors})
+    def get(self, request):
+        return self.page({})
+
+    def post(self, request):
+        step = NewPasswordStep(self.user, request.POST)
+        _, errors = step.clean()
+        if errors:
+            return self.page(errors)
+        self.flow.finish(self.user, step.password)
+        messages.success(request, "Your password has been updated. Log in with your new password.")
+        return redirect('login')
+
+    def page(self, errors):
+        return render(self.request, 'core_accounts/forgot_password.html', {'step': 3, 'errors': errors})
 
 
 # ------------------------------------------------------------------ GOOGLE SIGN-IN
 
-GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
-GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
-GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
-
-
-def google_login_view(request):
+class GoogleLoginView(View):
     """Continue with Google: send the user to Google's sign-in page."""
-    state = secrets.token_urlsafe(32)          # proves the reply belongs to this browser
-    request.session['google_oauth_state'] = state
-    params = {
-        'client_id': settings.GOOGLE_OAUTH_CLIENT_ID,
-        'redirect_uri': request.build_absolute_uri(reverse('google_callback')),
-        'response_type': 'code',
-        'scope': 'openid email profile',
-        'state': state,
-        'prompt': 'select_account',
-    }
-    return redirect(f"{GOOGLE_AUTH_URL}?{urlencode(params)}")
+
+    def get(self, request):
+        return redirect(GoogleSignIn(request).authorization_url())
 
 
-def google_callback_view(request):
+class GoogleCallbackView(View):
     """Google sends the user back here with a one-time code."""
-    state = request.session.pop('google_oauth_state', None)
-    if not state or request.GET.get('state') != state or 'code' not in request.GET:
-        messages.error(request, "Google sign-in was cancelled or expired. Please try again.")
-        return redirect('login')
 
-    try:
-        token = requests.post(GOOGLE_TOKEN_URL, data={
-            'code': request.GET['code'],
-            'client_id': settings.GOOGLE_OAUTH_CLIENT_ID,
-            'client_secret': settings.GOOGLE_OAUTH_CLIENT_SECRET,
-            'redirect_uri': request.build_absolute_uri(reverse('google_callback')),
-            'grant_type': 'authorization_code',
-        }, timeout=10)
-        token.raise_for_status()
-        info = requests.get(GOOGLE_USERINFO_URL, timeout=10,
-                            headers={'Authorization': f"Bearer {token.json()['access_token']}"})
-        info.raise_for_status()
-        info = info.json()
-    except (requests.RequestException, KeyError, ValueError):
-        messages.error(request, "Couldn't reach Google. Please try again.")
-        return redirect('login')
-
-    if not info.get('email_verified'):
-        messages.error(request, "Your Google email isn't verified.")
-        return redirect('login')
-
-    user = User.objects.filter(email__iexact=info['email']).first()
-    if user is None or not user.is_active:
-        messages.error(request, f"No LookApt account uses {info['email']}. Sign up first.")
-        return redirect('signup')
-
-    AccountService.sign_in(request, user)
-    return redirect(user.home_url_name)
+    def get(self, request):
+        try:
+            user = GoogleSignIn(request).user()
+        except GoogleSignInError as error:
+            messages.error(request, str(error))
+            return redirect(error.redirect_to)
+        SignIn(request).log_in(user)
+        return redirect(user.home_url_name)
 
 
-# ------------------------------------------------------------------ TOP BAR (dark mode switch + bell)
+# ------------------------------------------------------------------ TOP BAR + Account pop-up (account.py)
 
-# ------------------------------------------------------------------ Account pop-up (account.py)
+class AccountActionView(LoginRequiredMixin, View):
+    """The top bar's and the Account pop-up's JSON calls: logged in, `self.account` is theirs."""
 
-def _avatar_json(user):
-    return {'url': user.avatar_url, 'initials': user.initials}
+    def setup(self, request, *args, **kwargs):
+        super().setup(request, *args, **kwargs)
+        self.account = Account(request.user)
 
 
-@login_required
-@require_POST
-def account_avatar_view(request):
+class AvatarView(AccountActionView):
     """Profile tab: upload a photo (avatar) or remove it (remove=1)."""
-    try:
-        if request.POST.get('remove'):
-            account.remove_avatar(request.user)
-        else:
-            account.save_avatar(request.user, request.FILES.get('avatar'))
-    except ValidationError as error:
-        return JsonResponse({'error': ' '.join(error.messages)}, status=400)
-    return JsonResponse(_avatar_json(request.user))
+
+    def post(self, request):
+        try:
+            if request.POST.get('remove'):
+                self.account.remove_avatar()
+            else:
+                self.account.save_avatar(request.FILES.get('avatar'))
+        except ValidationError as error:
+            return JsonResponse({'error': ' '.join(error.messages)}, status=400)
+        return JsonResponse(self.account.avatar_json)
 
 
-@login_required
-@require_POST
-def account_contact_view(request):
+class ContactSharingView(AccountActionView):
     """Settings tab: which of email / phone the other side may see."""
-    account.set_contact_sharing(request.user, request.POST.get('share_email') == '1',
-                                request.POST.get('share_phone') == '1')
-    return JsonResponse({'share_email': request.user.share_email, 'share_phone': request.user.share_phone})
+
+    def post(self, request):
+        self.account.set_contact_sharing(request.POST.get('share_email') == '1', request.POST.get('share_phone') == '1')
+        return JsonResponse({'share_email': request.user.share_email, 'share_phone': request.user.share_phone})
 
 
-@login_required
-@require_POST
-def account_password_view(request):
+class ChangePasswordView(AccountActionView):
     """Settings tab: change password (stays logged in)."""
-    errors = account.change_password(request.user, request.POST)
-    if errors:
-        return JsonResponse({'ok': False, 'errors': errors}, status=400)
-    update_session_auth_hash(request, request.user)
-    return JsonResponse({'ok': True})
+
+    def post(self, request):
+        errors = self.account.change_password(request.POST)
+        if errors:
+            return JsonResponse({'ok': False, 'errors': errors}, status=400)
+        update_session_auth_hash(request, request.user)
+        return JsonResponse({'ok': True})
 
 
-@login_required
-@require_POST
-def theme_view(request):
+class ThemeView(AccountActionView):
     """Dark mode switch: saves 'light' / 'dark' on the account."""
-    theme = request.POST.get('theme', '')
-    if theme not in dict(request.user.THEME_CHOICES):
-        return JsonResponse({'error': 'Unknown theme.'}, status=400)
-    request.user.theme = theme
-    request.user.save(update_fields=['theme'])
-    return JsonResponse({'theme': theme})
+
+    def post(self, request):
+        theme = request.POST.get('theme', '')
+        if not self.account.set_theme(theme):
+            return JsonResponse({'error': 'Unknown theme.'}, status=400)
+        return JsonResponse({'theme': theme})
 
 
-@login_required
-@require_GET
-def notifications_view(request):
+class NotificationsView(AccountActionView):
     """The bell's dropdown list (rendered HTML) + how many arrived since it was last opened."""
-    items = NotificationFeed.for_user(request.user).items()
-    html = render_to_string('core_accounts/partials/notification_items.html',
-                            {'notifications': items[:5]}, request=request)
-    return JsonResponse({'html': html, 'new_count': sum(1 for n in items if n['is_new'])})
+
+    def get(self, request):
+        items = NotificationFeed.for_user(request.user).items()
+        html = render_to_string('core_accounts/partials/notification_items.html',
+                                {'notifications': items[:5]}, request=request)
+        return JsonResponse({'html': html, 'new_count': sum(1 for n in items if n['is_new'])})
 
 
-@login_required
-@require_POST
-def notifications_seen_view(request):
+class NotificationsSeenView(AccountActionView):
     """Opening the bell clears its red dot."""
-    request.user.notifications_seen_at = timezone.now()
-    request.user.save(update_fields=['notifications_seen_at'])
-    return JsonResponse({'new_count': 0})
+
+    def post(self, request):
+        self.account.mark_notifications_seen()
+        return JsonResponse({'new_count': 0})
 
 
-@login_required
-@require_POST
-def notifications_clear_view(request):
+class NotificationsClearView(AccountActionView):
     """"Clear all" (bell + Inquiries panel): hides everything so far; newer ones still show."""
-    now = timezone.now()
-    request.user.notifications_cleared_at = now
-    request.user.notifications_seen_at = now
-    request.user.save(update_fields=['notifications_cleared_at', 'notifications_seen_at'])
-    return JsonResponse({'cleared': True})
+
+    def post(self, request):
+        self.account.clear_notifications()
+        return JsonResponse({'cleared': True})
