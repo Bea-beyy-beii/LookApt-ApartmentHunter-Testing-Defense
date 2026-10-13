@@ -67,3 +67,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
     showTab(getCurrentTab(), false);
 });
+
+// "Find a place near what matters." banner: the ✕ hides it in this browser
+document.addEventListener("DOMContentLoaded", () => {
+    const banner = document.querySelector("[data-near-banner]");
+    if (!banner) return;
+    const KEY = "lookapt:hide-near-banner";
+
+    try {
+        if (localStorage.getItem(KEY) === "1") banner.hidden = true;
+    } catch (error) { /* storage blocked: just show it */ }
+
+    banner.querySelector("[data-near-banner-close]")?.addEventListener("click", () => {
+        banner.hidden = true;
+        try { localStorage.setItem(KEY, "1"); } catch (error) { /* closes for this visit only */ }
+    });
+});
