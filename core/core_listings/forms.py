@@ -9,7 +9,7 @@ from django.core.files.base import ContentFile
 from django.core.validators import MaxLengthValidator
 from django.db import transaction
 
-from core.core_maps.maps.services import complex_landmarks, resolve_area, save_complex_landmarks
+from core.core_maps.maps.services import AreaName, ComplexLandmarks
 
 from .icons import Icon
 from .models import Complex, Unit
@@ -344,7 +344,7 @@ class ComplexForm(ListingForm):
 
         area_name = self.cleaned_data.get("area_name")
         if area_name or not complex_obj.area_id:
-            complex_obj.area = resolve_area(area_name)
+            complex_obj.area = AreaName(area_name).resolve()
 
         complex_obj.save()
         self._save_landmarks(complex_obj, moved)
@@ -356,10 +356,10 @@ class ComplexForm(ListingForm):
         travel_mode = self.cleaned_data.get("travel_mode")
         if landmarks is None and moved:
             # New pin but no new list: keep the landmarks, with distances from the new spot
-            landmarks = saved = complex_landmarks(complex_obj)
+            landmarks = saved = ComplexLandmarks(complex_obj).as_list()
             travel_mode = travel_mode or (saved[0]["travel_mode"] if saved else None)
         if landmarks is not None:
-            save_complex_landmarks(complex_obj, landmarks, travel_mode)
+            ComplexLandmarks(complex_obj).replace(landmarks, travel_mode)
 
     def success_message(self, saved):
         return f"{saved.complex_name} was {'created' if self.creating else 'saved'}."

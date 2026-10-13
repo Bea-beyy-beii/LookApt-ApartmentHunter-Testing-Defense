@@ -11,7 +11,7 @@ from django.shortcuts import get_object_or_404
 
 from core.core_inquiries.models import Application
 from core.core_inquiries.services import current_lease_end, earliest_move_in
-from core.core_maps.maps.services import complex_landmarks
+from core.core_maps.maps.services import ComplexLandmarks
 
 from .models import BedroomType, Complex, ListingView, SavedListing, Unit
 
@@ -138,7 +138,7 @@ class ComplexPage(ListingPage):
             "lowest_price": min(prices) if prices else None,
             "features": complex_obj.feature_checklist(),
             "unit_amenities": self._unit_amenities(units),
-            "landmarks": complex_landmarks(complex_obj),
+            "landmarks": ComplexLandmarks(complex_obj).as_list(),
             "landlord": self._landlord(),
             "is_saved": SavedListing.is_saved(self.user, complex_obj),
             "other_listings": self._other_listings(),
