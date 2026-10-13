@@ -1,7 +1,7 @@
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from core.core_rentals.services import get_rentals_context
+from core.core_rentals.sections import RentalsSection
 from core.models import Landlord, User
 
 from .models import Area, Complex, Unit
@@ -87,7 +87,7 @@ class UnpublishedComplexTests(ListingSetup):
         self.assertEqual(self.available.availability, "available")
 
     def test_manage_rentals_only_shows_published_complexes(self):
-        names = lambda: [g["complex"].complex_name for g in get_rentals_context(self.user)["rental_groups"]]
+        names = lambda: [g["complex"].complex_name for g in RentalsSection(self.user).context()["rental_groups"]]
         self.assertEqual(names(), ["Sunrise"])
         self.set_visibility("unpublished")
         self.assertEqual(names(), [])
@@ -101,8 +101,8 @@ class RenterUnpublishTests(ListingSetup):
     def setUp(self):
         super().setUp()
         from datetime import date
-        from core.core_rentals.services import assign_tenant
-        assign_tenant(self.available, date.today(), tenant_name="Ana Cruz")    # now occupied with a renter
+        from core.core_rentals.services import TenantAssignment
+        TenantAssignment.create(self.available, date.today(), tenant_name="Ana Cruz").save()    # now occupied with a renter
 
     def set_availability(self, unit, availability):
         return self.client.post(reverse("core_listings:unit_set_availability", args=[unit.pk]),
@@ -232,14 +232,14 @@ class ListingFormTests(ListingFormSetup):
         self.assertTrue(two.is_valid(), two.errors)
 
     def test_card_chips_are_complex_features_only(self):
-        from core.core_renters.services import get_renter_listings_context
+        from core.core_renters.sections import RenterListingsSection
         for key in Complex.FEATURE_LABELS:
             setattr(self.complex, key, True)
         self.complex.save()
         Unit.objects.create(complex=self.complex, identifier=1, bedroom_type="studio", width_dimension=4,
                             length_dimension=5, furnish_level="fully_furnished", max_occupant=2, price=8000,
                             air_conditioned=True, wifi_ready=True)
-        [listing] = get_renter_listings_context(None)["listings"]
+        [listing] = RenterListingsSection(None).context()["listings"]
         self.assertEqual([chip["key"] for chip in listing.card_chips], list(Complex.FEATURE_LABELS)[:4])
 
 

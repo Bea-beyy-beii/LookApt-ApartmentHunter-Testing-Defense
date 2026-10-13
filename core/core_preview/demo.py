@@ -1,6 +1,6 @@
 """
 Sample numbers for the landlord preview's Home tab (nothing is read from or
-saved to the database). The shapes match core_landlords.services.home_context().
+saved to the database). The shapes match core_landlords.sections.HomeSection.context().
 """
 import json
 import uuid
@@ -8,7 +8,7 @@ from datetime import timedelta
 from types import SimpleNamespace
 
 from core.core_inquiries.services import today
-from core.core_landlords.services import PERFORMANCE_MONTHS, add_months, month_label, month_start
+from core.core_landlords.services import Month, PerformanceChart
 
 # Daily Views / Saves / Inquiries / Successful Rentals, repeated across the month
 VIEWS = [3, 5, 4, 6, 8, 7, 5, 9, 11, 8, 10, 12, 9, 7]
@@ -23,7 +23,8 @@ PROPERTIES = [
 
 
 def _performance(on):
-    first = month_start(on)
+    month = Month(on)
+    first = month.first
     days = [first + timedelta(days=i) for i in range((on - first).days + 1)]
     series = []
     for key, label, pattern in (("views", "Views", VIEWS), ("saves", "Saves", SAVES),
@@ -32,26 +33,26 @@ def _performance(on):
         series.append({"key": key, "label": label, "values": values, "total": sum(values), "change": 12})
     return {
         "month": f"{first:%Y-%m}",
-        "month_label": month_label(first),
+        "month_label": month.label,
         "days": [f"{day:%b} {day.day}" for day in days],
         "series": series,
-        "months": [{"value": f"{m:%Y-%m}", "label": month_label(m)}
-                   for m in (add_months(first, -i) for i in range(PERFORMANCE_MONTHS))],
+        "months": [{"value": m.value, "label": m.label} for m in month.recent(PerformanceChart.MONTHS)],
     }
 
 
 def _receivables(on):
-    first = month_start(on)
+    month = Month(on)
+    first = month.first
     rates = [(6500, 5), (5500, 3)]
     expected = sum(rate * units for rate, units in rates)
     paid = 6500 * 3 + 5500 * 2
     total = lambda count, amount: {"count": count, "amount": amount}
     return {
         "month": first,
-        "month_label": month_label(first),
-        "month_value": f"{first:%Y-%m}",
-        "prev_value": f"{add_months(first, -1):%Y-%m}",
-        "next_value": f"{add_months(first, 1):%Y-%m}",
+        "month_label": month.label,
+        "month_value": month.value,
+        "prev_value": month.shift(-1).value,
+        "next_value": month.shift(1).value,
         "expected": total(8, expected),
         "paid": total(5, paid),
         "overdue": total(0, 0),

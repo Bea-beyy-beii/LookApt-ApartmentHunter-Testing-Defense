@@ -1,12 +1,9 @@
 # core_landlords/views.py
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render
 from django.template.loader import render_to_string
-from django.views.decorators.http import require_GET
-
+from django.views import View
 from django.views.generic import TemplateView
 
-from core.core_accounts.decorators import role_required
 from core.core_accounts.mixins import LandlordRequiredMixin
 from core.core_inquiries.sections import InquiriesSection
 from core.core_inquiries.services import today
@@ -16,9 +13,9 @@ from core.core_reports.sections import ReportsSection
 from core.core_verification.sections import VerificationSection
 from core.sections import SectionedDashboardMixin
 
-from . import services
-from .export import receivables_pdf
+from .export import ReceivablesPdf
 from .sections import HomeSection
+from .services import Month, PerformanceChart, ReceivablesReport
 
 
 class DashboardView(LandlordRequiredMixin, SectionedDashboardMixin, TemplateView):
@@ -27,33 +24,38 @@ class DashboardView(LandlordRequiredMixin, SectionedDashboardMixin, TemplateView
     sections = (InquiriesSection, ReportsSection, ListingsSection, RentalsSection, HomeSection, VerificationSection)
 
 
-@role_required('landlord')
-@require_GET
-def receivables_panel(request):
+class MonthView(LandlordRequiredMixin, View):
+    """Base for the Home tab's GET endpoints that show one ?month=YYYY-MM (default: this month)."""
+
+    @property
+    def month(self):
+        return Month.parse(self.request.GET.get('month'), today()).first
+
+
+class ReceivablesPanelView(MonthView):
     """Monthly Receivables drawer for ?month=YYYY-MM (the < > arrows)."""
-    month = services.parse_month(request.GET.get('month'), today())
-    html = render_to_string(
-        'core_landlords/home/receivables_panel.html',
-        {'receivables': services.receivables(request.user, month)},
-        request=request,
-    )
-    return JsonResponse({'html': html})
+
+    def get(self, request):
+        html = render_to_string(
+            'core_landlords/home/receivables_panel.html',
+            {'receivables': ReceivablesReport(request.user, self.month).as_dict()},
+            request=request,
+        )
+        return JsonResponse({'html': html})
 
 
-@role_required('landlord')
-@require_GET
-def export_receivables(request):
+class ExportReceivablesView(MonthView):
     """Export Financials: the Monthly Receivables of ?month=YYYY-MM (default: this month) as a PDF."""
-    month = services.parse_month(request.GET.get('month'), today())
-    r = services.receivables(request.user, month)
-    response = HttpResponse(receivables_pdf(request.user, r), content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="LookApt-receivables-{r["month_value"]}.pdf"'
-    return response
+
+    def get(self, request):
+        report = ReceivablesReport(request.user, self.month)
+        response = HttpResponse(ReceivablesPdf(report).render(), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="LookApt-receivables-{report.month.value}.pdf"'
+        return response
 
 
-@role_required('landlord')
-@require_GET
-def performance_data(request):
+class PerformanceDataView(MonthView):
     """Listing Performance chart for ?month=YYYY-MM (the month dropdown)."""
-    month = services.parse_month(request.GET.get('month'), today())
-    return JsonResponse(services.performance(request.user, month))
+
+    def get(self, request):
+        return JsonResponse(PerformanceChart(request.user, self.month).as_dict())

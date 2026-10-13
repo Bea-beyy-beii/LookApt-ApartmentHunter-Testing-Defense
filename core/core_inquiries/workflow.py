@@ -7,7 +7,7 @@
 #      └──"Reject" / "Cancel"─────────────┴──▶ declined / withdrawn ──▶ Archive (30 days)
 #
 # Once a renter is assigned to a unit, every other open request for it is
-# "closed" (core_rentals.services.assign_tenant) and lands in the Archive too.
+# "closed" (core_rentals.services.TenantAssignment) and lands in the Archive too.
 # "Approve as Tenant" posts to core_rentals:assign_tenant, the same endpoint
 # as "Assign a Renter" in Manage Rentals, so both pages always agree.
 import json
@@ -21,7 +21,6 @@ from django.utils import timezone
 
 from core.core_listings.models import Unit
 from core.core_rentals.models import Tenancy
-from core.core_rentals.services import ENDING_SOON_DAYS, current_term, lease_months
 
 from .models import Application
 from .services import (
@@ -170,9 +169,9 @@ def unit_outlook(unit, tenancy, on):
     if tenancy is None and unit.availability == Unit.Availability.AVAILABLE:
         return {"key": "vacant", "label": "Vacant", "expected": None}
     if tenancy is not None:
-        _, end = current_term(tenancy, on)
+        _, end = tenancy.current_term(on)
         expected = end + timedelta(days=1 + unit.complex.turnover_days)
-        ending = lease_months(unit) > 1 and (end - on).days <= ENDING_SOON_DAYS
+        ending = tenancy.lease_months > 1 and (end - on).days <= Tenancy.ENDING_SOON_DAYS
     else:
         expected = earliest_move_in(unit, on)
         ending = False

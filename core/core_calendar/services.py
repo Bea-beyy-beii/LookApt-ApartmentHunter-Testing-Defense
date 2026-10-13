@@ -20,7 +20,6 @@ from core.core_inquiries.models import Application, Message
 from core.core_inquiries.services import start_landlord_message, today
 from core.core_listings.models import Complex
 from core.core_rentals.models import Tenancy
-from core.core_rentals.services import current_term, due_dates
 
 from .models import CalendarEvent
 
@@ -89,11 +88,11 @@ def _tenancy_items(tenancies, start, end, group_rent):
 
     for tenancy in tenancies:
         unit = tenancy.unit
-        for due in due_dates(tenancy, end):
+        for due in tenancy.due_dates(end):
             if due >= start:
                 rent_by_day[(due, unit.complex.complex_name)].append(unit.unit_name)
 
-        _, contract_end = current_term(tenancy, today())
+        _, contract_end = tenancy.current_term(today())
         if start <= contract_end <= end:
             who = f" · {tenancy.tenant_name}" if group_rent else ""
             items.append(_item(contract_end, "contract", f"Contract ends – {unit.unit_name}",
