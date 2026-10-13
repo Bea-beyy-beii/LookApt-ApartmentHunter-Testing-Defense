@@ -26,7 +26,10 @@
             <span class="notification-dot" hidden></span>
         </button>
         <div class="topbar-menu topbar-menu--notifs" hidden>
-            <p class="topbar-menu-title">Notifications</p>
+            <div class="topbar-menu-head">
+                <p class="topbar-menu-title">Notifications</p>
+                <button type="button" class="topbar-menu-clear" data-notif-clear data-url="{% url 'account_notifications_clear' %}">Clear all</button>
+            </div>
             <p class="topbar-legend" aria-hidden="true">
                 <span class="topbar-notif--green"><i class="topbar-notif-dot"></i>Messages</span>
                 <span class="topbar-notif--yellow"><i class="topbar-notif-dot"></i>Requests &amp; changes</span>

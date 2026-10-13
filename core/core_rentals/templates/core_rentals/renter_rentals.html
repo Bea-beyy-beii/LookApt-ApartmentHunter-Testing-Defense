@@ -36,7 +36,10 @@
                 <div class="rh-current-body">
                     <div class="rh-current-top">
                         <div>
-                            <h3>{{ t.unit.complex.complex_name }}</h3>
+                            <div class="rh-name-row">
+                                <h3>{{ t.unit.complex.complex_name }}</h3>
+                                {% if not t.upcoming %}{% include "core_reviews/review_button.html" %}{% endif %}
+                            </div>
                             <p class="rh-location">{% feature_icon "location" %} {{ t.unit.complex.address }}</p>
                         </div>
                         <span class="rh-status rh-status--active">
@@ -100,7 +103,10 @@
                             {% if t.cover_url %}<img src="{{ t.cover_url }}" alt="" loading="lazy">{% else %}{% feature_icon "unit_type" %}{% endif %}
                         </span>
                         <div class="rh-row-main">
-                            <strong>{{ t.unit.complex.complex_name }}</strong>
+                            <div class="rh-name-row">
+                                <strong>{{ t.unit.complex.complex_name }}</strong>
+                                {% include "core_reviews/review_button.html" %}
+                            </div>
                             <small>{% feature_icon "location" %} {{ t.unit.complex.address }}</small>
                         </div>
                         <div class="rh-row-fact"><span>Rental Period</span><strong>{{ t.start_date|date:"M Y" }} – {{ t.ended_on|default:t.end_date|date:"M Y" }}</strong></div>

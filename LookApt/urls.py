@@ -34,6 +34,7 @@ urlpatterns = [
     path("maps/", include("core.core_maps.urls")),
     path("verification/", include("core.core_verification.urls")),
     path("admin-panel/", include("core.core_admin.urls")),
+    path("reviews/", include("core.core_reviews.urls")),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

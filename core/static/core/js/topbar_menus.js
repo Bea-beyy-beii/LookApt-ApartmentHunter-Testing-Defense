@@ -91,6 +91,31 @@ document.addEventListener("DOMContentLoaded", () => {
         post(bell.dataset.seenUrl).catch(() => {});
     }
 
+    // "Clear all" in the bell and in the Inquiries tab's Notifications panel
+    document.addEventListener("click", async event => {
+        const button = event.target.closest("[data-notif-clear]");
+        if (!button) return;
+        button.disabled = true;
+        try {
+            const response = await post(button.dataset.url);
+            if (!response.ok) throw new Error();
+            if (bell) {
+                bell.nextElementSibling.querySelector("[data-notif-list]").innerHTML =
+                    '<p class="topbar-menu-empty">You\'re all caught up.</p>';
+                showDot(0);
+            }
+            document.querySelector("[data-notif-panel-list]")?.remove();
+            document.querySelector("[data-notif-badge]")?.remove();
+            document.querySelectorAll(".notifications-clear").forEach(clear => clear.remove());
+            const empty = document.querySelector("[data-notif-empty]");
+            if (empty) empty.hidden = false;
+        } catch (error) {
+            toast("Couldn't clear your notifications. Please try again.", "error");
+        } finally {
+            button.disabled = false;
+        }
+    });
+
     if (bell) {
         loadNotifications();
         setInterval(() => { if (!document.hidden) loadNotifications(); }, 60000);
@@ -99,11 +124,19 @@ document.addEventListener("DOMContentLoaded", () => {
     // ---------------------------------------------------- dark mode switch
 
     const themeSwitch = document.querySelector("[data-theme-switch]");
+    const THEME_KEY = "lookapt:theme";
+
+    function applyTheme(theme) {
+        document.documentElement.dataset.theme = theme;
+        themeSwitch?.setAttribute("aria-checked", String(theme === "dark"));
+    }
+
     themeSwitch?.addEventListener("click", async () => {
-        const dark = themeSwitch.getAttribute("aria-checked") !== "true";
-        const theme = dark ? "dark" : "light";
-        document.documentElement.dataset.theme = theme;   // switch right away, save in the background
-        themeSwitch.setAttribute("aria-checked", String(dark));
+        const theme = themeSwitch.getAttribute("aria-checked") === "true" ? "light" : "dark";
+        applyTheme(theme);   // switch right away, save in the background
+        try {
+            sessionStorage.setItem(THEME_KEY, theme);
+        } catch (error) { /* storage blocked */ }
         try {
             const response = await post(themeSwitch.dataset.url, { theme });
             if (!response.ok) throw new Error();
@@ -111,4 +144,18 @@ document.addEventListener("DOMContentLoaded", () => {
             toast("Couldn't save your theme. It will reset when you reload.", "error");
         }
     });
+
+    // Back / Forward shows the browser's saved copy of a page, rendered with the
+    // theme it had back then. Bring it up to date with the last switch in this tab.
+    function syncTheme(event) {
+        const navigation = performance.getEntriesByType?.("navigation")[0];
+        if (!event?.persisted && navigation?.type !== "back_forward") return;
+        try {
+            const theme = sessionStorage.getItem(THEME_KEY);
+            if (theme === "dark" || theme === "light") applyTheme(theme);
+        } catch (error) { /* storage blocked */ }
+    }
+
+    syncTheme();
+    window.addEventListener("pageshow", syncTheme);
 });
