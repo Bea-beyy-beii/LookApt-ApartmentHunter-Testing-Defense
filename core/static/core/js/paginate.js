@@ -8,6 +8,8 @@
 // The cards are all in the page already (the search in renter_search.js
 // swaps them); this just shows one page of them. It re-counts by itself when
 // cards are added or removed (saving / unsaving, a new search).
+// A shorter last page keeps the height of a full one, so the page buttons
+// stay in the same place instead of jumping up.
 // =========================================================
 
 (function () {
@@ -21,6 +23,9 @@
             this.perPage = Number(grid.dataset.paginate) || 9;
             this.nav = document.querySelector(grid.dataset.pager);
             this.page = 1;
+            this.fullHeight = 0;      // height of a full page of cards (measured)
+
+            window.addEventListener("resize", () => { this.fullHeight = 0; this.render(); });
 
             this.nav.addEventListener("click", event => {
                 const button = event.target.closest("button[data-page]");
@@ -47,6 +52,7 @@
         }
 
         go(page, scroll) {
+            this.measure();           // still on a full page: remember its height
             this.page = Math.min(Math.max(1, page), this.pageCount());
             this.render();
             if (scroll) {
@@ -66,8 +72,21 @@
                 card.classList.toggle("is-paged-out", index < first || index >= first + this.perPage);
             });
 
+            // Keep the height of a full page while there's more than one page
+            if (pages > 1) this.measure();
+            this.grid.style.minHeight = pages > 1 && this.fullHeight ? `${this.fullHeight}px` : "";
+
             this.nav.hidden = pages <= 1;
             if (pages > 1) this.nav.replaceChildren(...this.buttons(pages));
+        }
+
+        measure() {
+            const shown = this.cards().filter(card => !card.classList.contains("is-paged-out")).length;
+            if (shown < this.perPage || !this.grid.offsetParent) return;   // not a full page, or the tab is hidden
+            const min = this.grid.style.minHeight;
+            this.grid.style.minHeight = "";
+            this.fullHeight = Math.max(this.fullHeight, this.grid.offsetHeight);
+            this.grid.style.minHeight = min;
         }
 
         // ‹  1  2  3 … 9  ›
