@@ -14,18 +14,10 @@ from branca.element import MacroElement
 from jinja2 import Template
 from markupsafe import escape
 
-from .categories import COMPLEX_STYLE, svg
-from .geo import DEFAULT_CENTER, bounding_box
+from .categories import COMPLEX_STYLE, CategoryStyle
+from .geo import DEFAULT_CENTER, GeoPoint
 
-PIN_COLOR = "#203a68"
 RADIUS_COLOR = "#f5b94c"
-
-# Folium loads jQuery, Bootstrap, Font Awesome and Awesome Markers by default
-# (10 files on every iframe load). These maps only use Leaflet, plus jQuery
-# where there are pop-ups (folium builds pop-up content with it).
-LEAFLET_JS = [("leaflet", "https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js")]
-JQUERY_JS = [("jquery", "https://code.jquery.com/jquery-3.7.1.min.js")]
-LEAFLET_CSS = [("leaflet_css", "https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css")]
 
 
 class ClickBridge(MacroElement):
@@ -185,68 +177,90 @@ class ScanRadius(MacroElement):
         self.color = color
 
 
-def _pin_icon():
-    return folium.DivIcon(
-        icon_size=(34, 44),
-        icon_anchor=(17, 42),
-        html=(
-            f'<svg viewBox="0 0 24 30" width="34" height="44">'
-            f'<path d="M12 29s10-9.3 10-17A10 10 0 0 0 2 12c0 7.7 10 17 10 17z" fill="{PIN_COLOR}" stroke="#fff" stroke-width="1.5"/>'
-            f'<circle cx="12" cy="12" r="4" fill="#fff"/></svg>'
-        ),
-    )
+class LocationMap:
+    """The Folium map of one pin: radius circle, landmark / complex markers and the pin."""
 
+    PIN_COLOR = "#203a68"
+    RADIUS_COLOR = RADIUS_COLOR
 
-def _badge_icon(style, size=30):
-    return folium.DivIcon(
-        icon_size=(size, size),
-        icon_anchor=(size // 2, size // 2),
-        html=(
-            f'<div style="width:{size}px;height:{size}px;border-radius:50%;display:grid;place-items:center;'
-            f'background:{style["bg"]};color:{style["color"]};border:2px solid {style["color"]};'
-            f'box-shadow:0 2px 6px rgba(0,0,0,.25)">{svg(style["icon"], size=size - 14, stroke_width=2.2)}</div>'
-        ),
-    )
+    # Folium loads jQuery, Bootstrap, Font Awesome and Awesome Markers by default
+    # (10 files on every iframe load). These maps only use Leaflet, plus jQuery
+    # where there are pop-ups (folium builds pop-up content with it).
+    LEAFLET_JS = [("leaflet", "https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js")]
+    JQUERY_JS = [("jquery", "https://code.jquery.com/jquery-3.7.1.min.js")]
+    LEAFLET_CSS = [("leaflet_css", "https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css")]
 
+    def __init__(self, lat=None, lng=None, radius_km=None, landmarks=(), complexes=(), editable=True,
+                 label="Selected Location"):
+        self.lat = lat
+        self.lng = lng
+        self.radius_km = radius_km
+        self.landmarks = landmarks
+        self.complexes = complexes
+        self.editable = editable
+        self.label = label
 
-def build_map(lat=None, lng=None, radius_km=None, landmarks=(), complexes=(), editable=True, label="Selected Location"):
-    """Return the full HTML document of the map."""
-    has_point = lat is not None and lng is not None
+    @property
+    def has_point(self):
+        return self.lat is not None and self.lng is not None
 
-    fmap = folium.Map(
-        location=(lat, lng) if has_point else DEFAULT_CENTER,
-        zoom_start=15 if has_point else 13,
-        tiles="OpenStreetMap",
-        control_scale=True,
-    )
-    fmap.default_js = LEAFLET_JS + (JQUERY_JS if complexes else [])    # complexes have pop-ups
-    fmap.default_css = LEAFLET_CSS
+    @property
+    def has_radius(self):
+        return bool(self.has_point and self.radius_km)
 
-    if has_point:
-        if radius_km:
-            folium.Circle(
-                location=(lat, lng),
-                radius=radius_km * 1000,
-                color=RADIUS_COLOR,
-                weight=2,
-                fill=True,
-                fill_color=RADIUS_COLOR,
-                fill_opacity=0.12,
-                interactive=False,
-            ).add_to(fmap)
+    def render(self):
+        """Return the full HTML document of the map."""
+        fmap = folium.Map(
+            location=(self.lat, self.lng) if self.has_point else DEFAULT_CENTER,
+            zoom_start=15 if self.has_point else 13,
+            tiles="OpenStreetMap",
+            control_scale=True,
+        )
+        fmap.default_js = self.LEAFLET_JS + (self.JQUERY_JS if self.complexes else [])    # complexes have pop-ups
+        fmap.default_css = self.LEAFLET_CSS
 
-            min_lat, max_lat, min_lng, max_lng = bounding_box(lat, lng, radius_km)
-            fmap.add_child(FitRadius([[min_lat, min_lng], [max_lat, max_lng]]))
+        if self.has_point:
+            if self.radius_km:
+                self._add_radius(fmap)
+            self._add_landmarks(fmap)
+            self._add_complexes(fmap)
+            self._add_pin(fmap)
 
-        for item in landmarks:
+        if self.editable:
+            fmap.add_child(ClickBridge())
+
+        # Radar sweep: once on load, and while the parent page waits for new results
+        fmap.add_child(ScanRadius((self.lat, self.lng) if self.has_radius else None,
+                                  self.radius_km * 1000 if self.has_radius else 0))
+
+        return fmap.get_root().render()
+
+    def _add_radius(self, fmap):
+        folium.Circle(
+            location=(self.lat, self.lng),
+            radius=self.radius_km * 1000,
+            color=self.RADIUS_COLOR,
+            weight=2,
+            fill=True,
+            fill_color=self.RADIUS_COLOR,
+            fill_opacity=0.12,
+            interactive=False,
+        ).add_to(fmap)
+
+        min_lat, max_lat, min_lng, max_lng = GeoPoint(self.lat, self.lng).bounding_box(self.radius_km)
+        fmap.add_child(FitRadius([[min_lat, min_lng], [max_lat, max_lng]]))
+
+    def _add_landmarks(self, fmap):
+        for item in self.landmarks:
             tooltip = f'{escape(item["name"])}<br><small>{item["distance_label"]} · ~{item["minutes"]} min</small>'
             folium.Marker(
                 location=(item["lat"], item["lng"]),
-                icon=_badge_icon(item, size=28),
+                icon=self._badge_icon(CategoryStyle(item["category"]), size=28),
                 tooltip=tooltip,
             ).add_to(fmap)
 
-        for item in complexes:
+    def _add_complexes(self, fmap):
+        for item in self.complexes:
             popup = (
                 f'<b>{escape(item["name"])}</b><br>{escape(item["address"])}<br>'
                 f'₱{item["min_price"]:,.0f} – ₱{item["max_price"]:,.0f} / month<br>'
@@ -257,23 +271,39 @@ def build_map(lat=None, lng=None, radius_km=None, landmarks=(), complexes=(), ed
                 popup += f'<br><a href="{escape(item["url"])}" target="_top" style="font-weight:600">View listing →</a>'
             folium.Marker(
                 location=(item["lat"], item["lng"]),
-                icon=_badge_icon(COMPLEX_STYLE, size=34),
+                icon=self._badge_icon(COMPLEX_STYLE, size=34),
                 tooltip=escape(item["name"]),
                 popup=folium.Popup(popup, max_width=260),
             ).add_to(fmap)
 
+    def _add_pin(self, fmap):
         folium.Marker(
-            location=(lat, lng),
-            icon=_pin_icon(),
-            tooltip=folium.Tooltip(f"<b>{escape(label)}</b>", permanent=True, direction="top", offset=(0, -40)),
+            location=(self.lat, self.lng),
+            icon=self._pin_icon(),
+            tooltip=folium.Tooltip(f"<b>{escape(self.label)}</b>", permanent=True, direction="top", offset=(0, -40)),
             z_index_offset=1000,
         ).add_to(fmap)
 
-    if editable:
-        fmap.add_child(ClickBridge())
+    def _pin_icon(self):
+        return folium.DivIcon(
+            icon_size=(34, 44),
+            icon_anchor=(17, 42),
+            html=(
+                f'<svg viewBox="0 0 24 30" width="34" height="44">'
+                f'<path d="M12 29s10-9.3 10-17A10 10 0 0 0 2 12c0 7.7 10 17 10 17z" fill="{self.PIN_COLOR}" stroke="#fff" stroke-width="1.5"/>'
+                f'<circle cx="12" cy="12" r="4" fill="#fff"/></svg>'
+            ),
+        )
 
-    # Radar sweep: once on load, and while the parent page waits for new results
-    has_radius = has_point and radius_km
-    fmap.add_child(ScanRadius((lat, lng) if has_radius else None, radius_km * 1000 if has_radius else 0))
-
-    return fmap.get_root().render()
+    @staticmethod
+    def _badge_icon(style, size=30):
+        """Round marker in the colours of a MarkerStyle."""
+        return folium.DivIcon(
+            icon_size=(size, size),
+            icon_anchor=(size // 2, size // 2),
+            html=(
+                f'<div style="width:{size}px;height:{size}px;border-radius:50%;display:grid;place-items:center;'
+                f'background:{style.bg};color:{style.color};border:2px solid {style.color};'
+                f'box-shadow:0 2px 6px rgba(0,0,0,.25)">{style.svg(size=size - 14, stroke_width=2.2)}</div>'
+            ),
+        )

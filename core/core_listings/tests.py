@@ -256,29 +256,29 @@ class LandmarksKeptOnSaveTests(ListingFormSetup):
 
     def test_blank_list_keeps_landmarks_and_empty_list_clears_them(self):
         from core.core_listings.views import _save_property
-        from core.core_maps.maps.services import complex_landmarks, save_complex_landmarks
+        from core.core_maps.maps.services import ComplexLandmarks
         self.complex.latitude, self.complex.longitude = 7.06, 125.597
         self.complex.save()
-        save_complex_landmarks(self.complex, [{"name": "Gaisano", "category": "mall", "lat": 7.065, "lng": 125.6}], "walking")
+        ComplexLandmarks(self.complex).replace([{"name": "Gaisano", "category": "mall", "lat": 7.065, "lng": 125.6}], "walking")
         self.complex.pictures.create(image=jpg(), position=0)
         self.complex.pictures.create(image=jpg("b.jpg"), position=1)
 
         form = self.form(landmarks_json="")
         self.assertTrue(form.is_valid(), form.errors)
         _save_property(form, self.user.landlord)
-        self.assertEqual([item["name"] for item in complex_landmarks(self.complex)], ["Gaisano"])
+        self.assertEqual([item["name"] for item in ComplexLandmarks(self.complex).as_list()], ["Gaisano"])
 
         # Pin moved without a new list: same landmarks, distances from the new spot
-        before = complex_landmarks(self.complex)[0]["distance_m"]
+        before = ComplexLandmarks(self.complex).as_list()[0]["distance_m"]
         form = self.form(landmarks_json="", latitude="7.07", longitude="125.61")
         self.assertTrue(form.is_valid(), form.errors)
         _save_property(form, self.user.landlord)
-        self.assertNotEqual(complex_landmarks(self.complex)[0]["distance_m"], before)
+        self.assertNotEqual(ComplexLandmarks(self.complex).as_list()[0]["distance_m"], before)
 
         form = self.form(landmarks_json="[]")
         self.assertTrue(form.is_valid(), form.errors)
         _save_property(form, self.user.landlord)
-        self.assertEqual(complex_landmarks(self.complex), [])
+        self.assertEqual(ComplexLandmarks(self.complex).as_list(), [])
 
 
 @override_settings(STORAGES={

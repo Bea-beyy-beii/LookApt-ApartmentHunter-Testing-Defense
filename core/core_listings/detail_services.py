@@ -11,7 +11,7 @@ from django.utils import timezone
 
 from core.core_inquiries.models import Application
 from core.core_inquiries.services import current_lease_end, earliest_move_in
-from core.core_maps.maps.services import complex_landmarks
+from core.core_maps.maps.services import ComplexLandmarks
 
 from .models import BedroomType, Complex, ListingView, SavedListing, Unit
 from .services import renter_visible_complexes
@@ -151,7 +151,7 @@ def complex_detail_context(complex_obj, user):
         "lowest_price": min(prices) if prices else None,
         "features": _features(complex_obj),
         "unit_amenities": unit_amenities,
-        "landmarks": complex_landmarks(complex_obj),
+        "landmarks": ComplexLandmarks(complex_obj).as_list(),
         "landlord": landlord_summary(complex_obj),
         "is_saved": _is_saved(user, complex_obj),
         "other_listings": _other_listings(complex_obj, user),

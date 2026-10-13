@@ -10,8 +10,8 @@ from django.core.management.base import BaseCommand
 from django.db.models import Count
 
 from core.core_listings.models import Complex
-from core.core_maps.maps.geo import DEFAULT_MODE, DEFAULT_RADIUS_KM, TRAVEL_MODES
-from core.core_maps.maps.services import complex_landmarks, nearby_landmarks, save_complex_landmarks
+from core.core_maps.maps.geo import GeoPoint, SearchRadius, TravelMode
+from core.core_maps.maps.services import ComplexLandmarks, LandmarkFinder
 
 
 class Command(BaseCommand):
@@ -19,8 +19,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--all", action="store_true", help="Also complexes that already have landmarks.")
-        parser.add_argument("--radius", type=float, default=DEFAULT_RADIUS_KM, help="Radius in km (default 3).")
-        parser.add_argument("--mode", choices=list(TRAVEL_MODES), default=DEFAULT_MODE)
+        parser.add_argument("--radius", type=float, default=SearchRadius.DEFAULT_KM, help="Radius in km (default 3).")
+        parser.add_argument("--mode", choices=TravelMode.keys(), default=TravelMode.DEFAULT_KEY)
 
     def handle(self, *args, **options):
         complexes = Complex.objects.filter(latitude__isnull=False, longitude__isnull=False)
@@ -29,13 +29,14 @@ class Command(BaseCommand):
 
         done = 0
         for complex_obj in complexes:
-            found, source = nearby_landmarks(float(complex_obj.latitude), float(complex_obj.longitude),
-                                             options["radius"], options["mode"])
+            point = GeoPoint(complex_obj.latitude, complex_obj.longitude)
+            found, source = LandmarkFinder(point, SearchRadius(options["radius"]), options["mode"]).find()
             if source != "live":
                 self.stderr.write(f"OpenStreetMap is unreachable; stopped before {complex_obj.complex_name}.")
                 break
-            manual = [item for item in complex_landmarks(complex_obj) if item["manual"]]
-            saved = save_complex_landmarks(complex_obj, manual + found, options["mode"])
+            saved_landmarks = ComplexLandmarks(complex_obj)
+            manual = [item for item in saved_landmarks.as_list() if item["manual"]]
+            saved = saved_landmarks.replace(manual + found, options["mode"])
             done += 1
             self.stdout.write(f"{complex_obj.complex_name}: {len(saved)} landmarks")
 

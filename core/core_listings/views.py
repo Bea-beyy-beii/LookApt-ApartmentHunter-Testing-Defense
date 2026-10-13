@@ -7,7 +7,7 @@ from django.db import transaction
 from django.urls import reverse
 
 from core.core_accounts.decorators import role_required
-from core.core_maps.maps.services import complex_landmarks, resolve_area, save_complex_landmarks
+from core.core_maps.maps.services import AreaName, ComplexLandmarks
 from core.core_verification.services import can_publish
 
 from .models import Complex, ComplexPicture, Unit, UnitPicture
@@ -58,7 +58,7 @@ def _save_property(form, landlord):
 
     area_name = form.cleaned_data.get("area_name")
     if area_name or not property_obj.area_id:
-        property_obj.area = resolve_area(area_name)
+        property_obj.area = AreaName(area_name).resolve()
 
     property_obj.save()
 
@@ -66,10 +66,10 @@ def _save_property(form, landlord):
     travel_mode = form.cleaned_data.get("travel_mode")
     if landmarks is None and moved:
         # New pin but no new list: keep the landmarks, with distances from the new spot
-        landmarks = saved = complex_landmarks(property_obj)
+        landmarks = saved = ComplexLandmarks(property_obj).as_list()
         travel_mode = travel_mode or (saved[0]["travel_mode"] if saved else None)
     if landmarks is not None:
-        save_complex_landmarks(property_obj, landmarks, travel_mode)
+        ComplexLandmarks(property_obj).replace(landmarks, travel_mode)
 
     photos = form.cleaned_data.get("photos") or []
     has_cover = property_obj.pictures.filter(is_cover=True).exists()
