@@ -126,7 +126,7 @@ DATABASES = {
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
-        'LOCATION': os.path.join(os.environ.get('TMPDIR', '/tmp'), 'lookapt-cache'),
+        'LOCATION': os.path.join(tempfile.gettempdir(), 'lookapt-cache'),
         'TIMEOUT': 60 * 60 * 24,
         'OPTIONS': {'MAX_ENTRIES': 5000},
     }
