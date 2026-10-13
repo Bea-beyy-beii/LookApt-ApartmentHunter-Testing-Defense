@@ -600,3 +600,26 @@ def time_of(hour):
 def workflow_approve(application):
     from .workflow import approve_waitlist
     approve_waitlist(application)
+
+
+class ClearNotificationsTests(Base):
+
+    def test_clear_all_hides_older_notifications_only(self):
+        self.client.force_login(self.landlord_user)
+        Application.objects.create(renter=self.renter_user.renter, unit=self.available, kind="apply",
+                                   occupants=["Arem"], move_in_date=date.today() + timedelta(days=10))
+        bell = lambda: self.client.get(reverse("account_notifications")).json()
+        self.assertIn("New tenant application", bell()["html"])
+
+        response = self.client.post(reverse("account_notifications_clear"))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("all caught up", bell()["html"])
+        self.assertEqual(bell()["new_count"], 0)
+
+        # Something newer still shows
+        Application.objects.create(renter=self.renter_user.renter, unit=self.occupied, kind="waitlist",
+                                   occupants=["Arem"], move_in_date=date.today() + timedelta(days=60))
+        html = bell()["html"]
+        self.assertIn("waitlist", html.lower())
+        self.assertNotIn("New tenant application", html)
+

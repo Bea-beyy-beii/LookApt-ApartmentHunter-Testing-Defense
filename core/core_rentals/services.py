@@ -402,9 +402,11 @@ def get_renter_rentals_context(user):
     on = today()
     tenancies = (
         Tenancy.objects.filter(renter__user=user)
-        .select_related("unit__complex__landlord__user")
-        .prefetch_related("payments", "unit__pictures", "unit__complex__pictures")
+        .select_related("unit__complex__landlord__user", "review")
+        .prefetch_related("payments", "unit__pictures", "unit__complex__pictures", "review__photos")
     )
+    from core.core_reviews.services import review_form_context, review_json    # core_reviews imports core_rentals
+
     current, past = [], []
     for tenancy in tenancies:
         _decorate(tenancy, on)
@@ -417,6 +419,9 @@ def get_renter_rentals_context(user):
         tenancy.landlord_contact = landlord.shared_contact      # only what they chose to show (Settings)
         tenancy.upcoming = tenancy.start_date > on
         tenancy.days_to_start = (tenancy.start_date - on).days
+        # "Leave a Review" once the rental has started; "Edit Review" after that
+        tenancy.my_review = getattr(tenancy, "review", None)
+        tenancy.review_data = review_json(tenancy.my_review)
         (current if tenancy.is_active else past).append(tenancy)
     past.sort(key=lambda t: t.ended_on or t.end_date, reverse=True)
-    return {"current_rentals": current, "past_rentals": past}
+    return {"current_rentals": current, "past_rentals": past, **review_form_context()}

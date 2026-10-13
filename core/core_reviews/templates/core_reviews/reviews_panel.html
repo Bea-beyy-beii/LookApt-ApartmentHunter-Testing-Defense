@@ -1,0 +1,75 @@
+{% comment %}
+    The complex page's Reviews tab. Data: core_reviews.services.complex_reviews_context()
+    (reviews, review_summary). Reviews are written from the renter's Rental History.
+{% endcomment %}
+{% load listing_tags review_tags %}
+
+<div class="ld-panel-header">
+    <h2 class="ld-card-title">{% feature_icon "star" %} Reviews <span class="ld-count">({{ review_summary.count }})</span></h2>
+</div>
+
+{% if reviews %}
+    <div class="rvl">
+
+        <div class="rvl-summary">
+            <div class="rvl-score">
+                <strong>{{ review_summary.complex|floatformat:1 }}</strong>
+                {% star_rating review_summary.complex size="md" %}
+                <small>{{ review_summary.count }} review{{ review_summary.count|pluralize }}</small>
+            </div>
+
+            <ul class="rvl-bars" aria-label="Complex ratings">
+                {% for row in review_summary.breakdown %}
+                    <li><span class="sr-only">{{ row.stars }} stars: </span><b aria-hidden="true">{{ row.stars }} ★</b><span><i style="width: {{ row.percent }}%"></i></span>{{ row.count }}</li>
+                {% endfor %}
+            </ul>
+
+            <dl class="rvl-parts">
+                <div><dt>Complex</dt><dd>{% star_rating review_summary.complex %}</dd></div>
+                <div><dt>Units</dt><dd>{% star_rating review_summary.unit %}</dd></div>
+                <div><dt>Landlord</dt><dd>{% star_rating review_summary.landlord %}</dd></div>
+            </dl>
+        </div>
+
+        <ul class="rvl-list">
+            {% for review in reviews %}
+                <li class="rvl-item">
+                    <div class="rvl-who">
+                        <span class="rvl-avatar avatar--renter" aria-hidden="true">{% if review.reviewer_avatar %}<img src="{{ review.reviewer_avatar }}" alt="">{% else %}{{ review.reviewer_initials }}{% endif %}</span>
+                        <div>
+                            <strong>{{ review.reviewer_name }}</strong>
+                            <small>Rented {{ review.unit.unit_name }} · {{ review.tenancy.start_date|date:"M Y" }} · Reviewed {{ review.created_at|date:"M j, Y" }}</small>
+                        </div>
+                    </div>
+
+                    <dl class="rvl-parts-list">
+                        {% for part in review.parts %}
+                            <div class="rvl-part">
+                                <dt>{{ part.label }}</dt>
+                                <dd>
+                                    {% star_rating part.rating %}
+                                    {% if part.feedback %}<p>{{ part.feedback }}</p>{% endif %}
+                                </dd>
+                            </div>
+                        {% endfor %}
+                    </dl>
+
+                    {% if review.photos.all %}
+                        <div class="rvl-photos">
+                            {% for photo in review.photos.all %}
+                                <a href="{{ photo.image.url }}" target="_blank" rel="noopener"><img src="{{ photo.image.url }}" alt="Photo from {{ review.reviewer_name }}'s review" loading="lazy"></a>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+
+    </div>
+{% else %}
+    <div class="ld-placeholder">
+        {% feature_icon "star" %}
+        <h3>No reviews yet</h3>
+        <p>Reviews from past and current renters will show up here.</p>
+    </div>
+{% endif %}

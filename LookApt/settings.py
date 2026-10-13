@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "core.core_maps",
     "core.core_rentals",
     "core.core_preview",
+    "core.core_reviews",
 ]
 
 MIDDLEWARE = [

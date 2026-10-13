@@ -146,7 +146,8 @@
                 <ul class="lh-list">
                     {% for p in home.properties %}
                         <li>
-                            <a class="lh-prop" href="{% url 'core_listings:property_detail' p.complex.pk %}">
+                            {# Opens My Listings with this complex's units shown (landlord_home.js) #}
+                            <a class="lh-prop" href="?tab=myListings" data-lh-goto="myListings" data-lh-property="{{ p.complex.pk }}">
                                 <span class="lh-prop-cover">
                                     {% if p.cover_url %}<img src="{{ p.cover_url }}" alt="" loading="lazy">{% else %}{% feature_icon "units" %}{% endif %}
                                 </span>

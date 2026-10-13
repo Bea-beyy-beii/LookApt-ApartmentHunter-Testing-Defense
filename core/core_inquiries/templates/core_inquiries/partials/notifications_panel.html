@@ -11,16 +11,20 @@
             <h2>Notifications</h2>
 
             {% if unread_notifications_count %}
-                <span class="badge">{{ unread_notifications_count }}</span>
+                <span class="badge" data-notif-badge>{{ unread_notifications_count }}</span>
             {% endif %}
         </div>
+
+        {% if notifications %}
+            <button type="button" class="notifications-clear" data-notif-clear data-url="{% url 'account_notifications_clear' %}">Clear all</button>
+        {% endif %}
 
     </header>
 
 
     {% if notifications %}
 
-        <div class="notification-list">
+        <div class="notification-list" data-notif-panel-list>
 
             {% for notification in notifications %}
                 <article
@@ -82,9 +86,10 @@
 
         </div>
 
-    {% else %}
+    {% endif %}
 
-        <div class="notification-empty-state">
+        {# Also shown right after "Clear all" (topbar_menus.js) #}
+        <div class="notification-empty-state" data-notif-empty {% if notifications %}hidden{% endif %}>
             <div class="empty-state-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>
@@ -97,7 +102,5 @@
                 New messages, application updates, and schedule changes will appear here.
             </p>
         </div>
-
-    {% endif %}
 
 </section>

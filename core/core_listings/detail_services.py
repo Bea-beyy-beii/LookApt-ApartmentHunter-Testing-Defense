@@ -78,9 +78,11 @@ def _features(complex_obj):
 
 
 def landlord_summary(complex_obj):
+    from core.core_reviews.services import landlord_rating    # core_reviews imports core_rentals -> core_listings
     landlord = complex_obj.landlord
     user = landlord.user
     return {
+        "rating": landlord_rating(landlord),        # stars beside the name
         "name": user.display_name,
         "initials": user.initials,
         "avatar_url": user.avatar_url,
@@ -111,8 +113,13 @@ def get_renter_complex(pk):
 
 
 def complex_detail_context(complex_obj, user):
+    from core.core_reviews.services import complex_rating, complex_reviews_context, unit_ratings
+
     units = [_decorate_unit(unit) for unit in complex_obj.units.all()]
     _attach_inquiry_info(units, user)
+    ratings = unit_ratings(units)
+    for unit in units:
+        unit.rating = ratings.get(unit.pk)          # stars under the price (None: no reviews yet)
     available = [unit for unit in units if unit.is_available]
 
     # Unit types in the usual order: Studio, 1BR, 2BR, 3+
@@ -148,6 +155,8 @@ def complex_detail_context(complex_obj, user):
         "landlord": landlord_summary(complex_obj),
         "is_saved": _is_saved(user, complex_obj),
         "other_listings": _other_listings(complex_obj, user),
+        "complex_rating": complex_rating(complex_obj),   # stars beside the name
+        **complex_reviews_context(complex_obj),          # Reviews tab
     }
 
 
@@ -216,7 +225,10 @@ def _similar_units(unit):
 
 
 def unit_detail_context(unit, user):
+    from core.core_reviews.services import unit_rating
+
     _decorate_unit(unit)
+    unit.rating = unit_rating(unit)
     _attach_inquiry_info([unit], user)
     complex_obj = unit.complex
     same_complex, other_complexes = _similar_units(unit)

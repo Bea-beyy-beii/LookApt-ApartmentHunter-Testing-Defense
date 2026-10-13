@@ -37,7 +37,7 @@
     // GO TO A TAB (+ sub-tab / filter)
     // =====================================================
 
-    function goTo(tab, { subtab, filter } = {}) {
+    function goTo(tab, { subtab, filter, property } = {}) {
         document.querySelector(`.sidebar .tab-link[data-tab="${tab}"]`)?.click();
         if (subtab) document.querySelector(`.inquiry-tab[data-tab="${subtab}"]`)?.click();
         if (filter) {
@@ -50,6 +50,14 @@
                 box.dispatchEvent(new Event("change", { bubbles: true }));
             }
         }
+        // My Listings: open that complex's units and bring it into view
+        const card = property && document.querySelector(`[data-property-card][data-property-id="${property}"]`);
+        if (card) {
+            const expand = card.querySelector("[data-property-expand]");
+            if (expand?.getAttribute("aria-expanded") !== "true") expand?.click();
+            card.scrollIntoView({ block: "start" });
+            return;
+        }
         window.scrollTo({ top: 0 });
     }
 
@@ -57,7 +65,10 @@
         root.addEventListener("click", event => {
             const link = event.target.closest("[data-lh-goto]");
             if (link) {
-                goTo(link.dataset.lhGoto, { subtab: link.dataset.lhSubtab, filter: link.dataset.lhFilter });
+                event.preventDefault();      // some are links (Managed Properties)
+                goTo(link.dataset.lhGoto, {
+                    subtab: link.dataset.lhSubtab, filter: link.dataset.lhFilter, property: link.dataset.lhProperty,
+                });
                 return;
             }
             if (event.target.closest("[data-lh-add-property]")) {
