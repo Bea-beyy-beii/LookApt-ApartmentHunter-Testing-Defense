@@ -13,7 +13,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 from django.urls import path, include
 from pathlib import Path
 import environ 
-import os
+import os 
 import tempfile
 
 BASE_DIR = Path(__file__).resolve().parent.parent
