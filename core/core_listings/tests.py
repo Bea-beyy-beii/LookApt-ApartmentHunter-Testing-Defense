@@ -279,3 +279,60 @@ class LandmarksKeptOnSaveTests(ListingFormSetup):
         self.assertTrue(form.is_valid(), form.errors)
         _save_property(form, self.user.landlord)
         self.assertEqual(complex_landmarks(self.complex), [])
+
+
+@override_settings(STORAGES={
+    "default": {"BACKEND": "django.core.files.storage.InMemoryStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+})
+class BulkUnitTests(ListingFormSetup):
+    """Bulk listing: several units with the same details at once."""
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.user)
+        self.url = reverse("core_listings:unit_create", args=[self.complex.pk])
+
+    def post(self, numbers, **extra):
+        data = {"bulk": "1", "unit_numbers": numbers, "availability": "available", "floor": "1",
+                "bedroom_type": "studio", "width_dimension": "4", "length_dimension": "5", "max_occupant": "2",
+                "furnish_level": "unfurnished", "price": "8000", "advance_months": "1", "deposit_months": "1",
+                "air_conditioned": "on", "photos": [jpg(), jpg("b.jpg")], **extra}
+        return self.client.post(self.url, data)
+
+    def test_creates_one_unit_per_number_with_the_same_details_and_photos(self):
+        response = self.post("101, 102,103")
+        self.assertEqual(response.status_code, 302)
+        units = list(self.complex.units.order_by("identifier"))
+        self.assertEqual([u.identifier for u in units], [101, 102, 103])
+        for unit in units:
+            self.assertEqual((unit.price, unit.max_occupant, unit.air_conditioned, unit.availability), (8000, 2, True, "available"))
+            self.assertEqual(unit.pictures.count(), 2)              # every unit gets its own copy
+            self.assertEqual(unit.pictures.filter(is_cover=True).count(), 1)
+        self.assertNotEqual(units[0].pictures.first().image.name, units[1].pictures.first().image.name)
+
+    def test_checks_the_numbers(self):
+        Unit.objects.create(complex=self.complex, identifier=102, bedroom_type="studio", width_dimension=4,
+                            length_dimension=5, furnish_level="unfurnished", max_occupant=2, price=8000)
+        for numbers, message in (("101", "at least 2"), ("101,101", "used twice"), ("101,102", "Unit 102 already exists"),
+                                 ("0,1", "at least 1"), (",".join(str(n) for n in range(1, 22)), "up to 20"),
+                                 ("a,b", "whole numbers")):
+            response = self.post(numbers)
+            self.assertEqual(response.status_code, 200, numbers)
+            self.assertIn(message, str(response.context["form"].errors["unit_numbers"]), numbers)
+        self.assertEqual(self.complex.units.count(), 1)
+
+    def test_shared_checks_still_apply(self):
+        response = self.post("201,202", price="999999")         # outside the complex's price range
+        self.assertIn("price", response.context["form"].errors)
+        self.assertEqual(self.complex.units.count(), 0)
+
+    def test_single_unit_form_is_unchanged(self):
+        response = self.client.get(self.url)
+        self.assertContains(response, "Bulk listing")
+        self.assertEqual(response.context["next_identifier"], 1)
+        data = {"identifier": "7", "availability": "available", "bedroom_type": "studio", "width_dimension": "4",
+                "length_dimension": "5", "max_occupant": "2", "furnish_level": "unfurnished", "price": "8000",
+                "advance_months": "1", "deposit_months": "1", "photos": [jpg(), jpg("b.jpg")]}
+        self.assertEqual(self.client.post(self.url, data).status_code, 302)
+        self.assertEqual(list(self.complex.units.values_list("identifier", flat=True)), [7])
