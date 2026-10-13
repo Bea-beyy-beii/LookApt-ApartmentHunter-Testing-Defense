@@ -296,7 +296,7 @@ class AdminDecisionTests(Base):
 class DashboardTests(Base):
 
     def dashboard(self):
-        with mock.patch("core.core_landlords.views.services.home_context", return_value={}):
+        with mock.patch("core.core_landlords.sections.HomeSection.context", return_value={}):
             return self.client.get(reverse("core_landlords:dashboard"))
 
     def test_new_landlord_gets_the_pop_up(self):
@@ -376,7 +376,7 @@ class PurgeTests(Base):
     def test_dashboard_hides_deleted_documents(self):
         self.old(Status.REJECTED, 100, decided_at=timezone.now() - timedelta(days=91), message="Fake ID.")
         services.purge_old_documents()
-        with mock.patch("core.core_landlords.views.services.home_context", return_value={}):
+        with mock.patch("core.core_landlords.sections.HomeSection.context", return_value={}):
             response = self.client.get(reverse("core_landlords:dashboard"))
         self.assertContains(response, "Fake ID.")
         self.assertNotContains(response, "data-verify-docs-open")

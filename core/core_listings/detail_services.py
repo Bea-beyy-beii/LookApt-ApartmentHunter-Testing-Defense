@@ -79,11 +79,11 @@ def _features(complex_obj):
 
 
 def landlord_summary(complex_obj):
-    from core.core_reviews.services import landlord_rating    # core_reviews imports core_rentals -> core_listings
+    from core.core_reviews.models import Review    # core_reviews imports core_rentals -> core_listings
     landlord = complex_obj.landlord
     user = landlord.user
     return {
-        "rating": landlord_rating(landlord),        # stars beside the name
+        "rating": Review.objects.for_landlord(landlord).summary("landlord"),        # stars beside the name
         "name": user.display_name,
         "initials": user.initials,
         "avatar_url": user.avatar_url,
@@ -114,11 +114,12 @@ def get_renter_complex(pk):
 
 
 def complex_detail_context(complex_obj, user):
-    from core.core_reviews.services import complex_rating, complex_reviews_context, unit_ratings
+    from core.core_reviews.models import Review
+    from core.core_reviews.services import ComplexReviews
 
     units = [_decorate_unit(unit) for unit in complex_obj.units.all()]
     _attach_inquiry_info(units, user)
-    ratings = unit_ratings(units)
+    ratings = Review.objects.unit_summaries(units)
     for unit in units:
         unit.rating = ratings.get(unit.pk)          # stars under the price (None: no reviews yet)
     available = [unit for unit in units if unit.is_available]
@@ -156,14 +157,14 @@ def complex_detail_context(complex_obj, user):
         "landlord": landlord_summary(complex_obj),
         "is_saved": _is_saved(user, complex_obj),
         "other_listings": _other_listings(complex_obj, user),
-        "complex_rating": complex_rating(complex_obj),   # stars beside the name
-        **complex_reviews_context(complex_obj),          # Reviews tab
+        "complex_rating": Review.objects.for_complex(complex_obj).summary("complex"),   # stars beside the name
+        **ComplexReviews(complex_obj).context(),          # Reviews tab
     }
 
 
 def _other_listings(complex_obj, user):
-    from core.core_renters.services import landlord_other_listings   # core_renters imports core_listings
-    return landlord_other_listings(complex_obj, user)
+    from core.core_renters.services import ListingCards   # core_renters imports core_listings
+    return ListingCards(user).other_listings(complex_obj)
 
 
 # =========================================================
@@ -226,10 +227,10 @@ def _similar_units(unit):
 
 
 def unit_detail_context(unit, user):
-    from core.core_reviews.services import unit_rating
+    from core.core_reviews.models import Review
 
     _decorate_unit(unit)
-    unit.rating = unit_rating(unit)
+    unit.rating = Review.objects.for_unit(unit).summary("unit")
     _attach_inquiry_info([unit], user)
     complex_obj = unit.complex
     same_complex, other_complexes = _similar_units(unit)

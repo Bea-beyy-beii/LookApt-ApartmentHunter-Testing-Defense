@@ -1,11 +1,11 @@
 # core_renters/tests.py
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
 from core.core_listings.models import Area, Complex, ComplexLandmark, Landmark, SavedListing, Unit
 from core.models import Landlord, Renter, User
 
-from .services import get_renter_listings_context
+from .sections import RenterListingsSection
 
 
 def make_user(username, role, phone, first="Test", last="User"):
@@ -52,8 +52,12 @@ class ListingsSetup(TestCase):
         defaults.update(kwargs)
         return Unit.objects.create(complex=complex_obj, identifier=identifier, price=price, **defaults)
 
+    def listings_context(self, **params):
+        """The Home tab's cards for ?params (what the dashboard and the search endpoint use)."""
+        return RenterListingsSection(self.renter, RequestFactory().get("/", params)).context()
+
     def names(self, **params):
-        context = get_renter_listings_context(self.renter, params)
+        context = self.listings_context(**params)
         return sorted(listing.complex_name for listing in context["listings"])
 
 
@@ -91,15 +95,15 @@ class SearchTests(ListingsSetup):
     def test_budget_and_card_price(self):
         self.assertEqual(self.names(budget_max="8000"), ["Sunrise Residences"])
         self.assertEqual(self.names(budget_min="8000", budget_max="10000"), ["Sunrise Residences"])
-        listings = get_renter_listings_context(self.renter, {"budget_min": "8000"})["listings"]
+        listings = self.listings_context(budget_min="8000")["listings"]
         sunrise = next(c for c in listings if c.pk == self.sunrise.pk)
         self.assertEqual(sunrise.card_price, 9000)          # the price of the unit that fits the budget
         self.assertEqual(self.names(budget_max="abc"), ["Harbor View", "Sunrise Residences"])   # ignored
 
     def test_sort_by_price(self):
-        context = get_renter_listings_context(self.renter, {"sort": "price_high"})
+        context = self.listings_context(sort="price_high")
         self.assertEqual([c.complex_name for c in context["listings"]], ["Harbor View", "Sunrise Residences"])
-        context = get_renter_listings_context(self.renter, {"sort": "price_low"})
+        context = self.listings_context(sort="price_low")
         self.assertEqual([c.complex_name for c in context["listings"]], ["Sunrise Residences", "Harbor View"])
 
     def test_endpoint_returns_home_and_saved_cards(self):

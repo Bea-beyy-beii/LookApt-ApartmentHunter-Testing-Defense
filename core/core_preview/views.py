@@ -12,7 +12,7 @@ into a "Create an account" prompt.
 from django.shortcuts import redirect, render
 
 from core.core_listings.forms import ComplexForm
-from core.core_renters.services import get_renter_listings_context
+from core.core_renters.sections import RenterListingsSection
 from core.core_reports.services import SUPPORT_EMAIL
 
 from . import demo
@@ -48,7 +48,7 @@ def renter_preview(request):
         "preview": "renter",
         "preview_tabs": ",".join(RENTER_TABS),
         "active_tab": _tab(request, RENTER_TABS),
-        **get_renter_listings_context(None, request.GET),   # every published listing, nothing saved
+        **RenterListingsSection(None, request).context(),   # every published listing, nothing saved
     })
 
 
