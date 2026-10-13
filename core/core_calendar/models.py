@@ -8,6 +8,8 @@
 # never get out of date.
 from django.db import models
 
+from core.core_inquiries.labels import clock_label, date_label
+
 
 class CalendarEvent(models.Model):
 
@@ -37,6 +39,44 @@ class CalendarEvent(models.Model):
     def __str__(self):
         return f"{self.title} ({self.start_date})"
 
+    # Category = filter checkbox + colour on the calendar
+    CATEGORIES = {
+        Type.ANNOUNCEMENT: "announcement",
+        Type.MEETING: "announcement",
+        Type.OTHER: "announcement",
+        Type.MAINTENANCE: "maintenance",
+    }
+
     @property
     def all_day(self):
         return self.start_time is None
+
+    @property
+    def is_whole_week(self):
+        return self.end_date > self.start_date
+
+    @property
+    def category(self):
+        return self.CATEGORIES.get(self.event_type, "announcement")
+
+    @property
+    def hours_label(self):
+        """"2:00 PM – 4:00 PM" (or just the start time)."""
+        return clock_label(self.start_time) + (f" – {clock_label(self.end_time)}" if self.end_time else "")
+
+    @property
+    def time_label(self):
+        """What the calendar shows in the time column."""
+        if self.all_day:
+            return "All week" if self.is_whole_week else "All-day"
+        return self.hours_label
+
+    @property
+    def when_label(self):
+        """"Oct 11, 2026 – Oct 17, 2026 (whole week)" or "Oct 20, 2026, 2:00 PM – 4:00 PM"."""
+        if self.is_whole_week:
+            return f"{date_label(self.start_date)} – {date_label(self.end_date)} (whole week)"
+        when = date_label(self.start_date)
+        if self.start_time:
+            when += f", {self.hours_label}"
+        return when

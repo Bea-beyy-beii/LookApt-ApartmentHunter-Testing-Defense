@@ -4,10 +4,10 @@ from django.test import TestCase
 
 from core.core_inquiries.models import Application
 from core.core_listings.models import Area, Complex, Unit
-from core.core_rentals.services import assign_tenant, end_tenancy
+from core.core_rentals.services import TenantAssignment
 from core.models import Landlord, Renter, User
 
-from . import services
+from .services import Bulletin, Calendar
 
 
 def make_user(username, role, phone):
@@ -49,16 +49,16 @@ class CalendarSetup(TestCase):
         application = Application.objects.create(
             renter=user.renter, unit=unit, kind="apply", occupants=[user.display_name], move_in_date=start,
         )
-        return assign_tenant(unit, start, application=application, on=date(2026, 9, 1))
+        return TenantAssignment.create(unit, start, application=application, on=date(2026, 9, 1)).save()
 
     def items(self, user, start=date(2026, 10, 1), end=date(2026, 11, 30)):
-        return services.calendar_items(user, start, end)
+        return Calendar.for_user(user, start, end).items()
 
     def post(self, complexes, day):
-        return services.post_bulletin(
+        return Bulletin(
             self.landlord, message="Water interruption", complex_ids=[str(c.pk) for c in complexes],
             event_date=day, event_title="Water",
-        )
+        ).post()
 
     def visit(self, user, unit, status):
         return Application.objects.create(
@@ -100,7 +100,7 @@ class RenterCalendarTests(CalendarSetup):
         self.assertEqual(days, ["2026-11-05"])
 
     def test_ended_tenancy_sees_no_bulletins(self):
-        end_tenancy(self.tenancy, "completed", on=date(2026, 9, 30))
+        self.tenancy.end("completed", on=date(2026, 9, 30))
         self.post([self.sunrise], date(2026, 10, 20))
         self.assertEqual(self.titles(self.items(self.tenant), "announcement"), [])
 
@@ -132,12 +132,12 @@ class BulletinMessageTests(CalendarSetup):
         self.assertEqual(message.bulletin_event, "Water · Oct 20, 2026")
         self.assertEqual(message.preview, "Bulletin: Water interruption")
 
-        from core.core_inquiries.services import message_json
-        data = message_json(self.tenant, message)
+        from core.core_inquiries.services import ChatJSON
+        data = ChatJSON(self.tenant).message(message)
         self.assertEqual((data["kind"], data["bulletin_event"]), ("bulletin", "Water · Oct 20, 2026"))
 
     def test_bulletin_without_a_date(self):
-        services.post_bulletin(self.landlord, message="Gate closes at 10 PM", complex_ids=[str(self.sunrise.pk)])
+        Bulletin(self.landlord, message="Gate closes at 10 PM", complex_ids=[str(self.sunrise.pk)]).post()
         [message] = self.received(self.tenant)
         self.assertEqual(message.bulletin_event, "")
 
@@ -150,7 +150,7 @@ class BulletinMessageTests(CalendarSetup):
         Application.objects.create(renter=applicant.renter, unit=self.other_unit, kind="apply",
                                    occupants=["Ann"], move_in_date=date(2026, 12, 1))
         old = self.assign(self.make_unit(self.sunrise, 2), former, date(2026, 9, 1))
-        end_tenancy(old, "completed", on=date(2026, 9, 30))
+        old.end("completed", on=date(2026, 9, 30))
 
         __, sent = self.post([self.sunrise, self.moonlight], date(2026, 10, 20))
         self.assertEqual(sent, 1)

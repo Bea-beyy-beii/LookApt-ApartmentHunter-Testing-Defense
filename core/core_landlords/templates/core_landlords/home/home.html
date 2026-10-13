@@ -1,5 +1,5 @@
 {% comment %}
-    Landlord Home tab. Data: core_landlords.services.home_context().
+    Landlord Home tab. Data: core_landlords.sections.HomeSection.
     Behaviour (card links, chart, receivables drawer, quick actions): landlord_home.js.
     The Monthly Receivables drawer slides in on the right, over the calendar column.
 {% endcomment %}
@@ -12,7 +12,7 @@
         <!-- Welcome + quick actions -->
         <div class="lh-welcome">
             <div class="lh-welcome-text">
-                <h1>Welcome back, {{ home.first_name }}!</h1>
+                <h1>{% if first_visit %}Welcome{% else %}Welcome back{% endif %}, {{ home.first_name }}!</h1>
                 <p>Here's what's happening with your properties today.</p>
             </div>
             <div class="lh-actions">

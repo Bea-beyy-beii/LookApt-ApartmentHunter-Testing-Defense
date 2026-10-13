@@ -76,21 +76,57 @@ class User(AbstractUser):
     def save(self, *args, **kwargs):
         self.first_name = self.first_name.strip()
         self.last_name = self.last_name.strip()
-
         if not self.username:
-            first_clean = re.sub(r'\s+', '', self.first_name).lower()
-            last_clean = re.sub(r'\s+', '', self.last_name).lower()
-            base_username = f"{first_clean}.{last_clean}"
-            username = base_username
-
-            counter = 1
-            while User.objects.filter(username=username).exists():
-                username = f"{base_username}{counter}"
-                counter += 1
-            self.username = username
-
+            self.username = self._unique_username()
         super().save(*args, **kwargs)
 
+    def _unique_username(self):
+        """firstname.lastname, with a number added if someone has it already."""
+        first_clean = re.sub(r'\s+', '', self.first_name).lower()
+        last_clean = re.sub(r'\s+', '', self.last_name).lower()
+        base_username = f"{first_clean}.{last_clean}"
+        username = base_username
+
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{base_username}{counter}"
+            counter += 1
+        return username
+
+
+
+# ----------------------------- ROLE: the user's profile object (polymorphism, see Profile below)
+
+    # Admins have no profile row; their home is the admin panel
+    ADMIN_HOME = 'core_admin:overview'
+
+    @property
+    def profile(self):
+        """The Renter or Landlord object for this account (None for admins).
+        Code asks the profile instead of checking `user.role == ...`."""
+        return getattr(self, self.role, None) if self.role in ('renter', 'landlord') else None
+
+    @property
+    def home_url_name(self):
+        """Where this user lands after logging in (each profile type answers for itself)."""
+        profile = self.profile
+        return profile.HOME_URL_NAME if profile else self.ADMIN_HOME
+
+    def create_profile(self):
+        """Make the Renter / Landlord row that goes with a new account."""
+        return Profile.for_role(self.role).objects.create(user=self)
+
+    @property
+    def is_landlord(self):
+        return self.role == 'landlord'
+
+    @property
+    def is_renter(self):
+        return self.role == 'renter'
+
+    @property
+    def is_admin_user(self):
+        return self.role == 'admin'
 
 
 # ----------------------------- DISPLAY NAME: Firstname Lastname (property to be called)
@@ -132,11 +168,47 @@ class User(AbstractUser):
 
 
 
+# --------------------------------------------------------------------------------------------------------------- CLASS PROFILE - SHARED PARENT OF RENTER AND LANDLORD
+
+class Profile(models.Model):
+    """What every role profile has: one User, and a home page.
+
+    Abstract (no table of its own): Renter and Landlord inherit the `user` link
+    and these methods, and each one overrides ROLE / HOME_URL_NAME / role_label.
+    """
+
+    ROLE = None               # 'renter' / 'landlord' (set by each subclass)
+    HOME_URL_NAME = None      # the dashboard this role logs in to
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, db_column='user_id')
+
+    class Meta:
+        abstract = True
+
+    @classmethod
+    def for_role(cls, role):
+        """The profile class for 'renter' / 'landlord' (None for any other role)."""
+        return {profile_class.ROLE: profile_class for profile_class in cls.__subclasses__()}.get(role)
+
+    @property
+    def role_label(self):
+        return self.ROLE.title()
+
+    @property
+    def display_name(self):
+        return self.user.display_name
+
+    def __str__(self):
+        return f"{self.role_label}: {self.user.display_name}"
+
+
 # --------------------------------------------------------------------------------------------------------------- CLASS RENTER - FOR RENTERS TABLE
 
-class Renter(models.Model):
+class Renter(Profile):
+    ROLE = 'renter'
+    HOME_URL_NAME = 'core_renters:dashboard'
+
     renter_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.OneToOneField(User, on_delete=models.CASCADE, db_column='user_id')
 
     class Meta:
         db_table= 'renters'
@@ -144,10 +216,11 @@ class Renter(models.Model):
 
 # --------------------------------------------------------------------------------------------------------------- CLASS LANDLORD - FOR LANDLORDS TABLE
 
-class Landlord(models.Model):
+class Landlord(Profile):
+    ROLE = 'landlord'
+    HOME_URL_NAME = 'core_landlords:dashboard'
+
     landlord_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.OneToOneField(User, on_delete=models.CASCADE, db_column='user_id')
 
     class Meta:
         db_table= 'landlords'
-

@@ -1,7 +1,7 @@
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from core.core_rentals.services import get_rentals_context
+from core.core_rentals.sections import RentalsSection
 from core.models import Landlord, User
 
 from .models import Area, Complex, Unit
@@ -87,7 +87,7 @@ class UnpublishedComplexTests(ListingSetup):
         self.assertEqual(self.available.availability, "available")
 
     def test_manage_rentals_only_shows_published_complexes(self):
-        names = lambda: [g["complex"].complex_name for g in get_rentals_context(self.user)["rental_groups"]]
+        names = lambda: [g["complex"].complex_name for g in RentalsSection(self.user).context()["rental_groups"]]
         self.assertEqual(names(), ["Sunrise"])
         self.set_visibility("unpublished")
         self.assertEqual(names(), [])
@@ -101,8 +101,8 @@ class RenterUnpublishTests(ListingSetup):
     def setUp(self):
         super().setUp()
         from datetime import date
-        from core.core_rentals.services import assign_tenant
-        assign_tenant(self.available, date.today(), tenant_name="Ana Cruz")    # now occupied with a renter
+        from core.core_rentals.services import TenantAssignment
+        TenantAssignment.create(self.available, date.today(), tenant_name="Ana Cruz").save()    # now occupied with a renter
 
     def set_availability(self, unit, availability):
         return self.client.post(reverse("core_listings:unit_set_availability", args=[unit.pk]),
@@ -232,14 +232,14 @@ class ListingFormTests(ListingFormSetup):
         self.assertTrue(two.is_valid(), two.errors)
 
     def test_card_chips_are_complex_features_only(self):
-        from core.core_renters.services import get_renter_listings_context
+        from core.core_renters.sections import RenterListingsSection
         for key in Complex.FEATURE_LABELS:
             setattr(self.complex, key, True)
         self.complex.save()
         Unit.objects.create(complex=self.complex, identifier=1, bedroom_type="studio", width_dimension=4,
                             length_dimension=5, furnish_level="fully_furnished", max_occupant=2, price=8000,
                             air_conditioned=True, wifi_ready=True)
-        [listing] = get_renter_listings_context(None)["listings"]
+        [listing] = RenterListingsSection(None).context()["listings"]
         self.assertEqual([chip["key"] for chip in listing.card_chips], list(Complex.FEATURE_LABELS)[:4])
 
 
@@ -255,30 +255,29 @@ class LandmarksKeptOnSaveTests(ListingFormSetup):
         return ComplexForm(data, instance=self.complex, landlord=self.user.landlord)
 
     def test_blank_list_keeps_landmarks_and_empty_list_clears_them(self):
-        from core.core_listings.views import _save_property
-        from core.core_maps.maps.services import complex_landmarks, save_complex_landmarks
+        from core.core_maps.maps.services import ComplexLandmarks
         self.complex.latitude, self.complex.longitude = 7.06, 125.597
         self.complex.save()
-        save_complex_landmarks(self.complex, [{"name": "Gaisano", "category": "mall", "lat": 7.065, "lng": 125.6}], "walking")
+        ComplexLandmarks(self.complex).replace([{"name": "Gaisano", "category": "mall", "lat": 7.065, "lng": 125.6}], "walking")
         self.complex.pictures.create(image=jpg(), position=0)
         self.complex.pictures.create(image=jpg("b.jpg"), position=1)
 
         form = self.form(landmarks_json="")
         self.assertTrue(form.is_valid(), form.errors)
-        _save_property(form, self.user.landlord)
-        self.assertEqual([item["name"] for item in complex_landmarks(self.complex)], ["Gaisano"])
+        form.save_listing()
+        self.assertEqual([item["name"] for item in ComplexLandmarks(self.complex).as_list()], ["Gaisano"])
 
         # Pin moved without a new list: same landmarks, distances from the new spot
-        before = complex_landmarks(self.complex)[0]["distance_m"]
+        before = ComplexLandmarks(self.complex).as_list()[0]["distance_m"]
         form = self.form(landmarks_json="", latitude="7.07", longitude="125.61")
         self.assertTrue(form.is_valid(), form.errors)
-        _save_property(form, self.user.landlord)
-        self.assertNotEqual(complex_landmarks(self.complex)[0]["distance_m"], before)
+        form.save_listing()
+        self.assertNotEqual(ComplexLandmarks(self.complex).as_list()[0]["distance_m"], before)
 
         form = self.form(landmarks_json="[]")
         self.assertTrue(form.is_valid(), form.errors)
-        _save_property(form, self.user.landlord)
-        self.assertEqual(complex_landmarks(self.complex), [])
+        form.save_listing()
+        self.assertEqual(ComplexLandmarks(self.complex).as_list(), [])
 
 
 @override_settings(STORAGES={
@@ -336,3 +335,34 @@ class BulkUnitTests(ListingFormSetup):
                 "advance_months": "1", "deposit_months": "1", "photos": [jpg(), jpg("b.jpg")]}
         self.assertEqual(self.client.post(self.url, data).status_code, 302)
         self.assertEqual(list(self.complex.units.values_list("identifier", flat=True)), [7])
+
+
+@override_settings(STORAGES={
+    "default": {"BACKEND": "django.core.files.storage.InMemoryStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+})
+class PropertyWizardTests(ListingFormSetup):
+    """The Add / Edit Property pages save the form and go back to My Listings."""
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.user)
+
+    def test_unverified_landlord_saves_it_unpublished(self):
+        self.user.is_verified = False
+        self.user.save()
+        data = {**self.complex_data(), "visibility": "active", "photos": [jpg(), jpg("b.jpg")]}
+        response = self.client.post(reverse("core_listings:property_create"), data)
+        self.assertRedirects(response, reverse("core_landlords:dashboard") + "?tab=myListings&saved=1",
+                             fetch_redirect_response=False)
+        created = Complex.objects.get(complex_name="Moonlight")
+        self.assertEqual((created.status, created.pictures.count()), ("unpublished", 2))
+        texts = [str(m) for m in response.wsgi_request._messages]
+        self.assertEqual(texts[0], "Moonlight was created.")
+        self.assertIn("saved as unpublished", texts[1])
+
+    def test_edit_page_is_only_for_the_owner(self):
+        url = reverse("core_listings:property_edit", args=[self.complex.pk])
+        self.assertEqual(self.client.get(url).context["property"], self.complex)
+        self.client.force_login(make_landlord("other", "09222222222"))
+        self.assertEqual(self.client.get(url).status_code, 404)

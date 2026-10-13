@@ -1,0 +1,108 @@
+/* =========================================================
+   FIELD ERRORS — one look for every "this field is wrong" message
+   (sign-up, log in, listing forms, pop-ups, admin). The box turns
+   red with a soft pink fill; the message sits under it with an icon.
+   field_errors.js shows them in place of the browser's bubbles.
+========================================================= */
+
+:root {
+    --error-soft: #fdeeec;
+    --error-ring: rgba(201, 75, 75, 0.14);
+}
+
+html[data-theme="dark"] {
+    --error-soft: rgba(224, 114, 114, 0.12);
+    --error-ring: rgba(224, 114, 114, 0.22);
+}
+
+
+/* ---------- The message ---------- */
+
+:is(.field-error, .ac-error, .lm-field-error, .ap-error, .lk-manual-error,
+    .photo-upload-error, .message-error, .confirm-dialog-error, .login-error) {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+
+    margin-top: 6px;
+
+    color: var(--error, #c94b4b);
+
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+    text-align: left;
+}
+
+/* (!) icon before the text */
+:is(.field-error, .ac-error, .lm-field-error, .ap-error, .lk-manual-error,
+    .photo-upload-error, .message-error, .confirm-dialog-error, .login-error)::before {
+    content: "";
+
+    flex: 0 0 auto;
+
+    width: 15px;
+    height: 15px;
+    margin-top: 0.5px;
+
+    background: currentColor;
+
+    -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'><circle cx='12' cy='12' r='9.5'/><path d='M12 7.5v5.5'/><circle cx='12' cy='16.6' r='0.6' fill='black'/></svg>") center / contain no-repeat;
+            mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'><circle cx='12' cy='12' r='9.5'/><path d='M12 7.5v5.5'/><circle cx='12' cy='16.6' r='0.6' fill='black'/></svg>") center / contain no-repeat;
+}
+
+/* The log-in / reset banner stays centred above the form */
+.login-error {
+    justify-content: center;
+    margin: 0 0 12px;
+}
+
+/* Django's error list inside a message */
+:is(.field-error, .ap-error) ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* Nothing to say: no empty gap */
+:is(.field-error, .ac-error, .lm-field-error, .ap-error, .lk-manual-error,
+    .photo-upload-error, .message-error, .confirm-dialog-error, .login-error):empty,
+:is(.field-error, .ac-error, .lm-field-error, .ap-error, .lk-manual-error,
+    .photo-upload-error, .message-error, .confirm-dialog-error, .login-error)[hidden] {
+    display: none;
+}
+
+
+/* ---------- The box ---------- */
+
+:is(.has-error, .is-invalid) :is(input, select, textarea):not([type="checkbox"], [type="radio"], [type="hidden"], [type="file"]),
+:is(input, select, textarea)[aria-invalid="true"]:not([type="checkbox"], [type="radio"]),
+.lm-input:is(.is-invalid, :has([aria-invalid="true"])),
+.affix-input:has([aria-invalid="true"]) {
+    border-color: var(--error, #c94b4b) !important;
+    background-color: var(--error-soft) !important;
+}
+
+:is(.has-error, .is-invalid) :is(input, select, textarea):focus,
+:is(input, select, textarea)[aria-invalid="true"]:focus,
+.lm-input:is(.is-invalid, :has([aria-invalid="true"])):focus-within,
+.affix-input:has([aria-invalid="true"]):focus-within {
+    box-shadow: 0 0 0 3px var(--error-ring) !important;
+}
+
+/* Inside a red wrapper the input itself stays see-through */
+:is(.lm-input, .affix-input):has([aria-invalid="true"]) :is(input, select) {
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+/* Hints make room for the error */
+.has-error .field-hint {
+    display: none;
+}
+
+/* Tick boxes / radios: red outline */
+:is(input[type="checkbox"], input[type="radio"])[aria-invalid="true"] {
+    outline: 2px solid var(--error, #c94b4b);
+    outline-offset: 2px;
+}

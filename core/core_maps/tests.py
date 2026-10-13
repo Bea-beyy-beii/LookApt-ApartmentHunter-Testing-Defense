@@ -10,10 +10,15 @@ from django.urls import reverse
 from core.core_listings.models import Area, Complex, ComplexLandmark, Landmark
 from core.models import Landlord, User
 
-from .maps import geo, services
-from .maps.providers import OverpassProvider
+from .maps.geo import GeoPoint, SearchRadius, TravelMode
+from .maps.providers import Geocoder, LandmarkSource, LocalProvider, NominatimGeocoder, OverpassProvider, PhotonGeocoder
+from .maps.services import ComplexLandmarks, ComplexSearch, LandmarkFinder, PlaceSearch
 
 MAPUA = (7.0588, 125.5962)
+
+
+def nearby_landmarks(lat, lng, radius_km, mode):
+    return LandmarkFinder(GeoPoint(lat, lng), SearchRadius(radius_km), mode).find()
 
 
 def overpass_down(*args, **kwargs):
@@ -23,26 +28,42 @@ def overpass_down(*args, **kwargs):
 class GeoTests(TestCase):
 
     def test_haversine_one_degree_latitude(self):
-        self.assertAlmostEqual(geo.haversine_m(0, 0, 1, 0), 111_195, delta=50)
+        self.assertAlmostEqual(GeoPoint(0, 0).distance_to(1, 0), 111_195, delta=50)
 
     def test_estimates_follow_transport_mode(self):
         # 1 km straight line -> 1.3 km road
-        self.assertEqual(geo.estimate_minutes(1000, "walking"), 16)
-        self.assertEqual(geo.estimate_minutes(1000, "driving"), 3)
-        self.assertLess(geo.estimate_minutes(1000, "commute"), geo.estimate_minutes(1000, "walking"))
+        self.assertEqual(TravelMode.get("walking").minutes_for(1000), 16)
+        self.assertEqual(TravelMode.get("driving").minutes_for(1000), 3)
+        self.assertLess(TravelMode.get("commute").minutes_for(1000), TravelMode.get("walking").minutes_for(1000))
 
     def test_radius_for_minutes_is_inverse(self):
-        km = geo.radius_for_minutes(30, "walking")
-        self.assertAlmostEqual(geo.estimate_minutes(km * 1000, "walking"), 30, delta=1)
+        walking = TravelMode.get("walking")
+        km = walking.radius_for(30)
+        self.assertAlmostEqual(walking.minutes_for(km * 1000), 30, delta=1)
+
+    def test_unknown_mode_falls_back_to_walking(self):
+        self.assertEqual(TravelMode.get("teleport").key, "walking")
 
     def test_radius_is_clamped(self):
-        self.assertEqual(geo.clamp_radius(500), geo.MAX_RADIUS_KM)
-        self.assertEqual(geo.clamp_radius(0), geo.MIN_RADIUS_KM)
+        self.assertEqual(SearchRadius.clamped(500).km, SearchRadius.MAX_KM)
+        self.assertEqual(SearchRadius.clamped(0).km, SearchRadius.MIN_KM)
 
     def test_bounding_box_contains_circle(self):
-        min_lat, max_lat, min_lng, max_lng = geo.bounding_box(*MAPUA, 3)
-        self.assertGreater(geo.haversine_m(*MAPUA, max_lat, MAPUA[1]), 2990)
-        self.assertGreater(geo.haversine_m(*MAPUA, MAPUA[0], max_lng), 2990)
+        mapua = GeoPoint(*MAPUA)
+        min_lat, max_lat, min_lng, max_lng = mapua.bounding_box(3)
+        self.assertGreater(mapua.distance_to(max_lat, MAPUA[1]), 2990)
+        self.assertGreater(mapua.distance_to(MAPUA[0], max_lng), 2990)
+
+
+class ProviderTests(TestCase):
+
+    def test_providers_share_abstract_interfaces(self):
+        for geocoder in (PhotonGeocoder, NominatimGeocoder, LocalProvider):
+            self.assertTrue(issubclass(geocoder, Geocoder))
+        for source in (OverpassProvider, LocalProvider):
+            self.assertTrue(issubclass(source, LandmarkSource))
+        with self.assertRaises(TypeError):
+            Geocoder()
 
 
 class OverpassParsingTests(TestCase):
@@ -93,7 +114,7 @@ class ServiceTests(MapSetup):
 
     @mock.patch("core.core_maps.maps.providers.requests.post", side_effect=overpass_down)
     def test_nearby_landmarks_falls_back_to_local(self, _post):
-        landmarks, source = services.nearby_landmarks(7.0600, 125.5970, 1, "walking")
+        landmarks, source = nearby_landmarks(7.0600, 125.5970, 1, "walking")
         self.assertEqual(source, "offline")
         self.assertEqual([l["name"] for l in landmarks], ["Mapúa Malayan Colleges Mindanao"])
         self.assertEqual(landmarks[0]["label"], "School")
@@ -104,7 +125,7 @@ class ServiceTests(MapSetup):
         post.return_value.json.return_value = {"elements": [
             {"type": "node", "id": 9, "lat": 7.0610, "lon": 125.5975, "tags": {"amenity": "hospital", "name": "Clinic A"}},
         ]}
-        landmarks, source = services.nearby_landmarks(7.0600, 125.5970, 1, "driving")
+        landmarks, source = nearby_landmarks(7.0600, 125.5970, 1, "driving")
         self.assertEqual(source, "live")
         self.assertEqual({l["name"] for l in landmarks}, {"Mapúa Malayan Colleges Mindanao", "Clinic A"})
 
@@ -115,15 +136,15 @@ class ServiceTests(MapSetup):
         self.make_complex("Pending", 7.0590, 125.5960, approval_status=Complex.Approval.PENDING)
         self.make_complex("Unpublished", 7.0590, 125.5965, status=Complex.ComplexStatus.UNPUBLISHED)
 
-        within_1km = services.complexes_near(*MAPUA, 1, "walking")
+        within_1km = ComplexSearch(GeoPoint(*MAPUA), SearchRadius(1), "walking").results()
         self.assertEqual([c["id"] for c in within_1km], [str(near.pk)])
 
-        within_3km = services.complexes_near(*MAPUA, 3, "walking")
+        within_3km = ComplexSearch(GeoPoint(*MAPUA), SearchRadius(3), "walking").results()
         self.assertEqual([c["name"] for c in within_3km], ["Near", "Mid"])
 
     def test_save_complex_landmarks_recomputes_distance(self):
         complex_obj = self.make_complex("Near", 7.0600, 125.5970)
-        saved = services.save_complex_landmarks(complex_obj, [
+        saved = ComplexLandmarks(complex_obj).replace([
             {"name": "Mapúa Malayan Colleges Mindanao", "category": "school", "lat": MAPUA[0], "lng": MAPUA[1]},
             {"name": "bad", "category": "not-a-category", "lat": 1, "lng": 1},
             {"name": "", "category": "school", "lat": 1, "lng": 1},
@@ -160,7 +181,7 @@ class ApiTests(TestCase):
     def test_minutes_converted_to_radius(self):
         response = self.client.get(reverse("core_maps:complexes_api"), {"lat": 7.06, "lng": 125.6, "minutes": 10, "mode": "driving"})
         self.assertEqual(response.status_code, 200)
-        self.assertAlmostEqual(response.json()["radius_km"], geo.radius_for_minutes(10, "driving"), places=1)
+        self.assertAlmostEqual(response.json()["radius_km"], TravelMode.get("driving").radius_for(10), places=1)
 
     @mock.patch("core.core_maps.maps.providers.requests.get", side_effect=requests.ConnectionError("offline"))
     def test_search_uses_local_landmarks(self, _get):
@@ -195,18 +216,18 @@ class SpeedTests(MapSetup):
 
     def test_overpass_rings_go_in_one_request_and_are_cached(self):
         with mock.patch("core.core_maps.maps.providers.requests.post", return_value=overpass_reply(CLINIC)) as post:
-            services.nearby_landmarks(7.06, 125.597, 5, "walking")       # rings 1, 3 and 5 km
+            nearby_landmarks(7.06, 125.597, 5, "walking")       # rings 1, 3 and 5 km
             self.assertEqual(post.call_count, 1)
             query = post.call_args.kwargs["data"]["data"]
             for radius in ("around:1000", "around:3000", "around:5000"):
                 self.assertIn(radius, query)
-            services.nearby_landmarks(7.06, 125.597, 5, "driving")       # same place: cached
+            nearby_landmarks(7.06, 125.597, 5, "driving")       # same place: cached
             self.assertEqual(post.call_count, 1)
 
     def test_a_failing_server_moves_on_to_the_next(self):
         replies = [requests.ConnectionError("down"), overpass_reply(CLINIC)]
         with mock.patch("core.core_maps.maps.providers.requests.post", side_effect=replies) as post:
-            landmarks, source = services.nearby_landmarks(7.06, 125.597, 1, "walking")
+            landmarks, source = nearby_landmarks(7.06, 125.597, 1, "walking")
         self.assertEqual(source, "live")
         self.assertIn("Clinic A", [item["name"] for item in landmarks])
         self.assertEqual(post.call_count, 2)
@@ -214,15 +235,15 @@ class SpeedTests(MapSetup):
 
     def test_shown_landmarks_are_remembered_for_search(self):
         with mock.patch("core.core_maps.maps.providers.requests.post", return_value=overpass_reply(CLINIC)):
-            services.nearby_landmarks(7.06, 125.597, 1, "walking")
-            services.nearby_landmarks(7.06, 125.597, 3, "walking")       # no duplicates
+            nearby_landmarks(7.06, 125.597, 1, "walking")
+            nearby_landmarks(7.06, 125.597, 3, "walking")       # no duplicates
         self.assertEqual(Landmark.objects.filter(name="Clinic A").count(), 1)
         with mock.patch("core.core_maps.maps.providers.requests.get", side_effect=requests.ConnectionError("offline")):
-            self.assertEqual(services.search_place("clinic a")[0]["name"], "Clinic A")
+            self.assertEqual(PlaceSearch("clinic a").results()[0]["name"], "Clinic A")
 
     def test_frame_only_loads_leaflet(self):
-        from .maps.folium_maps import build_map
-        html = build_map(7.06, 125.6, radius_km=3)
+        from .maps.folium_maps import LocationMap
+        html = LocationMap(7.06, 125.6, radius_km=3).render()
         self.assertIn("leaflet.js", html)
         for heavy in ("bootstrap", "jquery", "fontawesome", "awesome-markers"):
             self.assertNotIn(heavy, html)
@@ -230,7 +251,7 @@ class SpeedTests(MapSetup):
         # Apartment pop-ups (renter map) are built with jQuery
         complex_item = {"name": "Sunrise", "address": "Matina", "lat": 7.061, "lng": 125.601, "min_price": 5000,
                         "max_price": 8000, "distance_label": "200 m", "minutes": 3}
-        self.assertIn("jquery", build_map(7.06, 125.6, radius_km=3, complexes=[complex_item]))
+        self.assertIn("jquery", LocationMap(7.06, 125.6, radius_km=3, complexes=[complex_item]).render())
 
 
 def photon_reply(*features):
@@ -253,8 +274,8 @@ class SearchTests(TestCase):
     def test_local_search_matches_every_word_in_any_order(self):
         Landmark.objects.create(name="Jose Maria College Foundation", category="school", latitude=7.12, longitude=125.66)
         with mock.patch("core.core_maps.maps.providers.requests.get", side_effect=requests.ConnectionError("offline")):
-            self.assertEqual(services.search_place("college jose")[0]["name"], "Jose Maria College Foundation")
-            self.assertEqual(services.search_place("jose maria")[0]["category"], "school")
+            self.assertEqual(PlaceSearch("college jose").results()[0]["name"], "Jose Maria College Foundation")
+            self.assertEqual(PlaceSearch("jose maria").results()[0]["category"], "school")
 
     def test_photon_finds_half_typed_names_in_the_philippines(self):
         reply = photon_reply(
@@ -263,7 +284,7 @@ class SearchTests(TestCase):
             photon_feature("Nikkei Tokyo", 35.6, 139.7, country="JP"),
         )
         with mock.patch("core.core_maps.maps.providers.requests.get", return_value=reply) as get:
-            results = services.search_place("nikkei jin")
+            results = PlaceSearch("nikkei jin").results()
         self.assertEqual([r["name"] for r in results], ["Philippine Nikkei Jin Kai International School"])
         self.assertEqual(results[0]["category"], "school")
         self.assertEqual(results[0]["address"], "Mintal, Davao City")
@@ -277,7 +298,7 @@ class SearchTests(TestCase):
         with mock.patch("core.core_maps.maps.providers.time.sleep"), \
              mock.patch("core.core_maps.maps.providers.requests.get",
                         side_effect=[requests.ConnectionError("photon down"), nominatim]):
-            results = services.search_place("karwasan")
+            results = PlaceSearch("karwasan").results()
         self.assertEqual(results[0]["name"], "Karwasan ni Sikoy")
 
 
@@ -285,11 +306,11 @@ class ManualLandmarkTests(MapSetup):
 
     def test_manual_flag_is_saved_and_returned(self):
         complex_obj = self.make_complex("Near", 7.0600, 125.5970)
-        services.save_complex_landmarks(complex_obj, [
+        ComplexLandmarks(complex_obj).replace([
             {"name": "Karwasan ni Sikoy", "category": "restaurant", "lat": 7.0605, "lng": 125.5972, "manual": True},
             {"name": "Mapúa Malayan Colleges Mindanao", "category": "school", "lat": MAPUA[0], "lng": MAPUA[1]},
         ], "walking")
-        saved = {item["name"]: item["manual"] for item in services.complex_landmarks(complex_obj)}
+        saved = {item["name"]: item["manual"] for item in ComplexLandmarks(complex_obj).as_list()}
         self.assertEqual(saved, {"Karwasan ni Sikoy": True, "Mapúa Malayan Colleges Mindanao": False})
 
     def test_frame_draws_unsaved_manual_pins(self):
@@ -305,4 +326,26 @@ class ManualLandmarkTests(MapSetup):
         empty = self.make_complex("Empty", 7.0600, 125.5970)
         with mock.patch("core.core_maps.maps.providers.requests.post", return_value=overpass_reply(CLINIC)):
             call_command("refresh_landmarks", stdout=mock.Mock(), stderr=mock.Mock())
-        self.assertIn("Clinic A", [item["name"] for item in services.complex_landmarks(empty)])
+        self.assertIn("Clinic A", [item["name"] for item in ComplexLandmarks(empty).as_list()])
+
+
+class FrameAndTagTests(MapSetup):
+
+    def test_renter_frame_draws_complexes(self):
+        self.make_complex("Sunrise Residences", 7.0600, 125.5970)
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("core_maps:frame"), {"lat": 7.06, "lng": 125.597, "kind": "renter"})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Sunrise Residences", response.content.decode())
+
+    def test_map_views_only_answer_get(self):
+        self.client.force_login(self.user)
+        self.assertEqual(self.client.post(reverse("core_maps:frame")).status_code, 405)
+        self.assertEqual(self.client.post(reverse("core_maps:search_api")).status_code, 405)
+
+    def test_location_picker_tag(self):
+        from django.template import Context, Template
+        html = Template('{% load core_maps %}{% location_picker kind="renter" mode="driving" height=200 %}').render(Context())
+        self.assertIn('data-kind="renter"', html)
+        self.assertIn('data-mode="driving"', html)
+        self.assertIn("Commute", html)

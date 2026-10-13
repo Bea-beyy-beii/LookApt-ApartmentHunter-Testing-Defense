@@ -8,10 +8,10 @@ from django.urls import reverse
 from core.core_inquiries.models import Application
 from core.core_listings.models import Area, Complex, ListingView, Unit
 from core.core_rentals.models import RentPayment, Tenancy
-from core.core_rentals.services import assign_tenant, end_tenancy
+from core.core_rentals.services import TenantAssignment
 from core.models import Landlord, Renter, User
 
-from . import services
+from .services import PerformanceChart, ReceivablesReport
 
 TODAY = date(2026, 10, 9)
 
@@ -27,6 +27,7 @@ def make_user(username, role, phone):
 
 @mock.patch("core.core_inquiries.services.today", return_value=TODAY)
 @mock.patch("core.core_landlords.services.today", return_value=TODAY)
+@mock.patch("core.core_landlords.sections.today", return_value=TODAY)
 class HomeTests(TestCase):
 
     def setUp(self):
@@ -46,7 +47,9 @@ class HomeTests(TestCase):
         )
 
     def tenant(self, unit, start, application=None):
-        return assign_tenant(unit, start, application=application, tenant_name="" if application else "Guest", on=start)
+        return TenantAssignment.create(
+            unit, start, application=application, tenant_name="" if application else "Guest", on=start,
+        ).save()
 
     # ---------- receivables ----------
 
@@ -57,7 +60,7 @@ class HomeTests(TestCase):
         self.tenant(self.units[3], date(2026, 9, 28))            # due Oct 28 (not yet due)
         RentPayment.objects.create(tenancy=paid, due_date=date(2026, 10, 5), amount=12000, paid_on=TODAY)
 
-        r = services.receivables(self.landlord, TODAY, TODAY)
+        r = ReceivablesReport(self.landlord, TODAY, TODAY).as_dict()
         self.assertEqual(r["expected"], {"count": 4, "amount": 38500})
         self.assertEqual(r["paid"]["amount"], 12000)
         self.assertEqual(r["overdue"]["count"], 1)
@@ -69,17 +72,17 @@ class HomeTests(TestCase):
     def test_ended_contract_is_never_overdue(self, *_):
         ended = self.tenant(self.units[0], date(2026, 8, 3))          # Aug 3, Sep 3 unpaid
         RentPayment.objects.create(tenancy=ended, due_date=date(2026, 8, 3), amount=12000, paid_on=date(2026, 8, 3))
-        end_tenancy(ended, "terminated", on=date(2026, 9, 20))
+        ended.end("terminated", on=date(2026, 9, 20))
 
-        september = services.receivables(self.landlord, date(2026, 9, 1), TODAY)
+        september = ReceivablesReport(self.landlord, date(2026, 9, 1), TODAY).as_dict()
         self.assertEqual(september["overdue"]["count"], 0)
         self.assertEqual(september["expected"]["count"], 0)
-        august = services.receivables(self.landlord, date(2026, 8, 1), TODAY)
+        august = ReceivablesReport(self.landlord, date(2026, 8, 1), TODAY).as_dict()
         self.assertEqual(august["paid"]["amount"], 12000)                # what was paid still counts
 
     def test_future_tenancy_is_not_expected_yet(self, *_):
         self.tenant(self.units[0], date(2026, 11, 1))
-        self.assertEqual(services.receivables(self.landlord, TODAY, TODAY)["expected"]["count"], 0)
+        self.assertEqual(ReceivablesReport(self.landlord, TODAY, TODAY).as_dict()["expected"]["count"], 0)
 
     # ---------- performance ----------
 
@@ -97,7 +100,7 @@ class HomeTests(TestCase):
         Application.objects.update(created_at=on_oct_5)
         Tenancy.objects.update(created_at=on_oct_5)
 
-        data = services.performance(self.landlord, TODAY, TODAY)
+        data = PerformanceChart(self.landlord, TODAY, TODAY).as_dict()
         totals = {s["key"]: s["total"] for s in data["series"]}
         self.assertEqual(totals["views"], 1)
         self.assertEqual(totals["inquiries"], 1)

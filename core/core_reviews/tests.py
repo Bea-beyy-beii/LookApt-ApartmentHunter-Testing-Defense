@@ -9,7 +9,7 @@ from django.urls import reverse
 from PIL import Image
 
 from core.core_listings.models import Area, Complex, Unit
-from core.core_rentals.services import assign_tenant
+from core.core_rentals.services import TenantAssignment
 from core.models import Landlord, Renter, User
 
 from .models import Review
@@ -51,7 +51,7 @@ class ReviewTests(TestCase):
         self.unit = Unit.objects.create(complex=self.complex, identifier=1, bedroom_type="studio", width_dimension=4,
                                         length_dimension=5, furnish_level="unfurnished", max_occupant=2, price=8000)
         start = date.today() - timedelta(days=20)
-        self.tenancy = assign_tenant(self.unit, start, tenant_name="Rina Santos", on=start)
+        self.tenancy = TenantAssignment.create(self.unit, start, tenant_name="Rina Santos", on=start).save()
         self.tenancy.renter = self.renter.renter
         self.tenancy.save()
         self.url = reverse("core_reviews:save_review", args=[self.tenancy.pk])

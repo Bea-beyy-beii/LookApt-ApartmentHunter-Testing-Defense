@@ -4,7 +4,7 @@ from django.urls import reverse
 from core.models import User
 
 from .legal import TERMS_VERSION
-from .services import AccountService
+from .services import SignUp
 
 SIGNUP = {
     "first_name": "Nina", "last_name": "Reyes", "phone_number": "09555555555", "email": "nina@example.com",
@@ -31,7 +31,7 @@ class TermsStepTests(TestCase):
         response = self.client.post(reverse("signup"), {**SIGNUP, "agree_terms": "1"})
         self.assertRedirects(response, reverse("otp"), fetch_redirect_response=False)
         request = self.client.get(reverse("otp")).wsgi_request
-        user = AccountService.create_pending_account(request)
+        user = SignUp(request).create_account()
         self.assertEqual(user.terms_version, TERMS_VERSION)
         self.assertIsNotNone(user.terms_accepted_at)
 
@@ -155,18 +155,15 @@ class AccountPopupTests(TestCase):
         self.assertEqual(self.client.get(reverse("core_renters:dashboard")).status_code, 200)   # still logged in
 
     def test_landlord_contact_on_listing_card(self):
-        from core.core_listings.detail_services import landlord_summary
+        from core.core_listings.detail_services import LandlordSummary
         landlord = User.objects.create_user(username="liza", password="pw-12345!", first_name="Liza", last_name="Test",
                                             phone_number="09111111111", sex="female", role="landlord",
                                             email="liza@example.com")
         Landlord.objects.create(user=landlord)
-        complex_obj = _mock.Mock(landlord=landlord.landlord)
-        with _mock.patch("core.core_listings.detail_services.renter_visible_complexes") as visible:
-            visible.return_value.filter.return_value.count.return_value = 1
-            hidden = landlord_summary(complex_obj)
-            landlord.share_phone = True
-            landlord.save()
-            shown = landlord_summary(complex_obj)
+        hidden = LandlordSummary(landlord.landlord).as_dict()
+        landlord.share_phone = True
+        landlord.save()
+        shown = LandlordSummary(landlord.landlord).as_dict()
         self.assertEqual((hidden["email"], hidden["phone"]), ("", ""))
         self.assertEqual((shown["email"], shown["phone"]), ("", "09111111111"))
 
@@ -197,9 +194,9 @@ class PhotosEverywhereTests(TestCase):
 
         self.landlord = make("liza", "landlord", "09111111111")
         self.renter = make("rina", "renter", "09222222222")
-        from .account import save_avatar
-        save_avatar(self.landlord, photo())
-        save_avatar(self.renter, photo("r.png"))
+        from .account import Account
+        Account(self.landlord).save_avatar(photo())
+        Account(self.renter).save_avatar(photo("r.png"))
 
         complex_obj = Complex.objects.create(
             landlord=self.landlord.landlord, area=Area.objects.create(area_name="Davao City"),
@@ -235,14 +232,79 @@ class PhotosEverywhereTests(TestCase):
         self.assertContains(response, f'data-avatar="{self.renter.avatar_url}"')
 
     def test_chat_threads_carry_the_photo(self):
-        from core.core_inquiries.services import inbox_json
-        thread = inbox_json(self.landlord)["threads"][0]
+        from core.core_inquiries.services import Inbox
+        thread = Inbox(self.landlord).to_json()["threads"][0]
         self.assertEqual((thread["other_avatar"], thread["other_role"]), (self.renter.avatar_url, "renter"))
         self.client.force_login(self.renter)
         response = self.client.get(reverse("core_renters:dashboard") + "?tab=inquiries")
         self.assertContains(response, 'class="thread-avatar avatar--landlord"')
 
     def test_report_people_carry_the_photo(self):
-        from core.core_reports.services import reportable_people
-        person = reportable_people(self.renter)[0]
+        from core.core_reports.services import Reporter
+        person = Reporter.for_user(self.renter).reportable_people()[0]
         self.assertEqual((person["avatar"], person["role"]), (self.landlord.avatar_url, "landlord"))
+
+
+from django.core import mail as _mail
+
+
+@override_settings(MAILERS={"default": {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"}})
+class ForgotPasswordTests(TestCase):
+    """Step 1 needs the email AND the phone number of the same account."""
+
+    def setUp(self):
+        self.mia = User.objects.create_user(username="mia", password="Old#Pass2026", first_name="Mia", last_name="A",
+                                            email="mia@example.com", phone_number="09171234567")
+        self.ben = User.objects.create_user(username="ben", password="Old#Pass2026", first_name="Ben", last_name="B",
+                                            email="ben@example.com", phone_number="09179999999")
+
+    def ask(self, email, phone):
+        return self.client.post(reverse("forgot_password"), {"email": email, "phone_number": phone})
+
+    def test_matching_email_and_phone_sends_the_code(self):
+        response = self.ask("MIA@example.com", "0917 123 4567")
+        self.assertRedirects(response, reverse("forgot_password_code"), fetch_redirect_response=False)
+        self.assertEqual(self.client.session["password_reset"]["user_id"], str(self.mia.pk))
+        self.assertEqual(_mail.outbox[-1].to, ["mia@example.com"])
+
+    def test_someone_elses_email_is_refused(self):
+        response = self.ask("ben@example.com", "09171234567")       # Ben's email, Mia's phone
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "don&#x27;t belong to the same account")
+        self.assertNotIn("password_reset", self.client.session)
+        self.assertEqual(_mail.outbox, [])
+
+    def test_unknown_email_gets_the_same_message(self):
+        self.assertContains(self.ask("nobody@example.com", "09171234567"), "don&#x27;t belong to the same account")
+
+    def test_only_an_email_is_accepted(self):
+        response = self.ask("09171234567", "09171234567")            # a phone number in the email box
+        self.assertContains(response, "Enter a valid email address.")
+        self.assertNotIn("password_reset", self.client.session)
+
+    def test_both_fields_are_required(self):
+        response = self.ask("", "")
+        self.assertContains(response, "Enter the email on your account.")
+        self.assertContains(response, "Enter the phone number on your account.")
+
+
+class WelcomeMessageTests(TestCase):
+    """Landlord home: "Welcome" on the very first log-in, "Welcome back" after that."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="lara", password="Old#Pass2026", first_name="Lara",
+                                             last_name="L", email="lara@example.com", phone_number="09175550000",
+                                             role="landlord")
+        Landlord.objects.create(user=self.user)
+
+    def log_in_and_open_home(self):
+        self.client.post(reverse("login"), {"identifier": "lara", "password": "Old#Pass2026"})
+        return self.client.get(reverse("core_landlords:dashboard"))
+
+    def test_first_log_in_says_welcome(self):
+        self.assertContains(self.log_in_and_open_home(), "Welcome, Lara!")
+
+    def test_later_log_ins_say_welcome_back(self):
+        self.log_in_and_open_home()
+        self.client.logout()
+        self.assertContains(self.log_in_and_open_home(), "Welcome back, Lara!")

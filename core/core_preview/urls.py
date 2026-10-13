@@ -5,7 +5,7 @@ from . import views
 app_name = "core_preview"
 
 urlpatterns = [
-    path("", views.landing, name="landing"),
-    path("preview/renter/", views.renter_preview, name="renter"),
-    path("preview/landlord/", views.landlord_preview, name="landlord"),
+    path("", views.LandingView.as_view(), name="landing"),
+    path("preview/renter/", views.RenterPreviewView.as_view(), name="renter"),
+    path("preview/landlord/", views.LandlordPreviewView.as_view(), name="landlord"),
 ]

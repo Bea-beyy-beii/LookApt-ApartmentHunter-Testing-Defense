@@ -9,7 +9,6 @@ from django.urls import reverse
 from PIL import Image
 
 from core.core_listings.models import Area, Complex
-from core.core_listings.services import renter_visible_complexes
 from core.core_reports.models import Report
 from core.core_verification.models import VerificationRequest
 from core.models import Landlord, Renter, User
@@ -190,7 +189,7 @@ class UserTests(Base):
         self.post("user_detail", self.landlord.pk, {"action": "suspend", "reason": "Scamming renters."})
         self.landlord.refresh_from_db()
         self.assertFalse(self.landlord.is_active)
-        self.assertNotIn(self.complex, renter_visible_complexes())
+        self.assertNotIn(self.complex, Complex.objects.renter_visible())
         self.assertIn("suspended", mail.outbox[-1].subject)
 
         self.client.logout()
@@ -201,7 +200,7 @@ class UserTests(Base):
         self.post("user_detail", self.landlord.pk, {"action": "reactivate"})
         self.landlord.refresh_from_db()
         self.assertTrue(self.landlord.is_active)
-        self.assertIn(self.complex, renter_visible_complexes())
+        self.assertIn(self.complex, Complex.objects.renter_visible())
 
     def test_suspend_needs_a_reason(self):
         self.post("user_detail", self.renter.pk, {"action": "suspend", "reason": " "})
@@ -305,10 +304,10 @@ class ReportTests(Base):
 class EmailTests(TestCase):
 
     def test_welcome_email_after_sign_up(self):
-        from core.core_admin import notify
+        from core.core_admin.notify import Welcome
         user = make_user("nina", "landlord", "09444444444")
         with self.captureOnCommitCallbacks(execute=True):
-            notify.welcome(user)
+            Welcome.for_user(user).send()
         message = mail.outbox[-1]
         self.assertEqual(message.subject, "Welcome to LookApt!")
         self.assertIn("verify your account", message.body)
@@ -317,7 +316,7 @@ class EmailTests(TestCase):
         self.assertIn("https://lookapt.example/login/", html)
 
     def test_email_failure_does_not_break_anything(self):
-        from core.core_accounts.emails import send_email
+        from core.core_accounts.emails import NoticeEmail
         user = make_user("nina", "renter", "09444444444")
         with mock.patch("core.core_accounts.emails.EmailWithInlineLogo.send", side_effect=OSError("SMTP down")):
-            self.assertFalse(send_email(user, "Hi", ["Hello"]))
+            self.assertFalse(NoticeEmail(user, "Hi", ["Hello"]).send())

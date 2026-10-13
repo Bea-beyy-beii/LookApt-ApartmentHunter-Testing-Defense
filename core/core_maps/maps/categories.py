@@ -42,29 +42,46 @@ _COLORS = {
     Types.OTHER: ("#69758a", "#eceef2"),
 }
 
+class MarkerStyle:
+    """Colours + icon of a map marker (the side panel and Folium use the same)."""
+
+    def __init__(self, color, bg, icon):
+        self.color = color
+        self.bg = bg
+        self.icon = icon        # inner SVG markup for a 24x24 viewBox
+
+    def svg(self, size=18, stroke_width=1.9):
+        return (
+            f'<svg viewBox="0 0 24 24" width="{size}" height="{size}" fill="none" stroke="currentColor" '
+            f'stroke-width="{stroke_width}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{self.icon}</svg>'
+        )
+
+    def as_dict(self):
+        return {"color": self.color, "bg": self.bg, "icon": self.icon}
+
+
+class CategoryStyle(MarkerStyle):
+    """Inheritance: a MarkerStyle picked from a Landmark category (unknown -> Other)."""
+
+    def __init__(self, category):
+        self.category = category if category in _ICONS else Types.OTHER
+        color, bg = _COLORS[self.category]
+        super().__init__(color, bg, _ICONS[self.category])
+
+    @property
+    def label(self):
+        return Types(self.category).label
+
+    def as_dict(self):
+        return {"category": str(self.category), "label": self.label, **super().as_dict()}
+
+    @classmethod
+    def all(cls):
+        return [cls(category).as_dict() for category in Types.values]
+
+
 # Complex markers on the renter map
-COMPLEX_STYLE = {"color": "#c98a3c", "bg": "#fdf1e0",
-                 "icon": '<path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 10h1M14 10h1M9 14h1M14 14h1M10 21v-3h4v3"/>'}
-
-
-def category_style(category):
-    category = category if category in _ICONS else Types.OTHER
-    color, bg = _COLORS[category]
-    return {
-        "category": str(category),
-        "label": Types(category).label,
-        "color": color,
-        "bg": bg,
-        "icon": _ICONS[category],
-    }
-
-
-def svg(inner, size=18, stroke_width=1.9):
-    return (
-        f'<svg viewBox="0 0 24 24" width="{size}" height="{size}" fill="none" stroke="currentColor" '
-        f'stroke-width="{stroke_width}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{inner}</svg>'
-    )
-
-
-def all_categories():
-    return [category_style(c) for c in Types.values]
+COMPLEX_STYLE = MarkerStyle(
+    "#c98a3c", "#fdf1e0",
+    '<path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 10h1M14 10h1M9 14h1M14 14h1M10 21v-3h4v3"/>',
+)
