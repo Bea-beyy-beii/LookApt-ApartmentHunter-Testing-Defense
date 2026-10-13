@@ -151,3 +151,108 @@ html[data-theme="dark"] select:not([multiple]):not([size]):hover {
     border-color: var(--gold);
     background-color: #2a2a22;
 }
+
+
+/* =========================================================
+   DROPDOWN LISTS (core/js/custom_select.js)
+   The <select> above stays the closed box; this is the list that opens
+   under it: white card, roomy rows, the chosen one in soft blue.
+========================================================= */
+
+/* Chevron points up while the list is open */
+select.cs-open:not([multiple]):not([size]) {
+    border-color: var(--gold);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23203a68' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 15 6-6 6 6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+}
+
+.cs-panel {
+    position: fixed;
+    z-index: 2000;
+
+    max-width: min(420px, calc(100vw - 16px));
+    max-height: min(320px, 60vh);
+    overflow-y: auto;
+    padding: 6px;
+
+    border: 1px solid var(--border-light);
+    border-radius: 16px;
+    background: var(--white);
+    box-shadow: 0 16px 40px rgba(20, 34, 60, 0.14), 0 2px 6px rgba(20, 34, 60, 0.06);
+
+    font-family: var(--font-primary, inherit);
+    animation: cs-in 0.14s ease;
+}
+
+@keyframes cs-in {
+    from { opacity: 0; transform: translateY(-4px); }
+}
+
+.cs-option {
+    padding: 10px 14px;
+    border-radius: 10px;
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.35;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.cs-option + .cs-option { margin-top: 2px; }
+
+.cs-option.is-active { background: #f4f6fa; }
+
+.cs-option.is-selected {
+    background: #eaf0fa;
+    color: var(--navy);
+    font-weight: 700;
+}
+
+.cs-option.is-disabled { opacity: 0.45; cursor: not-allowed; }
+
+.cs-group {
+    padding: 10px 14px 4px;
+    color: var(--text-secondary);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+html[data-theme="dark"] select.cs-open:not([multiple]):not([size]) {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e1e8f4' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 15 6-6 6 6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+}
+
+html[data-theme="dark"] .cs-panel {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: #15233b;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+html[data-theme="dark"] .cs-option.is-active { background: rgba(255, 255, 255, 0.06); }
+html[data-theme="dark"] .cs-option.is-selected { background: rgba(143, 176, 232, 0.18); color: #cfe0ff; }
+
+
+/* =========================================================
+   SUBMIT BUTTONS WHILE SENDING
+   Disabled ones (pop-ups sent with fetch) and the ones of a form that is
+   already on its way (core/js/submit_guard.js): "not allowed" cursor.
+========================================================= */
+
+button[type="submit"]:disabled,
+button:not([type]):disabled,
+input[type="submit"]:disabled,
+button[data-submit]:disabled,
+form.is-submitting :is(button[type="submit"], button:not([type]), input[type="submit"]) {
+    cursor: not-allowed !important;
+}
+
+form.is-submitting :is(button[type="submit"], button:not([type]), input[type="submit"]) {
+    opacity: 0.7;
+    pointer-events: auto;
+}
