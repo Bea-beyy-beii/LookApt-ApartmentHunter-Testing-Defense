@@ -12,8 +12,7 @@ from django.urls import reverse
 from django.utils import timezone
 from PIL import Image
 
-from core.core_listings.models import LeaseTerm, Unit
-from core.core_listings.services import renter_visible_complexes
+from core.core_listings.models import Complex, LeaseTerm, Unit
 from core.models import Renter
 
 from .models import Application, Conversation, Message
@@ -88,7 +87,7 @@ def renter_units():
     return (
         Unit.objects
         .exclude(availability=Unit.Availability.UNPUBLISHED)
-        .filter(complex__in=renter_visible_complexes())
+        .filter(complex__in=Complex.objects.renter_visible())
         .select_related("complex__landlord__user")
     )
 

@@ -2,8 +2,7 @@
 # Listing cards on the renter dashboard (Home + Saved Listings tabs).
 from django.db.models import Prefetch
 
-from core.core_listings.models import SavedListing, Unit
-from core.core_listings.services import renter_visible_complexes
+from core.core_listings.models import Complex, SavedListing, Unit
 
 from .search import active_filter_count, filter_complexes, filter_options, filter_units, parse_filters, sort_listings
 
@@ -38,7 +37,7 @@ def _saved_ids(user):
 def landlord_other_listings(complex_obj, user):
     """The listing page's "Other Listings" tab: the landlord's other complexes, as cards."""
     complexes = (
-        renter_visible_complexes()
+        Complex.objects.renter_visible()
         .filter(landlord=complex_obj.landlord)
         .exclude(pk=complex_obj.pk)
         .prefetch_related("pictures", _published_units())
@@ -54,7 +53,7 @@ def get_renter_listings_context(user, params=None):
 
     # Only the published units that match the unit filters (type, budget, occupants ...)
     complexes = (
-        filter_complexes(renter_visible_complexes(), filters)
+        filter_complexes(Complex.objects.renter_visible(), filters)
         .prefetch_related("pictures", _published_units(filters))
         .order_by("-created_at")
     )

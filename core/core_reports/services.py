@@ -16,7 +16,6 @@ from django.db.models import Q
 
 from core.core_inquiries.models import Application, Conversation
 from core.core_listings.models import Complex
-from core.core_listings.services import renter_visible_complexes
 from core.core_rentals.models import Tenancy
 from core.models import User
 
@@ -66,7 +65,7 @@ def reportable_people(user):
     if user.role == "renter":
         # Every landlord with a visible listing...
         complexes = (
-            renter_visible_complexes().select_related("landlord__user").prefetch_related("units")
+            Complex.objects.renter_visible().select_related("landlord__user").prefetch_related("units")
             .order_by("complex_name")
         )
         # ...plus landlords they've dealt with (even if the listing is gone now)

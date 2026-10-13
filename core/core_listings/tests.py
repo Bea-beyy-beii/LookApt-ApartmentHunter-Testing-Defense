@@ -255,7 +255,6 @@ class LandmarksKeptOnSaveTests(ListingFormSetup):
         return ComplexForm(data, instance=self.complex, landlord=self.user.landlord)
 
     def test_blank_list_keeps_landmarks_and_empty_list_clears_them(self):
-        from core.core_listings.views import _save_property
         from core.core_maps.maps.services import complex_landmarks, save_complex_landmarks
         self.complex.latitude, self.complex.longitude = 7.06, 125.597
         self.complex.save()
@@ -265,19 +264,19 @@ class LandmarksKeptOnSaveTests(ListingFormSetup):
 
         form = self.form(landmarks_json="")
         self.assertTrue(form.is_valid(), form.errors)
-        _save_property(form, self.user.landlord)
+        form.save_listing()
         self.assertEqual([item["name"] for item in complex_landmarks(self.complex)], ["Gaisano"])
 
         # Pin moved without a new list: same landmarks, distances from the new spot
         before = complex_landmarks(self.complex)[0]["distance_m"]
         form = self.form(landmarks_json="", latitude="7.07", longitude="125.61")
         self.assertTrue(form.is_valid(), form.errors)
-        _save_property(form, self.user.landlord)
+        form.save_listing()
         self.assertNotEqual(complex_landmarks(self.complex)[0]["distance_m"], before)
 
         form = self.form(landmarks_json="[]")
         self.assertTrue(form.is_valid(), form.errors)
-        _save_property(form, self.user.landlord)
+        form.save_listing()
         self.assertEqual(complex_landmarks(self.complex), [])
 
 

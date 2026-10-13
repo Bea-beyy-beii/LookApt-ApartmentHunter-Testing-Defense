@@ -9,7 +9,6 @@ from django.urls import reverse
 from PIL import Image
 
 from core.core_listings.models import Area, Complex
-from core.core_listings.services import renter_visible_complexes
 from core.core_reports.models import Report
 from core.core_verification.models import VerificationRequest
 from core.models import Landlord, Renter, User
@@ -190,7 +189,7 @@ class UserTests(Base):
         self.post("user_detail", self.landlord.pk, {"action": "suspend", "reason": "Scamming renters."})
         self.landlord.refresh_from_db()
         self.assertFalse(self.landlord.is_active)
-        self.assertNotIn(self.complex, renter_visible_complexes())
+        self.assertNotIn(self.complex, Complex.objects.renter_visible())
         self.assertIn("suspended", mail.outbox[-1].subject)
 
         self.client.logout()
@@ -201,7 +200,7 @@ class UserTests(Base):
         self.post("user_detail", self.landlord.pk, {"action": "reactivate"})
         self.landlord.refresh_from_db()
         self.assertTrue(self.landlord.is_active)
-        self.assertIn(self.complex, renter_visible_complexes())
+        self.assertIn(self.complex, Complex.objects.renter_visible())
 
     def test_suspend_needs_a_reason(self):
         self.post("user_detail", self.renter.pk, {"action": "suspend", "reason": " "})

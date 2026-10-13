@@ -4,14 +4,14 @@
 #   {% if complex|admits:user %}        -> the renter fits the sex restriction
 from django import template
 
-from core.core_listings.icons import icon_svg
+from core.core_listings.icons import Icon
 
 register = template.Library()
 
 
 @register.simple_tag
 def feature_icon(name):
-    return icon_svg(name)
+    return Icon(name).svg()
 
 
 @register.filter

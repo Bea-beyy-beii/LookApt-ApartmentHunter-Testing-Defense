@@ -11,7 +11,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 
 from core.core_accounts.decorators import role_required
-from core.core_listings.services import renter_visible_complexes
+from core.core_listings.models import Complex
 
 from core.models import Renter
 
@@ -96,7 +96,7 @@ def _inquiry_target(params):
     if params.get("unit"):
         return get_object_or_404(services.renter_units(), pk=params["unit"]), None
     if params.get("complex"):
-        return None, get_object_or_404(renter_visible_complexes(), pk=params["complex"])
+        return None, get_object_or_404(Complex.objects.renter_visible(), pk=params["complex"])
     raise ValidationError({"__all__": "Pick a unit or a property."})
 
 
