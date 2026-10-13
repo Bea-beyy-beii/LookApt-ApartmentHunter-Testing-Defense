@@ -1,0 +1,30 @@
+{% comment %}
+    LookApt Guide pop-up (profile menu > LookApt Guide). The steps come from
+    core_feedback/guide.py: RenterGuide or LandlordGuide, by the account's role.
+{% endcomment %}
+<dialog class="ac-dialog fb-dialog" data-help-dialog="guide" aria-labelledby="guide-title">
+
+    <header class="ac-head">
+        <h2 id="guide-title">{{ guide.title }}</h2>
+        <button type="button" class="ac-close" data-help-close aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+    </header>
+
+    <div class="ac-panel">
+        <p class="fb-intro">{{ guide.intro }}</p>
+        <ol class="guide-steps">
+            {% for step in guide.steps %}
+                <li class="guide-step">
+                    <span class="guide-num" aria-hidden="true">{{ forloop.counter }}</span>
+                    <div class="guide-body">
+                        <h3>{{ step.title }}</h3>
+                        <p>{{ step.text }}</p>
+                        {% if step.where %}<small class="guide-where">{{ step.where }}</small>{% endif %}
+                    </div>
+                </li>
+            {% endfor %}
+        </ol>
+        <p class="fb-intro">Questions or ideas? Tell us in the <button type="button" class="fb-link" data-help-open="feedback">Feedback Form</button>.</p>
+    </div>
+</dialog>

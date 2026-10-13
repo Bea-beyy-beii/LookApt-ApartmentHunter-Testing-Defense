@@ -1,0 +1,51 @@
+{% load admin_icons %}
+{# Feedback tab of the admin dashboard. ctx: filters, summary, total, questions, continue_choices, query, page, params, list_url #}
+{% with f=ctx.filters %}
+<div class="ap-page-head">
+    <div>
+        <h1>Feedback</h1>
+        <p>What testers wrote in the Feedback Form (profile menu &gt; Feedback Form), newest first.</p>
+    </div>
+</div>
+
+{# "Would you continue using LookApt after launch?" in numbers #}
+<section class="ap-stats" aria-label="Feedback in numbers">
+    <div class="ap-stat">
+        <small>Answers received</small>
+        <strong>{{ ctx.total }}</strong>
+        <span>From renters and landlords</span>
+    </div>
+    {% for answer in ctx.summary %}
+        <div class="ap-stat">
+            <small>Would keep using it: {{ answer.label }}</small>
+            <strong>{{ answer.count }}</strong>
+            <span>{% if ctx.total %}{% widthratio answer.count ctx.total 100 %}% of answers{% else %}No answers yet{% endif %}</span>
+        </div>
+    {% endfor %}
+</section>
+
+<form class="ap-toolbar ap-filters" method="get" data-ap-live data-url="{{ ctx.list_url }}">
+    <label class="ap-search-box">
+        {% ap_icon "search" 16 %}
+        <input type="search" class="ap-search-input" name="q" value="{{ ctx.query }}" placeholder="Search names or answers"
+               aria-label="Search feedback" autocomplete="off">
+    </label>
+    <select class="ap-select" name="role" aria-label="Role">
+        <option value="">Renters and landlords</option>
+        <option value="renter" {% if f.role == "renter" %}selected{% endif %}>Renters</option>
+        <option value="landlord" {% if f.role == "landlord" %}selected{% endif %}>Landlords</option>
+    </select>
+    <select class="ap-select" name="continue_using" aria-label="Would continue using LookApt">
+        <option value="">Any answer to "keep using it?"</option>
+        {% for value, label in ctx.continue_choices %}
+            <option value="{{ value }}" {% if f.continue_using == value %}selected{% endif %}>Keep using it: {{ label }}</option>
+        {% endfor %}
+    </select>
+    <button type="button" class="ap-link ap-link-btn" data-ap-clear
+            {% if not ctx.query and not f.role and not f.continue_using %}hidden{% endif %}>Clear filters</button>
+</form>
+
+<div data-ap-results>
+    {% include "core_admin/partials/feedback_results.html" with page=ctx.page params=ctx.params list_url=ctx.list_url questions=ctx.questions %}
+</div>
+{% endwith %}

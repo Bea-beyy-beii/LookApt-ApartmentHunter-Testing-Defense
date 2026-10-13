@@ -35,6 +35,7 @@ urlpatterns = [
     path("verification/", include("core.core_verification.urls")),
     path("admin-panel/", include("core.core_admin.urls")),
     path("reviews/", include("core.core_reviews.urls")),
+    path("feedback/", include("core.core_feedback.urls")),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

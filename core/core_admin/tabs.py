@@ -1,5 +1,5 @@
 """
-The admin panel's list tabs: Verification, Users and Reports.
+The admin panel's list tabs: Verification, Users, Reports and Feedback.
 
 Each tab reads its filters from the address (?q=, ?status=, ?page= ...) and
 gives the template a page of results. ListTab holds what they share (search,
@@ -16,6 +16,8 @@ from django.db.models import Count, Q
 from django.urls import reverse
 from django.utils import timezone
 
+from core.core_feedback.forms import FeedbackForm
+from core.core_feedback.models import Feedback
 from core.core_reports.models import ALL_CATEGORIES, Report
 from core.core_verification.models import VerificationRequest
 from core.models import User
@@ -182,3 +184,30 @@ class UsersTab(ListTab):
             users = users.filter(is_active=False)
         users = self._search(users).annotate(reports_count=Count("reports_received", distinct=True))
         return {"filters": self.filters, "joined_options": self.JOINED_OPTIONS, "page": self._page(users)}
+
+
+class FeedbackTab(ListTab):
+    """What testers sent through the Feedback Form (profile menu), newest first."""
+
+    name = "feedback"
+    list_url_name = "core_admin:feedback_list"
+    results_template = "core_admin/partials/feedback_results.html"
+    search_fields = ("user__first_name", "user__last_name", "enjoyed", "challenges", "suggestions", "other")
+    PAGE_SIZE = 10            # each answer is a long card
+
+    FILTERS = ("role", "continue_using")
+
+    def __init__(self, params):
+        super().__init__(params)
+        self.filters = {k: params.get(k, "") for k in self.FILTERS}
+
+    def _results(self):
+        feedback = Feedback.objects.select_related("user")
+        if self.filters["role"] in ("renter", "landlord"):
+            feedback = feedback.filter(role=self.filters["role"])
+        if self.filters["continue_using"] in Feedback.ContinueUsing.values:
+            feedback = feedback.filter(continue_using=self.filters["continue_using"])
+        return {"filters": self.filters, "questions": FeedbackForm.QUESTIONS,
+                "continue_choices": Feedback.ContinueUsing.choices,
+                "summary": Feedback.objects.answers_to_continue(), "total": Feedback.objects.count(),
+                "page": self._page(self._search(feedback))}

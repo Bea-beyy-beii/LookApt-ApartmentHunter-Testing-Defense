@@ -13,4 +13,5 @@ urlpatterns = [
     path("users/<uuid:pk>/", views.UserDetailView.as_view(), name="user_detail"),
     path("reports/", views.ReportListView.as_view(), name="report_list"),
     path("reports/<uuid:pk>/", views.ReportDetailView.as_view(), name="report_detail"),
+    path("feedback/", views.FeedbackListView.as_view(), name="feedback_list"),
 ]

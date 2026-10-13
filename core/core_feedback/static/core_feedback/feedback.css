@@ -1,0 +1,150 @@
+/* =========================================================
+   LOOKAPT GUIDE + FEEDBACK FORM pop-ups (core_feedback)
+   They reuse the account pop-up's frame (.ac-dialog, account.css).
+========================================================= */
+
+.fb-dialog { width: min(640px, calc(100vw - 32px)); }
+
+.fb-intro { margin: 0 0 14px; color: var(--text-secondary); font-size: 13.5px; line-height: 1.5; }
+.fb-link {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--navy);
+    font: inherit;
+    font-weight: 700;
+    text-decoration: underline;
+    cursor: pointer;
+}
+html[data-theme="dark"] .fb-link { color: var(--gold); }
+
+
+/* ---------- Guide: numbered steps on a timeline ---------- */
+
+.guide-steps { margin: 0 0 16px; padding: 0; list-style: none; }
+
+.guide-step {
+    position: relative;
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    gap: 14px;
+    padding-bottom: 18px;
+}
+
+/* the line joining one step to the next */
+.guide-step:not(:last-child)::before {
+    content: "";
+    position: absolute;
+    top: 34px;
+    bottom: 2px;
+    left: 15px;
+    width: 2px;
+    background: var(--border-light);
+}
+
+.guide-num {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--navy);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+}
+html[data-theme="dark"] .guide-num { background: var(--gold); color: #1b2436; }
+
+.guide-body h3 { margin: 5px 0 4px; color: var(--navy); font-size: 15px; font-weight: 700; }
+html[data-theme="dark"] .guide-body h3 { color: var(--text-primary); }
+.guide-body p { margin: 0; color: var(--text-primary); font-size: 13.5px; line-height: 1.55; }
+
+.guide-where {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgba(245, 185, 76, 0.18);
+    color: #8a5a00;
+    font-size: 11.5px;
+    font-weight: 700;
+}
+html[data-theme="dark"] .guide-where { background: rgba(245, 185, 76, 0.14); color: var(--gold); }
+
+
+/* ---------- Feedback form ---------- */
+
+.fb-form { display: grid; gap: 16px; }
+.fb-form[hidden] { display: none; }
+
+.fb-field { display: grid; gap: 7px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.fb-question,
+.fb-field legend { color: var(--text-primary); font-size: 13.5px; font-weight: 600; line-height: 1.45; }
+.fb-field legend { margin-bottom: 7px; padding: 0; }
+.fb-required { color: var(--error); }
+
+.fb-field textarea {
+    width: 100%;
+    min-height: 78px;
+    padding: 10px 12px;
+    border: 1.5px solid var(--border-light);
+    border-radius: 10px;
+    background: var(--white);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 13.5px;
+    line-height: 1.5;
+    resize: vertical;
+}
+.fb-field textarea:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+
+.fb-choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.fb-choice { position: relative; cursor: pointer; }
+.fb-choice input { position: absolute; opacity: 0; pointer-events: none; }
+.fb-choice span {
+    display: inline-block;
+    padding: 8px 18px;
+    border: 1.5px solid var(--border-light);
+    border-radius: 999px;
+    background: var(--white);
+    color: var(--text-primary);
+    font-size: 13.5px;
+    font-weight: 600;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.fb-choice:hover span { border-color: var(--navy); }
+.fb-choice input:checked + span { border-color: var(--navy); background: var(--navy); color: #fff; }
+.fb-choice input:focus-visible + span { outline: 2px solid var(--gold); outline-offset: 2px; }
+.has-error .fb-choice span { border-color: var(--error); }
+html[data-theme="dark"] .fb-choice input:checked + span { border-color: var(--gold); background: var(--gold); color: #1b2436; }
+
+.fb-actions { display: flex; justify-content: flex-end; }
+
+/* Sent */
+.fb-sent { display: grid; justify-items: center; gap: 10px; padding: 12px 0 18px; color: var(--text-primary); font-size: 16px; }
+.fb-sent[hidden] { display: none; }
+.fb-sent-icon {
+    display: grid;
+    place-items: center;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: rgba(47, 138, 82, 0.14);
+    color: #2f8a52;
+}
+.fb-sent-icon svg { width: 28px; height: 28px; }
+
+/* Thank-you note at the bottom */
+.fb-thanks {
+    margin-top: 20px;
+    padding: 16px 18px;
+    border-left: 4px solid var(--gold);
+    border-radius: 10px;
+    background: rgba(245, 185, 76, 0.12);
+    color: var(--text-primary);
+    font-size: 13.5px;
+    line-height: 1.6;
+}
+.fb-thanks p { margin: 0; }
+.fb-signoff { margin-top: 10px !important; font-style: italic; }
+.fb-signoff strong { font-style: normal; }

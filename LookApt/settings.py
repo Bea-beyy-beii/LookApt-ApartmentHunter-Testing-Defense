@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     "core.core_rentals",
     "core.core_preview",
     "core.core_reviews",
+    "core.core_feedback",
 ]
 
 MIDDLEWARE = [

@@ -56,7 +56,8 @@ Service classes are **built with the data they work on** and their methods use
 | `ListingWizardView` | `PropertyWizardView` → `PropertyCreateView` / `PropertyEditView`, `UnitWizardView` → `UnitCreateView` / `UnitEditView` | `core_listings/views.py` |
 | `RoleRequiredMixin` | `RenterRequiredMixin`, `LandlordRequiredMixin`, `AdminRequiredMixin` | `core_accounts/mixins.py` |
 | `SecurityStep` | `NewPasswordStep` (sign-up's password rules + "not your current password") | `core_accounts/services.py` |
-| `ListTab` | `StatusListTab` → `VerificationTab`, `ReportsTab`; `UsersTab` | `core_admin/tabs.py` |
+| `ListTab` | `StatusListTab` → `VerificationTab`, `ReportsTab`; `UsersTab`; `FeedbackTab` | `core_admin/tabs.py` |
+| `UserGuide` | `RenterGuide`, `LandlordGuide` | `core_feedback/guide.py` |
 | `CloseRequest` | `RejectRequest`, `CancelRequest` | `core_inquiries/workflow.py` |
 | `OpenStreetMapClient` | `OverpassProvider`, `PhotonGeocoder`, `NominatimGeocoder` | `core_maps/maps/providers.py` |
 | `MarkerStyle` | `CategoryStyle` | `core_maps/maps/categories.py` |
@@ -92,6 +93,7 @@ a subclass must implement them before it can be used.
 | `ListingPage` | `_queryset()`, `context()` | `core_listings/detail_services.py` |
 | `Attachment` | how a file is sent to the AI | `core_verification/extractors/ai_reader.py` |
 | `PreviewView` | `preview_context()` | `core_preview/views.py` |
+| `UserGuide` | `steps` | `core_feedback/guide.py` |
 | `ColorRole` | `dark()` | `core/management/commands/build_dark_theme.py` |
 
 Many of these use the **template method** pattern. The parent's method runs
@@ -117,6 +119,8 @@ The code calls the same method on different classes, so it never has to check
 - **Messages to users.**
   - `Welcome.for_user(user).send()` picks `LandlordWelcome` or `RenterWelcome`.
   - Every notice (`Verified`, `Suspended`, `ReportUpdated` ...) is sent with the same `.send()`.
+- **LookApt Guide.**
+  - `UserGuide.for_user(user)` gives a `RenterGuide` or a `LandlordGuide`, and the pop-up just shows its `.steps`.
 - **Forms.**
   - `form.save_listing()` saves one complex, one unit, or (for `BulkUnitForm`) many units.
 - **Sign-up steps.**

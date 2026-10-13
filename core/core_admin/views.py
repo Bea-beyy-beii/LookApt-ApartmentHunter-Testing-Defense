@@ -17,7 +17,7 @@ from core.models import User
 from .forms import UserEditForm
 from .services import (ActivityChart, Overview, ReportModeration, SidebarBadges, UserModeration,
                        VerificationDecision)
-from .tabs import ReportsTab, UsersTab, VerificationTab
+from .tabs import FeedbackTab, ReportsTab, UsersTab, VerificationTab
 
 
 class AdminPanelView(AdminRequiredMixin, View):
@@ -33,11 +33,11 @@ class AdminPanelView(AdminRequiredMixin, View):
 # ---------------------------------------------------------------- overview
 
 class OverviewView(AdminPanelView):
-    """The admin dashboard: all four tabs in one page, switched in the browser like
+    """The admin dashboard: all five tabs in one page, switched in the browser like
     the landlord / renter dashboards. ?tab= picks the first one shown, and only
     that tab reads the filters in the address (the others start unfiltered)."""
 
-    LIST_TABS = (VerificationTab, UsersTab, ReportsTab)
+    LIST_TABS = (VerificationTab, UsersTab, ReportsTab, FeedbackTab)
     TABS = ("overview",) + tuple(tab.name for tab in LIST_TABS)
 
     def get(self, request):
@@ -81,6 +81,10 @@ class UserListView(ListResultsView):
 
 class ReportListView(ListResultsView):
     tab_class = ReportsTab
+
+
+class FeedbackListView(ListResultsView):
+    tab_class = FeedbackTab
 
 
 # ---------------------------------------------------------------- detail pages

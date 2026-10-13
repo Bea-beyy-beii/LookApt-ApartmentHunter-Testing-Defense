@@ -1,6 +1,8 @@
 from django import template
 from django.urls import reverse
 
+from core.core_feedback.forms import FeedbackForm
+from core.core_feedback.guide import UserGuide
 from core.core_reports.services import SUPPORT_EMAIL
 
 register = template.Library()
@@ -20,6 +22,9 @@ def topbar_right(context):
         "csrf_token": context.get("csrf_token"),
         "support_email": SUPPORT_EMAIL,
         "inquiries_url": inquiries_url(request.user),
+        # Profile menu > LookApt Guide / Feedback Form (renters and landlords)
+        "guide": UserGuide.for_user(request.user),
+        "feedback_form": FeedbackForm(),
     }
 
 
