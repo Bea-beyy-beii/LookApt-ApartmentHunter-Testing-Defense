@@ -5,12 +5,13 @@
 # once a day; this command is for running it right away.
 from django.core.management.base import BaseCommand
 
-from core.core_verification.services import DOCUMENT_RETENTION, purge_old_documents
+from core.core_verification.services import DocumentPurge
 
 
 class Command(BaseCommand):
-    help = f"Delete documents of rejected / replaced verification requests older than {DOCUMENT_RETENTION.days} days."
+    help = (f"Delete documents of rejected / replaced verification requests older than "
+            f"{DocumentPurge.RETENTION.days} days.")
 
     def handle(self, *args, **options):
-        count = purge_old_documents()
+        count = DocumentPurge().run()
         self.stdout.write(self.style.SUCCESS(f"Cleaned {count} verification request(s)."))

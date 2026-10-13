@@ -8,7 +8,7 @@ from django.urls import reverse
 
 from core.core_accounts.decorators import role_required
 from core.core_maps.maps.services import complex_landmarks, resolve_area, save_complex_landmarks
-from core.core_verification.services import can_publish
+from core.core_verification.services import LandlordVerification
 
 from .models import Complex, ComplexPicture, Unit, UnitPicture
 from .forms import (
@@ -51,7 +51,7 @@ def _save_property(form, landlord):
     # Which create button was clicked: "unpublished" or "active"
     # (landlords who aren't verified yet can only save it unpublished)
     visibility = form.data.get("visibility")
-    if visibility == Complex.ComplexStatus.ACTIVE and not can_publish(landlord.user):
+    if visibility == Complex.ComplexStatus.ACTIVE and not LandlordVerification(landlord.user).can_publish:
         visibility = Complex.ComplexStatus.UNPUBLISHED
     if visibility in Complex.ComplexStatus.values:
         property_obj.status = visibility
@@ -107,7 +107,7 @@ def listings(request):
 
 
 def _warn_if_not_verified(request, form):
-    if form.data.get("visibility") == Complex.ComplexStatus.ACTIVE and not can_publish(request.user):
+    if form.data.get("visibility") == Complex.ComplexStatus.ACTIVE and not LandlordVerification(request.user).can_publish:
         messages.warning(request, f"It was saved as unpublished. {NOT_VERIFIED}")
 
 
@@ -267,7 +267,7 @@ def property_set_visibility(request, pk):
             return JsonResponse({"error": "Invalid visibility."}, status=400)
         return redirect(_my_listings_url())
 
-    if visibility == Complex.ComplexStatus.ACTIVE and not can_publish(request.user):
+    if visibility == Complex.ComplexStatus.ACTIVE and not LandlordVerification(request.user).can_publish:
         if _wants_json(request):
             return JsonResponse({"error": NOT_VERIFIED}, status=403)
         messages.error(request, NOT_VERIFIED)

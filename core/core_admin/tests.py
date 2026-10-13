@@ -305,10 +305,10 @@ class ReportTests(Base):
 class EmailTests(TestCase):
 
     def test_welcome_email_after_sign_up(self):
-        from core.core_admin import notify
+        from core.core_admin.notify import Welcome
         user = make_user("nina", "landlord", "09444444444")
         with self.captureOnCommitCallbacks(execute=True):
-            notify.welcome(user)
+            Welcome.for_user(user).send()
         message = mail.outbox[-1]
         self.assertEqual(message.subject, "Welcome to LookApt!")
         self.assertIn("verify your account", message.body)

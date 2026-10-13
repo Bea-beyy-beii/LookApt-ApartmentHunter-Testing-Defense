@@ -17,7 +17,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 from core.core_inquiries.services import notifications_for
 from core.core_reports.services import SUPPORT_EMAIL
-from core.core_admin import notify
+from core.core_admin.notify import Welcome
 
 from . import account, otp
 from .legal import legal_context
@@ -73,7 +73,7 @@ def finish_signup(request):
     except ValidationError as e:
         messages.error(request, "; ".join(e.messages))
         return redirect('signup')
-    notify.welcome(user)
+    Welcome.for_user(user).send()
     AccountService.sign_in(request, user)
     return redirect(user.home_url_name)
 

@@ -243,8 +243,8 @@ class PhotosEverywhereTests(TestCase):
         self.assertContains(response, 'class="thread-avatar avatar--landlord"')
 
     def test_report_people_carry_the_photo(self):
-        from core.core_reports.services import reportable_people
-        person = reportable_people(self.renter)[0]
+        from core.core_reports.services import Reporter
+        person = Reporter.for_user(self.renter).reportable_people()[0]
         self.assertEqual((person["avatar"], person["role"]), (self.landlord.avatar_url, "landlord"))
 
 

@@ -9,7 +9,7 @@ from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
 
 from core.core_accounts.decorators import role_required
-from core.core_verification.services import NOT_VERIFIED_TO_POST, landlord_must_verify
+from core.core_verification.services import NOT_VERIFIED_TO_POST, LandlordVerification
 
 from . import services
 
@@ -48,7 +48,7 @@ def events_api(request):
 @role_required("landlord")
 @require_POST
 def post_bulletin(request):
-    if landlord_must_verify(request.user):
+    if LandlordVerification(request.user).must_verify:
         return JsonResponse({"errors": {"__all__": NOT_VERIFIED_TO_POST}}, status=403)
     try:
         data = json.loads(request.body or "{}")

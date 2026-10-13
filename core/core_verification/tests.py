@@ -95,27 +95,29 @@ class Base(TestCase):
 class DecideTests(TestCase):
 
     def test_everything_clear_is_approved(self):
-        self.assertEqual(services.decide(clear_result()), (Status.APPROVED, ""))
+        self.assertEqual(services.AIVerdict(clear_result()).decide(), (Status.APPROVED, ""))
 
     def test_any_doubt_goes_to_an_admin(self):
         for change in ({"government_id__name_matches_account": False}, {"government_id__is_expired": True},
                        {"ownership_document__signs_of_editing": True}, {"selfie__shows_person_holding_id": False},
                        {"ownership_document__name_matches_account": False}, {"verdict": "review"}):
             with self.subTest(change):
-                self.assertEqual(services.decide(clear_result(**change))[0], Status.REVIEW)
+                self.assertEqual(services.AIVerdict(clear_result(**change)).status, Status.REVIEW)
 
     def test_pass_verdict_does_not_override_a_failed_check(self):
         result = clear_result(government_id__is_government_id=False)
         self.assertEqual(result["verdict"], "pass")
-        self.assertEqual(services.decide(result)[0], Status.REVIEW)
+        self.assertEqual(services.AIVerdict(result).status, Status.REVIEW)
 
     def test_missing_fields_are_not_trusted(self):
-        self.assertEqual(services.decide({"verdict": "pass"})[0], Status.REVIEW)
+        self.assertEqual(services.AIVerdict({"verdict": "pass"}).status, Status.REVIEW)
 
     def test_unreadable_document_asks_to_resubmit(self):
-        status, message = services.decide(clear_result(verdict="resubmit", message_for_landlord="Your ID is blurry."))
+        verdict = services.AIVerdict(clear_result(verdict="resubmit", message_for_landlord="Your ID is blurry."))
+        status, message = verdict.decide()
         self.assertEqual((status, message), (Status.RESUBMIT, "Your ID is blurry."))
-        self.assertEqual(services.decide(clear_result(verdict="resubmit"))[1], services.RESUBMIT_DEFAULT)
+        self.assertEqual(services.AIVerdict(clear_result(verdict="resubmit")).message,
+                         VerificationRequest.RESUBMIT_DEFAULT)
 
 
 class SubmitTests(Base):
@@ -124,7 +126,7 @@ class SubmitTests(Base):
         return self.client.post(reverse("core_verification:submit"), self.documents(**changes))
 
     def test_submit_saves_and_starts_the_check(self):
-        with mock.patch.object(services, "start_check") as start, self.captureOnCommitCallbacks(execute=True):
+        with mock.patch.object(services.DocumentCheck, "start") as start, self.captureOnCommitCallbacks(execute=True):
             response = self.submit()
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"ok": True, "state": "checking"})
@@ -135,7 +137,7 @@ class SubmitTests(Base):
         start.assert_called_once_with(request.pk)
 
     def test_photo_of_ownership_works_too(self):
-        with mock.patch.object(services, "start_check"):
+        with mock.patch.object(services.DocumentCheck, "start"):
             self.assertEqual(self.submit(ownership_document=jpg("title.jpg")).status_code, 200)
 
     def test_missing_and_fake_files_are_refused(self):
@@ -146,7 +148,7 @@ class SubmitTests(Base):
         self.assertFalse(VerificationRequest.objects.exists())
 
     def test_senior_citizen_id_is_accepted_and_other_is_gone(self):
-        with mock.patch.object(services, "start_check"):
+        with mock.patch.object(services.DocumentCheck, "start"):
             self.assertEqual(self.submit(id_type="senior_citizen").status_code, 200)
         VerificationRequest.objects.all().delete()
         response = self.submit(id_type="other")
@@ -165,9 +167,9 @@ class SubmitTests(Base):
 
     def test_can_submit_again_when_asked_to(self):
         self.make_request(Status.RESUBMIT, message="Blurry")
-        with mock.patch.object(services, "start_check"):
+        with mock.patch.object(services.DocumentCheck, "start"):
             self.assertEqual(self.submit().status_code, 200)
-        self.assertEqual(services.state_for(self.landlord), Status.CHECKING)
+        self.assertEqual(services.LandlordVerification(self.landlord).state, Status.CHECKING)
 
     def test_renters_cannot_submit(self):
         self.client.force_login(make_user("arem", "renter", "09222222222"))
@@ -178,8 +180,8 @@ class CheckTests(Base):
 
     def test_clear_documents_verify_the_landlord(self):
         request = self.make_request()
-        with mock.patch.object(ai_reader, "read_documents", return_value=clear_result()):
-            services.run_check(request.pk)
+        with mock.patch.object(ai_reader.AIReader, "read", return_value=clear_result()):
+            services.DocumentCheck(request.pk).run()
         request.refresh_from_db()
         self.landlord.refresh_from_db()
         self.assertEqual(request.status, Status.APPROVED)
@@ -189,9 +191,9 @@ class CheckTests(Base):
 
     def test_doubtful_documents_wait_for_an_admin(self):
         request = self.make_request()
-        with mock.patch.object(ai_reader, "read_documents",
+        with mock.patch.object(ai_reader.AIReader, "read",
                                return_value=clear_result(ownership_document__name_matches_account=False)):
-            services.run_check(request.pk)
+            services.DocumentCheck(request.pk).run()
         request.refresh_from_db()
         self.landlord.refresh_from_db()
         self.assertEqual(request.status, Status.REVIEW)
@@ -199,22 +201,22 @@ class CheckTests(Base):
 
     def test_no_api_key_means_admin_review(self):
         request = self.make_request()
-        services.run_check(request.pk)          # ANTHROPIC_API_KEY is "" in these tests
+        services.DocumentCheck(request.pk).run()          # ANTHROPIC_API_KEY is "" in these tests
         request.refresh_from_db()
         self.assertEqual(request.status, Status.REVIEW)
         self.assertIn("ANTHROPIC_API_KEY", request.ai_summary)
 
     def test_unexpected_error_means_admin_review(self):
         request = self.make_request()
-        with mock.patch.object(ai_reader, "read_documents", side_effect=RuntimeError("boom")):
-            services.run_check(request.pk)
+        with mock.patch.object(ai_reader.AIReader, "read", side_effect=RuntimeError("boom")):
+            services.DocumentCheck(request.pk).run()
         request.refresh_from_db()
         self.assertEqual(request.status, Status.REVIEW)
 
     def test_lost_check_goes_to_admin_review(self):
         request = self.make_request()
         VerificationRequest.objects.filter(pk=request.pk).update(created_at=timezone.now() - timedelta(minutes=11))
-        self.assertEqual(services.state_for(self.landlord), Status.REVIEW)
+        self.assertEqual(services.LandlordVerification(self.landlord).state, Status.REVIEW)
 
     def test_status_endpoint(self):
         self.make_request()
@@ -233,7 +235,7 @@ class AIReaderTests(Base):
         with mock.patch("anthropic.Anthropic") as client_class:
             create = client_class.return_value.beta.messages.create
             create.return_value = self.fake_response('{"verdict": "pass"}')
-            self.assertEqual(ai_reader.read_documents(request), {"verdict": "pass"})
+            self.assertEqual(ai_reader.AIReader(request).read(), {"verdict": "pass"})
 
         kwargs = create.call_args.kwargs
         self.assertEqual(kwargs["model"], "claude-opus-5-5")
@@ -249,7 +251,7 @@ class AIReaderTests(Base):
         with mock.patch("anthropic.Anthropic") as client_class:
             client_class.return_value.beta.messages.create.return_value = self.fake_response("", "refusal")
             with self.assertRaises(ai_reader.AIReadError):
-                ai_reader.read_documents(request)
+                ai_reader.AIReader(request).read()
 
 
 class AdminDecisionTests(Base):
@@ -283,11 +285,11 @@ class AdminDecisionTests(Base):
         self.change(request, Status.REJECTED, "The permit belongs to someone else.")
         request.refresh_from_db()
         self.assertEqual(request.status, Status.REJECTED)
-        self.assertEqual(services.state_for(self.landlord), Status.REJECTED)
+        self.assertEqual(services.LandlordVerification(self.landlord).state, Status.REJECTED)
 
     def test_rejecting_an_approved_landlord_removes_the_badge(self):
         request = self.make_request(Status.REVIEW)
-        services.approve(request, self.admin)
+        request.approve(self.admin)
         self.change(request, Status.REJECTED, "Fake documents.")
         self.landlord.refresh_from_db()
         self.assertFalse(self.landlord.is_verified)
@@ -335,7 +337,7 @@ class DashboardTests(Base):
 
     def test_welcome_once_after_approval(self):
         request = self.make_request(Status.REVIEW)
-        services.approve(request, None)
+        request.approve(None)
         self.assertContains(self.dashboard(), "You're verified")
         self.client.post(reverse("core_verification:welcome_seen"))
         response = self.dashboard()
@@ -360,7 +362,7 @@ class PurgeTests(Base):
         storage = rejected.id_photo.storage
         old_name = rejected.id_photo.name
 
-        self.assertEqual(services.purge_old_documents(), 2)
+        self.assertEqual(services.DocumentPurge().run(), 2)
 
         for request in (rejected, replaced):
             request.refresh_from_db()
@@ -375,7 +377,7 @@ class PurgeTests(Base):
 
     def test_dashboard_hides_deleted_documents(self):
         self.old(Status.REJECTED, 100, decided_at=timezone.now() - timedelta(days=91), message="Fake ID.")
-        services.purge_old_documents()
+        services.DocumentPurge().run()
         with mock.patch("core.core_landlords.views.services.home_context", return_value={}):
             response = self.client.get(reverse("core_landlords:dashboard"))
         self.assertContains(response, "Fake ID.")
