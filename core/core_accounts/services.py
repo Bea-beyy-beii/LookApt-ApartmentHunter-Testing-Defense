@@ -1,4 +1,4 @@
-from django.contrib.auth import password_validation
+from django.contrib.auth import login, password_validation
 from django.contrib.auth.hashers import make_password
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
@@ -174,6 +174,17 @@ class AccountService:
             is_active=False, suspended_at__isnull=False,
         ).first()
         return bool(user and user.check_password(password))
+
+    # ------------------------------------------------------------------ log in
+
+    FIRST_VISIT = 'first_visit'      # session: True during the account's very first log-in
+
+    @classmethod
+    def sign_in(cls, request, user):
+        """Log the user in, remembering whether it's their first time ("Welcome" vs "Welcome back")."""
+        first_time = user.last_login is None      # login() sets last_login, so look before
+        login(request, user)
+        request.session[cls.FIRST_VISIT] = first_time
 
     # ------------------------------------------------------------------ forgot password
 

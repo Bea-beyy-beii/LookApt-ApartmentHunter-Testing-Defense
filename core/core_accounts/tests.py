@@ -289,3 +289,25 @@ class ForgotPasswordTests(TestCase):
         response = self.ask("", "")
         self.assertContains(response, "Enter the email on your account.")
         self.assertContains(response, "Enter the phone number on your account.")
+
+
+class WelcomeMessageTests(TestCase):
+    """Landlord home: "Welcome" on the very first log-in, "Welcome back" after that."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="lara", password="Old#Pass2026", first_name="Lara",
+                                             last_name="L", email="lara@example.com", phone_number="09175550000",
+                                             role="landlord")
+        Landlord.objects.create(user=self.user)
+
+    def log_in_and_open_home(self):
+        self.client.post(reverse("login"), {"identifier": "lara", "password": "Old#Pass2026"})
+        return self.client.get(reverse("core_landlords:dashboard"))
+
+    def test_first_log_in_says_welcome(self):
+        self.assertContains(self.log_in_and_open_home(), "Welcome, Lara!")
+
+    def test_later_log_ins_say_welcome_back(self):
+        self.log_in_and_open_home()
+        self.client.logout()
+        self.assertContains(self.log_in_and_open_home(), "Welcome back, Lara!")

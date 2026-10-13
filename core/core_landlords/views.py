@@ -5,6 +5,7 @@ from django.template.loader import render_to_string
 from django.views.decorators.http import require_GET
 
 from core.core_accounts.decorators import role_required
+from core.core_accounts.services import AccountService
 from core.core_inquiries.services import get_inquiries_context, today
 from core.core_listings.services import get_listings_context
 from core.core_rentals.services import get_rentals_context
@@ -30,6 +31,7 @@ def dashboard(request):
     context.update(services.home_context(request.user, context))
     context.update(verification_context(request.user))
     context['support_email'] = SUPPORT_EMAIL
+    context['first_visit'] = request.session.get(AccountService.FIRST_VISIT, False)
 
     return render(request, 'core_landlords/landlord_dashboard.html', context)
 

@@ -6,7 +6,7 @@ from django.conf import settings
 from django.urls import reverse
 from core.models import User
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from django.contrib.auth import authenticate, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
@@ -80,7 +80,7 @@ def finish_signup(request):
         messages.error(request, "; ".join(e.messages))
         return redirect('signup')
     notify.welcome(user)
-    login(request, user)
+    AccountService.sign_in(request, user)
     return redirect(ROLE_HOME[user.role])
 
 
@@ -110,7 +110,7 @@ def login_view(request):
             password=request.POST.get('password', ''),
         )
         if user:
-            login(request, user)
+            AccountService.sign_in(request, user)
             return redirect(ROLE_HOME[user.role])
         if AccountService.is_suspended(request.POST.get('identifier', ''), request.POST.get('password', '')):
             messages.error(request, f"Your account is suspended. Please contact {SUPPORT_EMAIL}.")
@@ -337,7 +337,7 @@ def google_callback_view(request):
         messages.error(request, f"No LookApt account uses {info['email']}. Sign up first.")
         return redirect('signup')
 
-    login(request, user)
+    AccountService.sign_in(request, user)
     return redirect(ROLE_HOME[user.role])
 
 
