@@ -1,0 +1,25 @@
+{# The results part of the Feedback tab: also sent alone when a filter changes (admin_panel.js) #}
+{% if page.object_list %}
+    <div class="ap-feedback-list">
+        {% for item in page %}
+            <article class="ap-card ap-feedback">
+                <header class="ap-feedback-head">
+                    <a class="ap-person" href="{% url 'core_admin:user_detail' item.user.pk %}">
+                        <span class="ap-avatar ap-avatar--{{ item.role }}" aria-hidden="true">{% if item.user.avatar %}<img src="{{ item.user.avatar.url }}" alt="">{% else %}{{ item.user.initials }}{% endif %}</span>
+                        <span><strong>{{ item.user.display_name }}</strong><small>{{ item.role|title }} · {{ item.created_at|date:"M j, Y · g:i A" }}</small></span>
+                    </a>
+                    <span class="ap-pill {% if item.continue_using == "yes" %}ap-pill--approved{% elif item.continue_using == "maybe" %}ap-pill--review{% else %}ap-pill--rejected{% endif %}">Keep using it: {{ item.get_continue_using_display }}</span>
+                </header>
+                <dl class="ap-feedback-answers">
+                    <div><dt>{{ questions.enjoyed }}</dt><dd>{{ item.enjoyed|linebreaksbr }}</dd></div>
+                    <div><dt>{{ questions.challenges }}</dt><dd>{{ item.challenges|linebreaksbr }}</dd></div>
+                    <div><dt>{{ questions.suggestions }}</dt><dd>{{ item.suggestions|linebreaksbr }}</dd></div>
+                    {% if item.other %}<div><dt>{{ questions.other }}</dt><dd>{{ item.other|linebreaksbr }}</dd></div>{% endif %}
+                </dl>
+            </article>
+        {% endfor %}
+    </div>
+{% else %}
+    <section class="ap-card"><p class="ap-empty">No feedback {% if params %}matches{% else %}yet{% endif %}.</p></section>
+{% endif %}
+{% include "core_admin/partials/pagination.html" %}

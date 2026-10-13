@@ -74,6 +74,14 @@
             <button type="button" class="topbar-menu-item" data-account-open="settings">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>Settings
             </button>
+            {% if guide %}
+                <button type="button" class="topbar-menu-item" data-help-open="guide">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5Z"/><path d="M20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5a1.5 1.5 0 0 0 1.5-1.5Z"/></svg>LookApt Guide
+                </button>
+                <button type="button" class="topbar-menu-item" data-help-open="feedback">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 4.5h14a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5h-7L7 20v-3.5H5A1.5 1.5 0 0 1 3.5 15V6A1.5 1.5 0 0 1 5 4.5Z"/><path d="m12 7.6.9 1.9 2 .3-1.5 1.4.4 2-1.8-1-1.8 1 .4-2-1.5-1.4 2-.3Z"/></svg>Feedback Form
+                </button>
+            {% endif %}
             <a class="topbar-menu-item" href="mailto:{{ support_email }}?subject=LookApt%20support">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 13v-1a8 8 0 0 1 16 0v1"/><rect x="3" y="13" width="4" height="6" rx="1.5"/><rect x="17" y="13" width="4" height="6" rx="1.5"/><path d="M19 19c0 1.5-2 2-5 2"/></svg>Contact Support
             </a>
@@ -90,4 +98,12 @@
 {% include "core_accounts/partials/account_dialog.html" %}
 <link rel="stylesheet" href="{% static 'core_accounts/account.css' %}">
 <script src="{% static 'core_accounts/account.js' %}" defer></script>
+
+{# LookApt Guide / Feedback Form pop-ups (core_feedback) #}
+{% if guide %}
+    {% include "core_feedback/guide_dialog.html" %}
+    {% include "core_feedback/feedback_dialog.html" %}
+    <link rel="stylesheet" href="{% static 'core_feedback/feedback.css' %}">
+    <script src="{% static 'core_feedback/feedback.js' %}" defer></script>
+{% endif %}
 {% endif %}

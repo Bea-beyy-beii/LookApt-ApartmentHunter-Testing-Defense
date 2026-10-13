@@ -1,0 +1,61 @@
+{% comment %}
+    Feedback Form pop-up (profile menu > Feedback Form). Sent with fetch to
+    core_feedback:submit (feedback.js); admins read the answers in the admin
+    panel's Feedback tab.
+{% endcomment %}
+<dialog class="ac-dialog fb-dialog" data-help-dialog="feedback" aria-labelledby="feedback-title">
+
+    <header class="ac-head">
+        <h2 id="feedback-title">Feedback Form</h2>
+        <button type="button" class="ac-close" data-help-close aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+    </header>
+
+    <div class="ac-panel">
+        <form class="fb-form" data-feedback-form data-url="{% url 'core_feedback:submit' %}" data-csrf="{{ csrf_token }}" novalidate>
+            <p class="fb-intro">Help us make LookApt better. Questions marked <span class="fb-required">*</span> are required.</p>
+
+            {% for field in feedback_form %}
+                {% if field.name == "continue_using" %}
+                    <fieldset class="fb-field ac-field">
+                        <legend>{{ forloop.counter }}. {{ field.label }} <span class="fb-required">*</span></legend>
+                        <div class="fb-choices">
+                            {% for choice in field %}
+                                <label class="fb-choice">
+                                    <input type="radio" name="{{ field.html_name }}" value="{{ choice.data.value }}" required>
+                                    <span>{{ choice.choice_label }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                        <p class="field-error" data-error-for="{{ field.html_name }}"></p>
+                    </fieldset>
+                {% else %}
+                    <label class="fb-field ac-field">
+                        <span class="fb-question">{{ forloop.counter }}. {{ field.label }}{% if field.field.required %} <span class="fb-required">*</span>{% endif %}</span>
+                        <textarea name="{{ field.html_name }}" rows="3" maxlength="{{ field.field.max_length }}"
+                                  {% if field.field.required %}required{% endif %} placeholder="Your answer"></textarea>
+                        <p class="field-error" data-error-for="{{ field.html_name }}"></p>
+                    </label>
+                {% endif %}
+            {% endfor %}
+
+            <p class="field-error" data-error-for="__all__"></p>
+            <div class="fb-actions">
+                <button type="submit" class="ac-btn ac-btn--primary" data-feedback-send>Send Feedback</button>
+            </div>
+        </form>
+
+        <div class="fb-sent" data-feedback-sent hidden role="status">
+            <span class="fb-sent-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>
+            </span>
+            <strong>Your feedback was sent!</strong>
+        </div>
+
+        <aside class="fb-thanks">
+            <p>Thank you for your time and interest in testing LookApt. Your valuable insights will surely be a great tool in the continued development of this application.</p>
+            <p class="fb-signoff">With a grateful heart,<br><strong>LookApt Admin</strong></p>
+        </aside>
+    </div>
+</dialog>
