@@ -28,7 +28,7 @@
 .login-card {
 
     width: 650px;
-    min-height: 480px;
+    min-height: 400px;
 
     padding: 32px 40px;
 
@@ -321,6 +321,7 @@
     font-size: 12px;
     text-align: center;
 }
+
 
 /* =========================================================
    SAME HEIGHT AS THE SIGN-UP CARD
