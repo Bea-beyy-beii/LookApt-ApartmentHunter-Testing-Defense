@@ -178,16 +178,14 @@ class AccountService:
     # ------------------------------------------------------------------ forgot password
 
     @staticmethod
-    def find_account(identifier):
-        """The account for an email or phone number (or username), like the login box. None if no match."""
-        identifier = (identifier or '').strip()
-        if not identifier:
+    def find_account(email, phone_number):
+        """The active account with this email AND this phone number. None if they don't
+        belong to the same account, so another person's email alone isn't enough."""
+        email = (email or '').strip()
+        phone_number = (phone_number or '').replace(' ', '').replace('-', '')
+        if not email or not phone_number:
             return None
-        return User.objects.filter(
-            Q(email__iexact=identifier) | Q(phone_number=identifier.replace(' ', '').replace('-', ''))
-            | Q(username__iexact=identifier),
-            is_active=True,
-        ).first()
+        return User.objects.filter(email__iexact=email, phone_number=phone_number, is_active=True).first()
 
     @classmethod
     def clean_new_password(cls, user, data):

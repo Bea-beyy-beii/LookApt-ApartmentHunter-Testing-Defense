@@ -28,7 +28,7 @@
 .login-card {
 
     width: 650px;
-    min-height: 480px;
+    min-height: 400px;
 
     padding: 32px 40px;
 
@@ -321,3 +321,20 @@
     font-size: 12px;
     text-align: center;
 }
+
+
+/* =========================================================
+   SAME HEIGHT AS THE SIGN-UP CARD
+   Tighter spacing on the log-in page only (.login-page), so
+   the card is as tall as sign-up's (the sign-up page shares
+   some of these classes).
+========================================================= */
+
+.login-page .login-content { margin-top: 8px; }
+.login-page .login-title { margin: 6px 0 2px; }
+.login-page .login-subtitle { margin: 0 0 16px; }
+.login-page .login-form .form-group { margin-bottom: 12px; }
+.login-page .forgot-password { margin: -6px 3px 14px auto; }
+.login-page .login-divider { margin: 9px auto; }
+.login-page .signup-text { margin: 12px 0 -10px; }
+.login-page .legal-links { margin: 12px 0 -10px; }
