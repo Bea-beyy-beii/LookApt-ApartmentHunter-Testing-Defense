@@ -2,7 +2,8 @@
 
     <div class="section-heading">
         <h2>Review Unit Information</h2>
-        <p>Please review the details below before adding this unit. You can go back to edit any section.</p>
+        <p data-single-only>Please review the details below before adding this unit. You can go back to edit any section.</p>
+        <p data-bulk-only hidden>Please review the details below. <strong data-bulk-review-count>0 units</strong> will be created with them. You can go back to edit any section.</p>
     </div>
 
     <div class="review-grid">
@@ -15,7 +16,8 @@
             </header>
 
             <div class="review-details review-details--compact">
-                <div class="review-row"><span class="review-label">Unit Number</span><span class="review-value" data-review="identifier" data-prefix="Unit ">—</span></div>
+                <div class="review-row" data-single-only><span class="review-label">Unit Number</span><span class="review-value" data-review="identifier" data-prefix="Unit ">—</span></div>
+                <div class="review-row" data-bulk-only hidden><span class="review-label">Unit Numbers</span><span class="review-chips" data-bulk-review-units>—</span></div>
                 <div class="review-row"><span class="review-label">Floor</span><span class="review-value" data-review="floor">—</span></div>
                 <div class="review-row"><span class="review-label">Unit Type</span><span class="review-value" data-review="bedroom_type">—</span></div>
                 <div class="review-row"><span class="review-label">Width</span><span class="review-value" data-review="width_dimension" data-suffix=" m">—</span></div>

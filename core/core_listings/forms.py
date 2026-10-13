@@ -421,3 +421,63 @@ class UnitForm(forms.ModelForm):
     def clean_deposit_months(self):
         return self._clean_months("deposit_months")
     
+
+# =========================================================
+# ADD SEVERAL UNITS AT ONCE ("Bulk listing" switch on the Add Unit form)
+# =========================================================
+
+MIN_BULK_UNITS = 2
+MAX_BULK_UNITS = 20
+
+
+class BulkUnitForm(UnitForm):
+    """The Add Unit form for several similar units: every UnitForm field and
+    check is inherited (type, size, rent within the complex's range, photos ...);
+    only the unit number is different. It is replaced by `unit_numbers`, e.g.
+    "101, 102, 103", and each number becomes its own Unit with the same details."""
+
+    unit_numbers = forms.CharField(label="Unit numbers", widget=forms.HiddenInput(), required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # One number per unit comes from unit_numbers instead
+        self.fields["identifier"].required = False
+
+    def clean_identifier(self):
+        return None                      # overrides UnitForm's: not used here
+
+    def clean_unit_numbers(self):
+        raw = (self.cleaned_data.get("unit_numbers") or "").replace(" ", "")
+        try:
+            numbers = [int(part) for part in raw.split(",") if part]
+        except ValueError:
+            raise ValidationError("Unit numbers must be whole numbers.")
+
+        if len(numbers) < MIN_BULK_UNITS:
+            raise ValidationError(f"Add at least {MIN_BULK_UNITS} unit numbers (or turn off Bulk listing).")
+        if len(numbers) > MAX_BULK_UNITS:
+            raise ValidationError(f"You can add up to {MAX_BULK_UNITS} units at once.")
+        if any(number < 1 for number in numbers):
+            raise ValidationError("Unit numbers must be at least 1.")
+
+        repeated = sorted({n for n in numbers if numbers.count(n) > 1})
+        if repeated:
+            raise ValidationError(f"Each unit needs its own number: {', '.join(map(str, repeated))} is used twice.")
+        taken = sorted(Unit.objects.filter(complex=self.complex, identifier__in=numbers)
+                       .values_list("identifier", flat=True))
+        if taken:
+            listed = ", ".join(f"Unit {n}" for n in taken)
+            raise ValidationError(f"{listed} already exist{'s' if len(taken) == 1 else ''} in {self.complex.complex_name}.")
+        return numbers
+
+    def build_units(self):
+        """One unsaved Unit per number, each a copy of the same details."""
+        template = self.save(commit=False)
+        units = []
+        for number in self.cleaned_data["unit_numbers"]:
+            unit = Unit(complex=self.complex)
+            for field in self.Meta.fields:
+                setattr(unit, field, getattr(template, field))
+            unit.identifier = number
+            units.append(unit)
+        return units

@@ -31,14 +31,27 @@
           action="{% if unit %}{% url 'core_listings:unit_edit' unit.pk %}{% else %}{% url 'core_listings:unit_create' complex.pk %}{% endif %}"
           class="unit-wizard-form wizard-form"
           data-has-errors="{% if form.errors %}1{% else %}0{% endif %}"
-          data-saving-messages='{% if unit %}["Saving your changes…", "Checking unit details…", "Uploading photos & videos…", "Almost done…"]{% else %}["Creating your unit…", "Checking unit details…", "Verifying rent against the complex price range…", "Uploading photos & videos…", "Adding it to your listings…"]{% endif %}'>
+          data-saving-messages='{% if unit %}["Saving your changes…", "Checking unit details…", "Uploading photos & videos…", "Almost done…"]{% else %}["Creating your unit…", "Checking unit details…", "Verifying rent against the complex price range…", "Uploading photos & videos…", "Adding it to your listings…"]{% endif %}'
+          data-bulk-saving-messages='["Creating your units…", "Checking unit details…", "Verifying rent against the complex price range…", "Copying photos & videos to every unit…", "Adding them to your listings…"]'>
 
         {% csrf_token %}
+
+        {# Bulk listing (new units only): several units with the same details. unit_form.js #}
+        {% if not unit %}
+            <label class="bulk-switch">
+                <input type="checkbox" name="bulk" value="1" data-bulk-toggle {% if bulk %}checked{% endif %}>
+                <span class="bulk-switch-track" aria-hidden="true"></span>
+                <span class="bulk-switch-text">
+                    <strong>Bulk listing</strong>
+                    <small>Add several units that share the same details and photos. Only the unit numbers differ.</small>
+                </span>
+            </label>
+        {% endif %}
 
         {# Every error, listed above the steps, so none can hide in a step you aren't on #}
         {% if form.errors %}
             <div class="form-errors" role="alert">
-                <strong>This unit wasn't saved yet. Please fix the following:</strong>
+                <strong>{% if bulk %}These units weren't saved yet.{% else %}This unit wasn't saved yet.{% endif %} Please fix the following:</strong>
                 <ul>
                     {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
                     {% for field in form %}
@@ -53,6 +66,9 @@
                 {% include "core_listings/landlords/forms/unit_steps/step_details.html" %}
             </div>
             <div class="wizard-step-panel" data-step="2" hidden>
+               <p class="bulk-note" data-bulk-only hidden>
+                   These photos and videos are used for <strong>every unit</strong> you're adding. You can change any unit's photos later.
+               </p>
                {% include "core_listings/landlords/forms/steps/step_photos.html" with max_photos=10 saved_pictures=unit.pictures.all photo_subject="unit" photo_heading="Unit Photos & Videos" allow_video=True max_videos=2 saved_videos=unit.videos.all %}
             </div>
             <div class="wizard-step-panel" data-step="3" hidden>
@@ -68,11 +84,14 @@
             
             <div class="wizard-submit-group" hidden>
 
-                <button type="submit" name="availability" value="unpublished" class="btn btn-secondary wizard-submit">
+                {# data-bulk-label: the text while Bulk listing is on ({n} = how many units) #}
+                <button type="submit" name="availability" value="unpublished" class="btn btn-secondary wizard-submit"
+                        data-bulk-label="Create {n} Units as Unpublished">
                     {% if unit %}Save as Unpublished{% else %}Create as Unpublished{% endif %}
                 </button>
 
-                <button type="submit" name="availability" value="available" class="btn btn-primary wizard-submit">
+                <button type="submit" name="availability" value="available" class="btn btn-primary wizard-submit"
+                        data-bulk-label="Create {n} Units as Vacant">
                     {% if unit %}Save as Vacant{% else %}Create as Vacant{% endif %}
                 </button>
 

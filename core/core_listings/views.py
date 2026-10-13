@@ -2,6 +2,7 @@
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
 
+from django.core.files.base import ContentFile
 from django.db import transaction
 from django.urls import reverse
 
@@ -11,6 +12,7 @@ from core.core_verification.services import can_publish
 
 from .models import Complex, ComplexPicture, Unit, UnitPicture
 from .forms import (
+    BulkUnitForm, MAX_BULK_UNITS,
     COMPLEX_DELETE_HAS_RENTER, COMPLEX_HAS_RENTER, UNIT_DELETE_HAS_RENTER, UNIT_HAS_RENTER, ComplexForm, UnitForm,
 )
 
@@ -336,12 +338,53 @@ def _save_unit(form, complex_obj):
     return unit
 
 
+def _copies(uploads):
+    """Read each uploaded file once, so it can be saved for every unit."""
+    copies = []
+    for upload in uploads:
+        upload.seek(0)
+        copies.append((upload.name, upload.read()))
+    return copies
+
+
+@transaction.atomic
+def _save_bulk_units(form, complex_obj):
+    """Bulk listing: the same details, photos and videos for every unit number."""
+    availability = form.data.get("availability")
+    photos = _copies(form.cleaned_data.get("photos") or [])
+    videos = _copies(form.cleaned_data.get("videos") or [])
+
+    units = form.build_units()
+    for unit in units:
+        if availability in Unit.Availability.values:
+            unit.availability = availability
+        unit.save()
+        _save_pictures(UnitPicture, "unit", unit, [ContentFile(data, name=name) for name, data in photos])
+        _save_videos(unit, [ContentFile(data, name=name) for name, data in videos])
+    return units
+
+
+def _next_identifier(complex_obj):
+    """Suggested first number for Bulk listing: one after the highest unit number."""
+    highest = complex_obj.units.order_by("-identifier").values_list("identifier", flat=True).first()
+    return (highest or 0) + 1
+
+
 def _unit_form_page(request, complex_obj, unit=None):
+    # "Bulk listing" switch (new units only): several units with the same details
+    bulk = unit is None and request.POST.get("bulk") == "1"
+    form_class = BulkUnitForm if bulk else UnitForm
+
     if request.method == "POST":
-        form = UnitForm(request.POST, request.FILES, instance=unit, complex_obj=complex_obj)
+        form = form_class(request.POST, request.FILES, instance=unit, complex_obj=complex_obj)
         if form.is_valid():
-            saved = _save_unit(form, complex_obj)
-            messages.success(request, f"Unit {saved.identifier} was saved.")
+            if bulk:
+                units = _save_bulk_units(form, complex_obj)
+                numbers = ", ".join(str(n) for n in sorted(u.identifier for u in units))
+                messages.success(request, f"{len(units)} units were added: {numbers}.")
+            else:
+                saved = _save_unit(form, complex_obj)
+                messages.success(request, f"Unit {saved.identifier} was saved.")
             return redirect(_my_listings_url(saved=True))
     else:
         form = UnitForm(instance=unit, complex_obj=complex_obj)
@@ -350,6 +393,9 @@ def _unit_form_page(request, complex_obj, unit=None):
         "form": form,
         "complex": complex_obj,
         "unit": unit,
+        "bulk": bulk,
+        "max_bulk_units": MAX_BULK_UNITS,
+        "next_identifier": _next_identifier(complex_obj),
         "active_tab": "myListings",
     })
 

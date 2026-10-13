@@ -2,13 +2,36 @@
 
     <div class="section-heading">
         <h2>Unit Details</h2>
-        <p>Provide the basic information about this unit.</p>
+        <p data-single-only>Provide the basic information about this unit.</p>
+        <p data-bulk-only hidden>Set each unit's number, then the details they all share.</p>
     </div>
+
+    {# Bulk listing: one number per unit (unit_form.js builds the boxes; the hidden field is what's sent) #}
+    {% if not unit %}
+        <section class="bulk-units" data-bulk-panel hidden
+                 data-next="{{ next_identifier }}" data-max="{{ max_bulk_units }}">
+            <div class="bulk-units-head">
+                <div>
+                    <h3>Unit Numbers</h3>
+                    <p>Every unit gets the details, rent and photos below. You can edit any unit on its own later.</p>
+                </div>
+                <div class="bulk-count" role="group" aria-label="Number of units">
+                    <span>Number of units</span>
+                    <button type="button" data-bulk-step="-1" aria-label="One unit fewer">−</button>
+                    <output data-bulk-count>2</output>
+                    <button type="button" data-bulk-step="1" aria-label="One more unit">+</button>
+                </div>
+            </div>
+            <div class="bulk-units-grid" data-bulk-grid></div>
+            <input type="hidden" name="unit_numbers" value="{{ form.data.unit_numbers|default:'' }}" data-bulk-numbers>
+            {% if form.unit_numbers.errors %}<div class="field-error">{{ form.unit_numbers.errors }}</div>{% endif %}
+        </section>
+    {% endif %}
 
     <!-- Row 1: number / floor / type / occupants / furnishing -->
     <div class="form-grid five-columns">
 
-        <div class="form-group">
+        <div class="form-group" data-single-only>
             <label for="{{ form.identifier.id_for_label }}">Unit Number <span>*</span></label>
             <div class="affix-input">
                 <span class="affix affix--prefix">Unit</span>
