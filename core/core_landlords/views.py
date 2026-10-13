@@ -4,36 +4,27 @@ from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.views.decorators.http import require_GET
 
+from django.views.generic import TemplateView
+
 from core.core_accounts.decorators import role_required
-from core.core_accounts.services import AccountService
-from core.core_inquiries.services import get_inquiries_context, today
-from core.core_listings.services import get_listings_context
-from core.core_rentals.services import get_rentals_context
-from core.core_reports.services import SUPPORT_EMAIL, get_reports_context
-from core.core_verification.services import verification_context
+from core.core_accounts.mixins import LandlordRequiredMixin
+from core.core_inquiries.sections import InquiriesSection
+from core.core_inquiries.services import today
+from core.core_listings.sections import ListingsSection
+from core.core_rentals.sections import RentalsSection
+from core.core_reports.sections import ReportsSection
+from core.core_verification.sections import VerificationSection
+from core.sections import SectionedDashboardMixin
 
 from . import services
 from .export import receivables_pdf
+from .sections import HomeSection
 
 
-@role_required('landlord')
-def dashboard(request):
-    active_tab = request.GET.get('tab', 'home')
-
-    context = {
-        'active_tab': active_tab,
-    }
-
-    context.update(get_inquiries_context(request.user))
-    context.update(get_reports_context(request.user))
-    context.update(get_listings_context(request.user))
-    context.update(get_rentals_context(request.user))
-    context.update(services.home_context(request.user, context))
-    context.update(verification_context(request.user))
-    context['support_email'] = SUPPORT_EMAIL
-    context['first_visit'] = request.session.get(AccountService.FIRST_VISIT, False)
-
-    return render(request, 'core_landlords/landlord_dashboard.html', context)
+class DashboardView(LandlordRequiredMixin, SectionedDashboardMixin, TemplateView):
+    """The landlord dashboard: every tab's data comes from its app's section."""
+    template_name = 'core_landlords/landlord_dashboard.html'
+    sections = (InquiriesSection, ReportsSection, ListingsSection, RentalsSection, HomeSection, VerificationSection)
 
 
 @role_required('landlord')

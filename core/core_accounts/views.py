@@ -24,12 +24,6 @@ from .legal import legal_context
 from .services import AccountService
 
 
-ROLE_HOME = {
-    'renter': 'core_renters:dashboard',
-    'landlord': 'core_landlords:dashboard',
-    'admin': 'core_admin:overview',
-}
-
 SIGNUP_FIELDS = ('first_name', 'last_name', 'phone_number', 'email', 'sex', 'role', 'agree_terms')
 
 
@@ -81,7 +75,7 @@ def finish_signup(request):
         return redirect('signup')
     notify.welcome(user)
     AccountService.sign_in(request, user)
-    return redirect(ROLE_HOME[user.role])
+    return redirect(user.home_url_name)
 
 
 @require_POST
@@ -111,7 +105,7 @@ def login_view(request):
         )
         if user:
             AccountService.sign_in(request, user)
-            return redirect(ROLE_HOME[user.role])
+            return redirect(user.home_url_name)
         if AccountService.is_suspended(request.POST.get('identifier', ''), request.POST.get('password', '')):
             messages.error(request, f"Your account is suspended. Please contact {SUPPORT_EMAIL}.")
         else:
@@ -338,7 +332,7 @@ def google_callback_view(request):
         return redirect('signup')
 
     AccountService.sign_in(request, user)
-    return redirect(ROLE_HOME[user.role])
+    return redirect(user.home_url_name)
 
 
 # ------------------------------------------------------------------ TOP BAR (dark mode switch + bell)

@@ -5,28 +5,22 @@ from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.views.decorators.http import require_GET
 
+from django.views.generic import TemplateView
+
+from core.core_accounts.mixins import RenterRequiredMixin
+from core.core_inquiries.sections import InquiriesSection
 from core.core_preview.access import is_previewing
-from core.core_inquiries.services import get_inquiries_context
-from core.core_reports.services import get_reports_context
-from core.core_accounts.decorators import role_required
-from core.core_rentals.services import get_renter_rentals_context
+from core.core_rentals.sections import RenterRentalsSection
+from core.core_reports.sections import ReportsSection
+from core.sections import SectionedDashboardMixin
+from .sections import RenterListingsSection
 from .services import get_renter_listings_context
 
 
-@role_required('renter')
-def dashboard(request):
-    active_tab = request.GET.get('tab', 'home')
-
-    context = {
-        'active_tab': active_tab,
-    }
-    
-    context.update(get_inquiries_context(request.user))
-    context.update(get_reports_context(request.user))
-    context.update(get_renter_listings_context(request.user, request.GET))
-    context.update(get_renter_rentals_context(request.user))
-
-    return render(request, 'core_renters/renter_dashboard.html', context)
+class DashboardView(RenterRequiredMixin, SectionedDashboardMixin, TemplateView):
+    """The renter dashboard: every tab's data comes from its app's section."""
+    template_name = 'core_renters/renter_dashboard.html'
+    sections = (InquiriesSection, ReportsSection, RenterListingsSection, RenterRentalsSection)
 
 
 @require_GET

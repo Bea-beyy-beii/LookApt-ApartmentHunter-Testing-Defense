@@ -11,7 +11,6 @@ into a "Create an account" prompt.
 """
 from django.shortcuts import redirect, render
 
-from core.core_accounts.views import ROLE_HOME
 from core.core_listings.forms import ComplexForm
 from core.core_renters.services import get_renter_listings_context
 from core.core_reports.services import SUPPORT_EMAIL
@@ -26,7 +25,7 @@ LANDLORD_TABS = ("home", "myListings")
 def _signed_in_home(request):
     """Signed-in users go straight to their own dashboard."""
     if request.user.is_authenticated:
-        return redirect(ROLE_HOME.get(request.user.role, "login"))
+        return redirect(request.user.home_url_name)
     return None
 
 

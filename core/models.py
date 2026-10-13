@@ -93,6 +93,36 @@ class User(AbstractUser):
 
 
 
+# ----------------------------- ROLE: the user's profile object (polymorphism, see Profile below)
+
+    # Admins have no profile row; their home is the admin panel
+    ADMIN_HOME = 'core_admin:overview'
+
+    @property
+    def profile(self):
+        """The Renter or Landlord object for this account (None for admins).
+        Code asks the profile instead of checking `user.role == ...`."""
+        return getattr(self, self.role, None) if self.role in ('renter', 'landlord') else None
+
+    @property
+    def home_url_name(self):
+        """Where this user lands after logging in (each profile type answers for itself)."""
+        profile = self.profile
+        return profile.HOME_URL_NAME if profile else self.ADMIN_HOME
+
+    @property
+    def is_landlord(self):
+        return self.role == 'landlord'
+
+    @property
+    def is_renter(self):
+        return self.role == 'renter'
+
+    @property
+    def is_admin_user(self):
+        return self.role == 'admin'
+
+
 # ----------------------------- DISPLAY NAME: Firstname Lastname (property to be called)
     @property
     def display_name(self):
@@ -132,11 +162,42 @@ class User(AbstractUser):
 
 
 
+# --------------------------------------------------------------------------------------------------------------- CLASS PROFILE - SHARED PARENT OF RENTER AND LANDLORD
+
+class Profile(models.Model):
+    """What every role profile has: one User, and a home page.
+
+    Abstract (no table of its own): Renter and Landlord inherit the `user` link
+    and these methods, and each one overrides ROLE / HOME_URL_NAME / role_label.
+    """
+
+    ROLE = None               # 'renter' / 'landlord' (set by each subclass)
+    HOME_URL_NAME = None      # the dashboard this role logs in to
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, db_column='user_id')
+
+    class Meta:
+        abstract = True
+
+    @property
+    def role_label(self):
+        return self.ROLE.title()
+
+    @property
+    def display_name(self):
+        return self.user.display_name
+
+    def __str__(self):
+        return f"{self.role_label}: {self.user.display_name}"
+
+
 # --------------------------------------------------------------------------------------------------------------- CLASS RENTER - FOR RENTERS TABLE
 
-class Renter(models.Model):
+class Renter(Profile):
+    ROLE = 'renter'
+    HOME_URL_NAME = 'core_renters:dashboard'
+
     renter_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.OneToOneField(User, on_delete=models.CASCADE, db_column='user_id')
 
     class Meta:
         db_table= 'renters'
@@ -144,10 +205,11 @@ class Renter(models.Model):
 
 # --------------------------------------------------------------------------------------------------------------- CLASS LANDLORD - FOR LANDLORDS TABLE
 
-class Landlord(models.Model):
+class Landlord(Profile):
+    ROLE = 'landlord'
+    HOME_URL_NAME = 'core_landlords:dashboard'
+
     landlord_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.OneToOneField(User, on_delete=models.CASCADE, db_column='user_id')
 
     class Meta:
         db_table= 'landlords'
-
