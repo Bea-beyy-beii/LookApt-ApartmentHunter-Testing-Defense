@@ -6,9 +6,10 @@
         <h2>Select Property Location</h2>
 
         <p>
-            Click on the map to pin your property's exact location.
-            You can also search for an address. Pick how renters would travel
-            and how far, and we'll list the landmarks around your property.
+            Click on the map to pin your property's exact location, or type the
+            address below and pick it from the list. Pick how renters would travel
+            and how far, and we'll list the landmarks around your property. You can
+            add landmarks the map doesn't know, too.
         </p>
 
     </div>
@@ -19,12 +20,20 @@
         <!-- Map -->
         <div class="location-picker-panel">
 
-            {% location_picker kind="landlord" lat=form.latitude.value lng=form.longitude.value results="#wizard-landmarks" %}
+            {% if property %}
+                {% location_picker kind="landlord" lat=form.latitude.value lng=form.longitude.value results="#wizard-landmarks" saved=property|saved_landmarks saved_complex=property.pk %}
+            {% else %}
+                {% location_picker kind="landlord" lat=form.latitude.value lng=form.longitude.value results="#wizard-landmarks" %}
+            {% endif %}
 
-            <div class="location-address-fields form-group">
+            {# Typing the address suggests places; picking one moves the pin there (maps.js) #}
+            <div class="location-address-fields form-group" data-address-search>
                 <label for="{{ form.address.id_for_label }}">Address <span>*</span></label>
-                {{ form.address }}
-                <small>Filled in from the pin. You can edit it.</small>
+                <div class="location-address-search">
+                    {{ form.address }}
+                    <ul class="lk-map-search-results" role="listbox" hidden></ul>
+                </div>
+                <small>Type it to find the spot on the map, or click the map and it's filled in for you.</small>
                 {% if form.address.errors %}<div class="field-error">{{ form.address.errors }}</div>{% endif %}
             </div>
 
@@ -43,9 +52,9 @@
 
         <!-- Landmarks -->
         {% if property %}
-            {% include "core_maps/landmark_panel.html" with target_id="wizard-landmarks" landmarks=property|saved_landmarks %}
+            {% include "core_maps/landmark_panel.html" with target_id="wizard-landmarks" landmarks=property|saved_landmarks manual=True %}
         {% else %}
-            {% include "core_maps/landmark_panel.html" with target_id="wizard-landmarks" %}
+            {% include "core_maps/landmark_panel.html" with target_id="wizard-landmarks" manual=True %}
         {% endif %}
 
     </div>

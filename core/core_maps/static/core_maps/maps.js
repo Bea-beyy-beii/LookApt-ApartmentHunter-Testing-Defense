@@ -4,9 +4,12 @@
 // The map itself is a Folium map rendered by Django inside an <iframe>.
 // When the user clicks it, the iframe posts {type: "lookapt:map-click"}
 // to this page. We then:
-//   1. call the JSON API (landmarks for landlords, complexes for renters)
-//   2. render the side panel
-//   3. reload the iframe so Folium redraws the pin, radius and markers
+//   1. tell the iframe to draw the new radius with a radar sweep (lookapt:scan)
+//   2. call the JSON API (landmarks for landlords, complexes for renters)
+//   3. render the side panel
+//   4. reload the iframe so Folium redraws the pin, radius and markers
+// Landlords can also add landmarks by hand (name + category + a spot on the
+// map) and find the pin from the typed address.
 // =========================================================
 
 (function () {
@@ -18,6 +21,40 @@
     };
 
     const MODE_WORDS = { walking: "walk", commute: "commute", driving: "drive" };
+
+    // Same numbers as core_maps/maps/geo.py (travel time from a straight-line distance)
+    const SPEED_KMH = { walking: 4.8, commute: 15, driving: 25 };
+    const ROAD_DETOUR = 1.3;
+
+    function haversineM(lat1, lng1, lat2, lng2) {
+        const rad = Math.PI / 180, R = 6371000;
+        const dLat = (lat2 - lat1) * rad, dLng = (lng2 - lng1) * rad;
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLng / 2) ** 2;
+        return 2 * R * Math.asin(Math.sqrt(a));
+    }
+
+    function minutesFor(distanceM, mode) {
+        return Math.max(1, Math.round(distanceM * ROAD_DETOUR / 1000 / SPEED_KMH[mode] * 60));
+    }
+
+    // Distance / time fields like the API's (_travel_info in services.py)
+    function travelInfo(distanceM, mode) {
+        const minutesByMode = {};
+        Object.keys(SPEED_KMH).forEach(m => { minutesByMode[m] = minutesFor(distanceM, m); });
+        return {
+            distance_m: Math.round(distanceM),
+            distance_km: Math.round(distanceM / 100) / 10,
+            distance_label: distanceM < 1000 ? `${Math.max(10, Math.round(distanceM / 10) * 10)} m` : `${(distanceM / 1000).toFixed(1)} km`,
+            minutes: minutesByMode[mode],
+            minutes_by_mode: minutesByMode,
+        };
+    }
+
+    function readJSON(selector, scope) {
+        const node = (scope || document).querySelector(selector);
+        if (!node) return null;
+        try { return JSON.parse(node.textContent); } catch (error) { return null; }
+    }
 
     const BUILDING_ICON = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 10h1M14 10h1M9 14h1M14 14h1M10 21v-3h4v3"/></svg>';
 
@@ -67,10 +104,12 @@
                 label: root.dataset.label || "",
             };
 
-            this.landmarks = [];
+            this.landmarks = [];     // from the API (OpenStreetMap + our saved ones)
+            this.manual = [];        // added by the landlord by hand
             this.removed = new Set();
             this.requestId = 0;
             this.frameDirty = true;
+            this.picking = null;     // "pick on map" for a manual landmark
 
             this.frame = root.querySelector(".lk-map-frame");
             this.status = root.querySelector(".lk-map-status");
@@ -82,8 +121,25 @@
             this.bindFrameMessages();
             this.watchVisibility();
             this.updateRadiusHints();
+            this.bindManual();
+            this.bindAddressSearch();
 
-            if (this.hasPoint() && this.editable) {
+            // Editing a property: start from its saved landmarks (no waiting for
+            // OpenStreetMap, and nothing is lost if it's down). The landmarks are
+            // only looked up again when the pin, radius or travel time changes.
+            const saved = this.editable && this.kind === "landlord" ? readJSON(`#${root.id}-saved`) : null;
+            if (saved && saved.length) {
+                this.state.mode = saved[0].travel_mode || this.state.mode;
+                this.markActive(".lk-mode-chip", chip => chip.dataset.mode === this.state.mode);
+                this.updateRadiusHints();
+                this.manual = saved.filter(item => item.manual);
+                this.landmarks = saved.filter(item => !item.manual);
+                this.loaded = true;
+                this.useSaved = true;
+                this.renderLandmarks();
+                // Let the wizard's Review map show them too
+                setTimeout(() => this.root.dispatchEvent(new CustomEvent("lookapt:map-change", { bubbles: true, detail: this.snapshot() })));
+            } else if (this.hasPoint() && this.editable) {
                 this.fetchResults();
             }
         }
@@ -132,7 +188,16 @@
             this.state.mode = mode;
             this.markActive(".lk-mode-chip", chip => chip.dataset.mode === mode);
             this.updateRadiusHints();
-            this.refresh();
+            // "within 15 min" depends on the mode: that changes the radius, so ask again.
+            // Otherwise the results are the same places; only their travel times change.
+            if (this.state.minutes || !this.hasPoint() || (this.kind === "renter" ? !this.complexes : !this.loaded)) {
+                this.refresh();
+                return;
+            }
+            if (this.kind === "renter") this.renderComplexes(this.complexes);
+            else this.renderLandmarks();
+            this.writeFormFields();
+            this.root.dispatchEvent(new CustomEvent("lookapt:map-change", { bubbles: true, detail: this.snapshot() }));
         }
 
         setRadius(km) {
@@ -168,17 +233,27 @@
         // ---------------------------------------------------------
 
         bindSearch(input) {
-            const list = this.root.querySelector(".lk-map-search-results");
+            this.attachSuggestions(input, this.root.querySelector(".lk-map-search-results"), place => {
+                input.value = place.name;
+                this.setPoint(place.lat, place.lng, place.name);
+            });
+        }
 
+
+        // ---------------------------------------------------------
+        // Suggestions under a text box (place search API)
+        // ---------------------------------------------------------
+
+        // Calls onPick(place) when a suggestion is chosen (click or Enter)
+        attachSuggestions(input, list, onPick, minLength = 3) {
             const run = debounce(async () => {
                 const q = input.value.trim();
-                if (q.length < 3) { list.hidden = true; return; }
-
+                if (q.length < minLength) { list.hidden = true; return; }
                 list.replaceChildren(el("li", "lk-search-empty", "Searching…"));
                 list.hidden = false;
-
                 try {
                     const data = await this.getJSON(this.urls.search, { q });
+                    if (input.value.trim() !== q) return;          // typed on since
                     list.replaceChildren();
                     if (!data.results.length) {
                         list.append(el("li", "lk-search-empty", "No places found."));
@@ -189,11 +264,7 @@
                         item.setAttribute("role", "option");
                         item.tabIndex = 0;
                         item.append(el("strong", "", place.name), el("small", "", place.address));
-                        const choose = () => {
-                            input.value = place.name;
-                            list.hidden = true;
-                            this.setPoint(place.lat, place.lng, place.name);
-                        };
+                        const choose = () => { list.hidden = true; onPick(place); };
                         item.addEventListener("click", choose);
                         item.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); choose(); } });
                         list.append(item);
@@ -203,18 +274,126 @@
                 }
             }, 450);
 
-            input.addEventListener("input", run);
-            // Enter in the search box must not submit the property form
+            input.addEventListener("input", () => { if (input.dataset.autofilled !== "1") run(); });
+            // Enter must not submit the property form: it picks the first suggestion
             input.addEventListener("keydown", e => {
-                if (e.key === "Enter") {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const first = list.querySelector(".lk-search-result");
-                    if (first) first.click();
-                }
+                if (e.key !== "Enter") return;
+                e.preventDefault();
+                e.stopPropagation();
+                list.querySelector(".lk-search-result")?.click();
             });
             document.addEventListener("click", e => {
-                if (!this.root.querySelector(".lk-map-search").contains(e.target)) list.hidden = true;
+                if (e.target !== input && !list.contains(e.target)) list.hidden = true;
+            });
+        }
+
+
+        // ---------------------------------------------------------
+        // Landlord: type the address -> pin
+        // ---------------------------------------------------------
+
+        bindAddressSearch() {
+            if (this.kind !== "landlord" || !this.editable || !this.form) return;
+            const box = this.form.querySelector("[data-address-search]");
+            if (!box) return;
+            const input = box.querySelector("input, textarea");
+            const list = box.querySelector(".lk-map-search-results");
+            input.addEventListener("input", () => { delete input.dataset.autofilled; });
+            this.attachSuggestions(input, list, place => {
+                // Keep what the landlord typed; just move the pin there
+                if (!input.value.trim()) input.value = place.address || place.name;
+                this.setPoint(place.lat, place.lng, place.name);
+            });
+        }
+
+
+        // ---------------------------------------------------------
+        // Landlord: add a landmark by hand
+        // ---------------------------------------------------------
+
+        bindManual() {
+            if (this.kind !== "landlord" || !this.editable || !this.results) return;
+            const panel = this.results.closest(".lk-landmarks-panel");
+            const box = panel && panel.querySelector("[data-lk-manual]");
+            if (!box) return;
+
+            const categories = {};
+            (readJSON("#lk-manual-categories") || []).forEach(c => { categories[c.category] = c; });
+            const formBox = box.querySelector("[data-manual-form]");
+            const toggle = box.querySelector("[data-manual-toggle]");
+            const name = box.querySelector("[data-manual-name]");
+            const category = box.querySelector("[data-manual-category]");
+            const where = box.querySelector("[data-manual-point]");
+            const error = box.querySelector("[data-manual-error]");
+            let point = null;
+
+            const showError = text => { error.textContent = text; error.hidden = !text; };
+            const setPoint = (lat, lng, text) => {
+                point = { lat: Math.round(lat * 1e6) / 1e6, lng: Math.round(lng * 1e6) / 1e6 };
+                where.textContent = text;
+                where.classList.add("is-set");
+                showError("");
+            };
+            const reset = () => {
+                name.value = "";
+                category.value = "";
+                point = null;
+                where.textContent = where.dataset.empty;
+                where.classList.remove("is-set");
+                showError("");
+                this.picking = null;
+                this.root.classList.remove("is-picking");
+            };
+            const open = show => {
+                formBox.hidden = !show;
+                toggle.hidden = show;
+                if (show) name.focus();
+                else reset();
+            };
+
+            toggle.addEventListener("click", () => open(true));
+            box.querySelector("[data-manual-cancel]").addEventListener("click", () => open(false));
+
+            // Typing a name suggests places; choosing one fills its spot (and category if known)
+            const suggest = box.querySelector("[data-manual-suggest]");
+            this.attachSuggestions(name, suggest, place => {
+                name.value = place.name;
+                if (place.category && categories[place.category] && !category.value) category.value = place.category;
+                setPoint(place.lat, place.lng, place.address || "Spot found");
+                this.postToFrame({ type: "lookapt:mark", lat: place.lat, lng: place.lng });
+            });
+
+            box.querySelector("[data-manual-pick]").addEventListener("click", () => {
+                if (!this.hasPoint()) return showError("Drop your property's pin on the map first.");
+                suggest.hidden = true;
+                this.picking = (lat, lng) => {
+                    setPoint(lat, lng, "Picked on the map");
+                    this.setStatus("");
+                };
+                this.root.classList.add("is-picking");
+                where.textContent = "Now click the landmark's spot on the map…";
+                this.setStatus(`Click where "${name.value.trim() || "the landmark"}" is on the map.`);
+                this.root.querySelector(".lk-map-frame-wrap")?.scrollIntoView({ behavior: "smooth", block: "center" });
+            });
+
+            box.querySelector("[data-manual-add]").addEventListener("click", () => {
+                const label = name.value.trim();
+                if (!this.hasPoint()) return showError("Drop your property's pin on the map first.");
+                if (!label) return showError("Type the landmark's name.");
+                if (!categories[category.value]) return showError("Pick a category.");
+                if (!point) return showError("Search the place above or pick its spot on the map.");
+                const distance = haversineM(this.state.lat, this.state.lng, point.lat, point.lng);
+                if (distance > 20000) return showError("That spot is more than 20 km from your property.");
+
+                this.manual.push({
+                    name: label.slice(0, 120), lat: point.lat, lng: point.lng, manual: true,
+                    ...categories[category.value], ...travelInfo(distance, this.state.mode),
+                });
+                open(false);
+                this.renderLandmarks();
+                this.reloadFrame();
+                this.writeFormFields();
+                this.root.dispatchEvent(new CustomEvent("lookapt:map-change", { bubbles: true, detail: this.snapshot() }));
             });
         }
 
@@ -229,8 +408,31 @@
                 if (event.origin !== window.location.origin) return;
                 if (!this.frame || event.source !== this.frame.contentWindow) return;
                 if (!event.data || event.data.type !== "lookapt:map-click") return;
+                if (this.picking) {
+                    const done = this.picking;
+                    this.picking = null;
+                    this.root.classList.remove("is-picking");
+                    this.postToFrame({ type: "lookapt:mark", lat: event.data.lat, lng: event.data.lng });
+                    done(event.data.lat, event.data.lng);
+                    return;
+                }
                 this.setPoint(event.data.lat, event.data.lng);
             });
+        }
+
+        postToFrame(message) {
+            try {
+                this.frame?.contentWindow?.postMessage(message, window.location.origin);
+            } catch (error) { /* frame not loaded yet */ }
+        }
+
+        // Radius in metres for the scan animation (the server sends the exact one)
+        scanRadiusM() {
+            if (this.state.minutes) {
+                const km = SPEED_KMH[this.state.mode] * (this.state.minutes / 60) / ROAD_DETOUR;
+                return Math.min(20, Math.max(0.2, km)) * 1000;
+            }
+            return this.state.radius * 1000;
         }
 
         // Leaflet sizes itself wrong inside a hidden iframe, so only
@@ -261,6 +463,13 @@
             }
             if (this.state.label) params.label = this.state.label;
             if (this.root.dataset.complex) params.complex = this.root.dataset.complex;
+            if (this.kind === "landlord" && this.editable) {
+                // Until the landlord changes something, draw the property's saved landmarks
+                if (this.useSaved && this.root.dataset.savedComplex) params.complex = this.root.dataset.savedComplex;
+                if (this.manual.length) {
+                    params.pins = JSON.stringify(this.manual.map(({ name, category, lat, lng }) => ({ name, category, lat, lng })));
+                }
+            }
 
             this.frame.src = `${this.urls.frame}?${new URLSearchParams(params)}`;
         }
@@ -287,18 +496,23 @@
 
         async fetchResults() {
             const id = ++this.requestId;
+            this.useSaved = false;
             const params = { lat: this.state.lat, lng: this.state.lng, mode: this.state.mode };
             if (this.state.minutes) params.minutes = this.state.minutes;
             else params.radius_km = this.state.radius;
 
-            this.setStatus(this.kind === "renter" ? "Finding apartments…" : "Finding nearby landmarks…");
+            this.setStatus(this.kind === "renter" ? "Finding apartments…" : "Scanning for nearby landmarks…");
             this.root.classList.add("is-loading");
+            // Draw the new radius at once, with a radar sweep until the results come
+            this.postToFrame({ type: "lookapt:scan", lat: this.state.lat, lng: this.state.lng, radius_m: this.scanRadiusM() });
 
+            let failed = false;
             try {
                 if (this.kind === "renter") {
                     const data = await this.getJSON(this.urls.complexes, params);
                     if (id !== this.requestId) return;
                     this.state.radius = data.radius_km;
+                    this.complexes = data.complexes;
                     this.renderComplexes(data.complexes);
                     this.setStatus("");
                 } else {
@@ -306,20 +520,23 @@
                     if (id !== this.requestId) return;
                     this.state.radius = data.radius_km;
                     this.landmarks = data.landmarks;
+                    this.loaded = true;
                     this.renderLandmarks();
                     this.setStatus(data.source === "offline"
-                        ? "OpenStreetMap is unreachable — showing saved landmarks only."
+                        ? "OpenStreetMap is unreachable right now — showing saved landmarks only. You can add landmarks by hand."
                         : "");
                 }
             } catch (error) {
                 if (id !== this.requestId) return;
-                this.setStatus(error.message || "Something went wrong. Please try again.");
+                failed = true;
+                this.setStatus("Couldn't load the results.", () => this.fetchResults());
             } finally {
                 if (id === this.requestId) this.root.classList.remove("is-loading");
             }
 
             this.reloadFrame();
-            this.writeFormFields();
+            // A failed lookup keeps the list it had (it must not save "no landmarks")
+            this.writeFormFields(!failed);
             this.root.dispatchEvent(new CustomEvent("lookapt:map-change", { bubbles: true, detail: this.snapshot() }));
         }
 
@@ -344,8 +561,16 @@
             }
         }
 
-        setStatus(text) {
-            if (this.status) this.status.textContent = text;
+        // Optional retry: shows a "Try again" link after the text
+        setStatus(text, retry) {
+            if (!this.status) return;
+            this.status.textContent = text;
+            if (retry) {
+                const button = el("button", "lk-retry", "Try again");
+                button.type = "button";
+                button.addEventListener("click", retry);
+                this.status.append(" ", button);
+            }
         }
 
         snapshot() {
@@ -358,7 +583,9 @@
         }
 
         keptLandmarks() {
-            return this.landmarks.filter(item => !this.removed.has(this.landmarkKey(item)));
+            // Manual ones first (the landlord added them on purpose), then the nearest found ones
+            const found = this.landmarks.filter(item => !this.removed.has(this.landmarkKey(item)));
+            return [...this.manual, ...found];
         }
 
         landmarkKey(item) {
@@ -379,13 +606,14 @@
             }
         }
 
-        writeFormFields() {
+        writeFormFields(withLandmarks = true) {
             if (this.kind !== "landlord" || !this.hasPoint()) return;
             this.setField("latitude", this.state.lat);
             this.setField("longitude", this.state.lng);
             this.setField("travel_mode", this.state.mode);
+            if (!withLandmarks) return;
             this.setField("landmarks_json", JSON.stringify(
-                this.keptLandmarks().map(({ name, category, lat, lng }) => ({ name, category, lat, lng }))
+                this.keptLandmarks().map(({ name, category, lat, lng, manual }) => ({ name, category, lat, lng, manual: !!manual }))
             ));
         }
 
@@ -397,8 +625,10 @@
         renderLandmarks() {
             if (!this.results) return;
             this.results.replaceChildren(...LookAptMap.landmarkRows(this.keptLandmarks(), this.state.mode, this.editable ? item => {
-                this.removed.add(this.landmarkKey(item));
+                if (item.manual) this.manual = this.manual.filter(other => other !== item);
+                else this.removed.add(this.landmarkKey(item));
                 this.renderLandmarks();
+                if (item.manual) this.reloadFrame();
                 this.writeFormFields();
                 this.root.dispatchEvent(new CustomEvent("lookapt:map-change", { bubbles: true, detail: this.snapshot() }));
             } : null));
@@ -429,6 +659,11 @@
                 meta.append(el("span", "", item.distance_label || `${item.distance_km} km`), time);
                 body.append(el("strong", "", item.name), meta);
 
+                if (item.manual) {
+                    const badge = el("em", "lk-landmark-manual", "Added");
+                    badge.title = "Added by you";
+                    meta.append(badge);
+                }
                 row.append(icon, body, el("span", "lk-landmark-tag", item.label));
 
                 if (onRemove) {
@@ -486,7 +721,8 @@
                 const meta = el("span", "lk-landmark-meta");
                 const time = el("span", "lk-landmark-time");
                 time.innerHTML = MODE_ICONS[this.state.mode] || "";
-                time.append(` ${item.minutes} min${item.minutes === 1 ? "" : "s"}`);
+                const minutes = item.minutes_by_mode ? item.minutes_by_mode[this.state.mode] : item.minutes;
+                time.append(` ${minutes} min${minutes === 1 ? "" : "s"}`);
                 meta.append(el("span", "", item.distance_label || `${item.distance_km} km`), time);
 
                 const tags = el("span", "lk-complex-tags");

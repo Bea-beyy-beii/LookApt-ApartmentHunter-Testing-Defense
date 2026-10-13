@@ -118,7 +118,7 @@ class ReviewTests(TestCase):
         self.assertEqual(response.context["complex_rating"], {"avg": 4.0, "count": 1})
         self.assertEqual(response.context["landlord"]["rating"], {"avg": 3.0, "count": 1})
         self.assertEqual(response.context["units"][0].rating, {"avg": 5.0, "count": 1})
-        self.assertContains(response, "Rina S.")             # first name + last initial only
+        self.assertContains(response, "R. S.")               # initials only
         self.assertContains(response, "Quiet place.")
         self.assertContains(response, 'aria-label="4.0 out of 5 stars"')
         self.assertEqual(response.context["review_summary"]["breakdown"][1], {"stars": 4, "count": 1, "percent": 100})

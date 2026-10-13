@@ -17,6 +17,7 @@
      data-radius="{{ radius }}"
      data-mode="{{ mode }}"
      data-complex="{{ complex }}"
+     data-saved-complex="{{ saved_complex }}"
      data-results="{{ results }}"
      data-mirror="{{ mirror }}"
      data-label="{{ label }}"
@@ -25,6 +26,9 @@
      data-complexes-url="{% url 'core_maps:complexes_api' %}"
      data-search-url="{% url 'core_maps:search_api' %}"
      data-reverse-url="{% url 'core_maps:reverse_api' %}">
+
+    {# Editing: the property's saved landmarks (maps.js starts from these) #}
+    {% if saved %}{{ saved|json_script:saved_id }}{% endif %}
 
     {% if editable %}
 

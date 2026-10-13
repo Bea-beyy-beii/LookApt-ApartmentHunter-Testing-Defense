@@ -120,6 +120,18 @@ DATABASES = {
     }
 }
 
+# Cache shared by all the server's worker processes (the default one is per
+# process, so the map often asked OpenStreetMap again for the same place).
+# Used for OpenStreetMap answers (core_maps); nothing to set up.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': os.path.join(os.environ.get('TMPDIR', '/tmp'), 'lookapt-cache'),
+        'TIMEOUT': 60 * 60 * 24,
+        'OPTIONS': {'MAX_ENTRIES': 5000},
+    }
+}
+
 AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY")
 AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME")

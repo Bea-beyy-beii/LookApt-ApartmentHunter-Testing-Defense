@@ -63,7 +63,8 @@ class OverpassParsingTests(TestCase):
         self.assertIn("around:1500", query)
 
 
-class ServiceTests(TestCase):
+class MapSetup(TestCase):
+    """A landlord, Mapúa and a far airport in the Landmark table."""
 
     def setUp(self):
         cache.clear()
@@ -85,6 +86,10 @@ class ServiceTests(TestCase):
         )
         defaults.update(kwargs)
         return Complex.objects.create(**defaults)
+
+
+
+class ServiceTests(MapSetup):
 
     @mock.patch("core.core_maps.maps.providers.requests.post", side_effect=overpass_down)
     def test_nearby_landmarks_falls_back_to_local(self, _post):
@@ -171,3 +176,133 @@ class ApiTests(TestCase):
         html = response.content.decode()
         self.assertIn("L.circle", html)
         self.assertIn("lookapt:map-click", html)
+
+
+# ------------------------------------------------------------------ speed, search, manual landmarks
+
+def overpass_reply(*elements):
+    response = mock.Mock()
+    response.json.return_value = {"elements": list(elements)}
+    response.raise_for_status.return_value = None
+    return response
+
+
+CLINIC = {"type": "node", "id": 9, "lat": 7.0610, "lon": 125.5975, "tags": {"amenity": "hospital", "name": "Clinic A"}}
+
+
+class SpeedTests(MapSetup):
+    """Fewer, faster calls to OpenStreetMap."""
+
+    def test_overpass_rings_go_in_one_request_and_are_cached(self):
+        with mock.patch("core.core_maps.maps.providers.requests.post", return_value=overpass_reply(CLINIC)) as post:
+            services.nearby_landmarks(7.06, 125.597, 5, "walking")       # rings 1, 3 and 5 km
+            self.assertEqual(post.call_count, 1)
+            query = post.call_args.kwargs["data"]["data"]
+            for radius in ("around:1000", "around:3000", "around:5000"):
+                self.assertIn(radius, query)
+            services.nearby_landmarks(7.06, 125.597, 5, "driving")       # same place: cached
+            self.assertEqual(post.call_count, 1)
+
+    def test_a_failing_server_moves_on_to_the_next(self):
+        replies = [requests.ConnectionError("down"), overpass_reply(CLINIC)]
+        with mock.patch("core.core_maps.maps.providers.requests.post", side_effect=replies) as post:
+            landmarks, source = services.nearby_landmarks(7.06, 125.597, 1, "walking")
+        self.assertEqual(source, "live")
+        self.assertIn("Clinic A", [item["name"] for item in landmarks])
+        self.assertEqual(post.call_count, 2)
+        self.assertNotEqual(post.call_args_list[0].args[0], post.call_args_list[1].args[0])
+
+    def test_shown_landmarks_are_remembered_for_search(self):
+        with mock.patch("core.core_maps.maps.providers.requests.post", return_value=overpass_reply(CLINIC)):
+            services.nearby_landmarks(7.06, 125.597, 1, "walking")
+            services.nearby_landmarks(7.06, 125.597, 3, "walking")       # no duplicates
+        self.assertEqual(Landmark.objects.filter(name="Clinic A").count(), 1)
+        with mock.patch("core.core_maps.maps.providers.requests.get", side_effect=requests.ConnectionError("offline")):
+            self.assertEqual(services.search_place("clinic a")[0]["name"], "Clinic A")
+
+    def test_frame_only_loads_leaflet(self):
+        from .maps.folium_maps import build_map
+        html = build_map(7.06, 125.6, radius_km=3)
+        self.assertIn("leaflet.js", html)
+        for heavy in ("bootstrap", "jquery", "fontawesome", "awesome-markers"):
+            self.assertNotIn(heavy, html)
+        self.assertIn("lookapt:scan", html)          # the radar sweep listens for the parent page
+        # Apartment pop-ups (renter map) are built with jQuery
+        complex_item = {"name": "Sunrise", "address": "Matina", "lat": 7.061, "lng": 125.601, "min_price": 5000,
+                        "max_price": 8000, "distance_label": "200 m", "minutes": 3}
+        self.assertIn("jquery", build_map(7.06, 125.6, radius_km=3, complexes=[complex_item]))
+
+
+def photon_reply(*features):
+    response = mock.Mock()
+    response.json.return_value = {"type": "FeatureCollection", "features": list(features)}
+    response.raise_for_status.return_value = None
+    return response
+
+
+def photon_feature(name, lat, lng, country="PH", **props):
+    return {"geometry": {"coordinates": [lng, lat]},
+            "properties": {"name": name, "countrycode": country, "city": "Davao City", **props}}
+
+
+class SearchTests(TestCase):
+
+    def setUp(self):
+        cache.clear()
+
+    def test_local_search_matches_every_word_in_any_order(self):
+        Landmark.objects.create(name="Jose Maria College Foundation", category="school", latitude=7.12, longitude=125.66)
+        with mock.patch("core.core_maps.maps.providers.requests.get", side_effect=requests.ConnectionError("offline")):
+            self.assertEqual(services.search_place("college jose")[0]["name"], "Jose Maria College Foundation")
+            self.assertEqual(services.search_place("jose maria")[0]["category"], "school")
+
+    def test_photon_finds_half_typed_names_in_the_philippines(self):
+        reply = photon_reply(
+            photon_feature("Philippine Nikkei Jin Kai International School", 7.09, 125.50,
+                           osm_key="amenity", osm_value="school", district="Mintal"),
+            photon_feature("Nikkei Tokyo", 35.6, 139.7, country="JP"),
+        )
+        with mock.patch("core.core_maps.maps.providers.requests.get", return_value=reply) as get:
+            results = services.search_place("nikkei jin")
+        self.assertEqual([r["name"] for r in results], ["Philippine Nikkei Jin Kai International School"])
+        self.assertEqual(results[0]["category"], "school")
+        self.assertEqual(results[0]["address"], "Mintal, Davao City")
+        self.assertIn("photon", get.call_args.args[0])
+
+    def test_nominatim_is_the_backup(self):
+        nominatim = mock.Mock()
+        nominatim.json.return_value = [{"name": "Karwasan ni Sikoy", "display_name": "Karwasan ni Sikoy, Davao City",
+                                        "lat": "7.07", "lon": "125.61"}]
+        nominatim.raise_for_status.return_value = None
+        with mock.patch("core.core_maps.maps.providers.time.sleep"), \
+             mock.patch("core.core_maps.maps.providers.requests.get",
+                        side_effect=[requests.ConnectionError("photon down"), nominatim]):
+            results = services.search_place("karwasan")
+        self.assertEqual(results[0]["name"], "Karwasan ni Sikoy")
+
+
+class ManualLandmarkTests(MapSetup):
+
+    def test_manual_flag_is_saved_and_returned(self):
+        complex_obj = self.make_complex("Near", 7.0600, 125.5970)
+        services.save_complex_landmarks(complex_obj, [
+            {"name": "Karwasan ni Sikoy", "category": "restaurant", "lat": 7.0605, "lng": 125.5972, "manual": True},
+            {"name": "Mapúa Malayan Colleges Mindanao", "category": "school", "lat": MAPUA[0], "lng": MAPUA[1]},
+        ], "walking")
+        saved = {item["name"]: item["manual"] for item in services.complex_landmarks(complex_obj)}
+        self.assertEqual(saved, {"Karwasan ni Sikoy": True, "Mapúa Malayan Colleges Mindanao": False})
+
+    def test_frame_draws_unsaved_manual_pins(self):
+        self.client.force_login(self.user)
+        pins = '[{"name": "Karwasan ni Sikoy", "category": "restaurant", "lat": 7.0605, "lng": 125.5972}]'
+        with mock.patch("core.core_maps.maps.providers.requests.post", side_effect=overpass_down):
+            html = self.client.get(reverse("core_maps:frame"), {"lat": 7.06, "lng": 125.597, "kind": "landlord",
+                                                                "pins": pins}).content.decode()
+        self.assertIn("Karwasan ni Sikoy", html)
+
+    def test_refresh_landmarks_fills_complexes_without_any(self):
+        from django.core.management import call_command
+        empty = self.make_complex("Empty", 7.0600, 125.5970)
+        with mock.patch("core.core_maps.maps.providers.requests.post", return_value=overpass_reply(CLINIC)):
+            call_command("refresh_landmarks", stdout=mock.Mock(), stderr=mock.Mock())
+        self.assertIn("Clinic A", [item["name"] for item in services.complex_landmarks(empty)])

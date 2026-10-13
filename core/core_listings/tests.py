@@ -1,4 +1,4 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from core.core_rentals.services import get_rentals_context
@@ -177,7 +177,7 @@ def jpg(name="p.jpg"):
     return SimpleUploadedFile(name, buffer.getvalue(), content_type="image/jpeg")
 
 
-class ListingFormTests(TestCase):
+class ListingFormSetup(TestCase):
 
     def setUp(self):
         self.user = make_landlord()
@@ -194,6 +194,10 @@ class ListingFormTests(TestCase):
                 "has_cctv": "on", "has_security": "on"}
         data.update(changes)
         return data
+
+
+
+class ListingFormTests(ListingFormSetup):
 
     def test_eight_features_and_turnover_in_the_form(self):
         form = ComplexForm(landlord=self.user.landlord)
@@ -237,3 +241,41 @@ class ListingFormTests(TestCase):
                             air_conditioned=True, wifi_ready=True)
         [listing] = get_renter_listings_context(None)["listings"]
         self.assertEqual([chip["key"] for chip in listing.card_chips], list(Complex.FEATURE_LABELS)[:4])
+
+
+@override_settings(STORAGES={
+    "default": {"BACKEND": "django.core.files.storage.InMemoryStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+})
+class LandmarksKeptOnSaveTests(ListingFormSetup):
+    """Saving the property form must not wipe its landmarks when the map never sent a list."""
+
+    def form(self, **overrides):
+        data = {**self.complex_data(), "latitude": "7.06", "longitude": "125.597", **overrides}
+        return ComplexForm(data, instance=self.complex, landlord=self.user.landlord)
+
+    def test_blank_list_keeps_landmarks_and_empty_list_clears_them(self):
+        from core.core_listings.views import _save_property
+        from core.core_maps.maps.services import complex_landmarks, save_complex_landmarks
+        self.complex.latitude, self.complex.longitude = 7.06, 125.597
+        self.complex.save()
+        save_complex_landmarks(self.complex, [{"name": "Gaisano", "category": "mall", "lat": 7.065, "lng": 125.6}], "walking")
+        self.complex.pictures.create(image=jpg(), position=0)
+        self.complex.pictures.create(image=jpg("b.jpg"), position=1)
+
+        form = self.form(landmarks_json="")
+        self.assertTrue(form.is_valid(), form.errors)
+        _save_property(form, self.user.landlord)
+        self.assertEqual([item["name"] for item in complex_landmarks(self.complex)], ["Gaisano"])
+
+        # Pin moved without a new list: same landmarks, distances from the new spot
+        before = complex_landmarks(self.complex)[0]["distance_m"]
+        form = self.form(landmarks_json="", latitude="7.07", longitude="125.61")
+        self.assertTrue(form.is_valid(), form.errors)
+        _save_property(form, self.user.landlord)
+        self.assertNotEqual(complex_landmarks(self.complex)[0]["distance_m"], before)
+
+        form = self.form(landmarks_json="[]")
+        self.assertTrue(form.is_valid(), form.errors)
+        _save_property(form, self.user.landlord)
+        self.assertEqual(complex_landmarks(self.complex), [])

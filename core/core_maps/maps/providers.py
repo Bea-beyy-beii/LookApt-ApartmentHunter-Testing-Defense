@@ -2,30 +2,35 @@
 # Where landmark / place data comes from.
 #
 #   OverpassProvider   -> OpenStreetMap points of interest (free, no API key)
-#   LocalProvider      -> our own Landmark table (seeded + saved landmarks), used as fallback
-#   NominatimGeocoder  -> OpenStreetMap place search + reverse geocoding (address of a pin)
+#   LocalProvider      -> our own Landmark table (seeded, saved and previously seen landmarks)
+#   PhotonGeocoder     -> place search made for search-as-you-type (partial words, typos)
+#   NominatimGeocoder  -> OpenStreetMap place search (fallback) + reverse geocoding (address of a pin)
 #
-# Both OSM services are free public servers with usage policies:
+# These are free public servers with usage policies:
 #   - always send a descriptive User-Agent
-#   - Nominatim: max 1 request / second
+#   - Nominatim: max 1 request / second, and no search-as-you-type (Photon handles that)
 #   - cache results instead of asking again
 import hashlib
 import logging
 import threading
 import time
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 
 import requests
 from django.core.cache import cache
 
 from core.core_listings.models import Landmark
 
-from .geo import bounding_box, haversine_m
+from .geo import DEFAULT_CENTER, bounding_box, haversine_m
 
 logger = logging.getLogger(__name__)
 
 USER_AGENT = "LookApt/1.0 (apartment finder, Davao City)"
 HTTP_TIMEOUT = 12
-OVERPASS_HTTP_TIMEOUT = 30  
+OVERPASS_HTTP_TIMEOUT = 25
+# A slow Overpass server is asked again on the next one after this many
+# seconds (the first answer wins), instead of waiting out the full timeout
+OVERPASS_HEDGE_SECONDS = 6
 CACHE_SECONDS = 60 * 60 * 24
 
 Types = Landmark.LandmarkTypes
@@ -90,12 +95,13 @@ class OverpassProvider:
     ENDPOINTS = [
         "https://overpass-api.de/api/interpreter",
         "https://overpass.kumi.systems/api/interpreter",
+        "https://overpass.private.coffee/api/interpreter",
     ]
     # Overpass returns places in ID order, not nearest first, so a low cap
     # silently drops close landmarks in busy areas (see services._overpass_rings)
     MAX_RESULTS = 1500
 
-    def build_query(self, lat, lng, radius_m):
+    def _union(self, lat, lng, radius_m):
         grouped = {}
         for key, value in OSM_TAG_CATEGORIES:
             small = (key, value) in SMALL_CATEGORY_TAGS
@@ -106,8 +112,17 @@ class OverpassProvider:
             radius = min(radius_m, SMALL_CATEGORY_RADIUS_M) if small else radius_m
             pattern = "|".join(sorted(values))
             lines.append(f'  nwr(around:{int(radius)},{lat:.6f},{lng:.6f})["{key}"~"^({pattern})$"]["name"];')
+        return "(\n" + "\n".join(lines) + "\n)"
 
-        return "[out:json][timeout:25];\n(\n" + "\n".join(lines) + f"\n);\nout center {self.MAX_RESULTS};"
+    def build_query(self, lat, lng, radius_m):
+        return f"[out:json][timeout:25];\n{self._union(lat, lng, radius_m)};\nout center {self.MAX_RESULTS};"
+
+    def build_rings_query(self, lat, lng, radii_m):
+        """Every circle in ONE request: each gets its own capped output, so a
+        busy big circle can't push out the places of the small one."""
+        parts = [f"{self._union(lat, lng, radius)}->.r{i};\n.r{i} out center {self.MAX_RESULTS};"
+                 for i, radius in enumerate(radii_m)]
+        return "[out:json][timeout:25];\n" + "\n".join(parts)
 
     def parse(self, payload):
         results = []
@@ -133,32 +148,63 @@ class OverpassProvider:
             })
         return results
 
+    def _post(self, endpoint, query):
+        response = requests.post(endpoint, data={"data": query}, headers={"User-Agent": USER_AGENT},
+                                 timeout=OVERPASS_HTTP_TIMEOUT)
+        response.raise_for_status()
+        return self.parse(response.json())
+
+    def _ask(self, query):
+        """Ask the first server; if it hasn't answered after OVERPASS_HEDGE_SECONDS
+        (or it failed), ask the next one too. The first good answer wins."""
+        errors = []
+        pending = {}
+        pool = ThreadPoolExecutor(max_workers=len(self.ENDPOINTS))
+        try:
+            for endpoint in self.ENDPOINTS:
+                pending[pool.submit(self._post, endpoint, query)] = endpoint
+                done, _ = wait(pending, timeout=OVERPASS_HEDGE_SECONDS, return_when=FIRST_COMPLETED)
+                result = self._first_success(done, pending, errors)
+                if result is not None:
+                    return result
+            # Every server has been asked: wait for whichever answers first
+            while pending:
+                done, _ = wait(pending, timeout=OVERPASS_HTTP_TIMEOUT, return_when=FIRST_COMPLETED)
+                if not done:
+                    break
+                result = self._first_success(done, pending, errors)
+                if result is not None:
+                    return result
+        finally:
+            pool.shutdown(wait=False, cancel_futures=True)   # don't wait for the slower servers
+        raise ProviderError(f"All Overpass servers failed: {errors[-1] if errors else 'timed out'}")
+
+    @staticmethod
+    def _first_success(done, pending, errors):
+        for future in done:
+            endpoint = pending.pop(future)
+            try:
+                return future.result()
+            except (requests.RequestException, ValueError) as error:
+                errors.append(error)
+                logger.warning("Overpass request to %s failed: %s", endpoint, error)
+        return None
+
     def fetch(self, lat, lng, radius_m):
-        key = _cache_key("overpass", round(lat, 4), round(lng, 4), int(radius_m))
+        return self.fetch_rings(lat, lng, [radius_m])
+
+    def fetch_rings(self, lat, lng, radii_m):
+        """Landmarks within each of the circles (one request, cached)."""
+        radii_m = [int(radius) for radius in radii_m]
+        key = _cache_key("overpass-rings", round(lat, 4), round(lng, 4), *radii_m)
         cached = cache.get(key)
         if cached is not None:
             return cached
 
-        query = self.build_query(lat, lng, radius_m)
-        last_error = None
-
-        for endpoint in self.ENDPOINTS:
-            try:
-                response = requests.post(
-                    endpoint,
-                    data={"data": query},
-                    headers={"User-Agent": USER_AGENT},
-                    timeout=OVERPASS_HTTP_TIMEOUT,
-                )
-                response.raise_for_status()
-                results = self.parse(response.json())
-                cache.set(key, results, CACHE_SECONDS)
-                return results
-            except (requests.RequestException, ValueError) as error:
-                last_error = error
-                logger.warning("Overpass request to %s failed: %s", endpoint, error)
-
-        raise ProviderError(f"All Overpass servers failed: {last_error}")
+        query = self.build_query(lat, lng, radii_m[0]) if len(radii_m) == 1 else self.build_rings_query(lat, lng, radii_m)
+        results = self._ask(query)
+        cache.set(key, results, CACHE_SECONDS)
+        return results
 
 
 # =========================================================
@@ -193,6 +239,61 @@ class LocalProvider:
 # =========================================================
 # NOMINATIM (place search + reverse geocoding)
 # =========================================================
+
+class PhotonGeocoder:
+    """komoot's Photon (OpenStreetMap data), made for search-as-you-type:
+    partial words and small typos still match ("jose maria col" -> Jose Maria College).
+    Results near Davao come first."""
+    URL = "https://photon.komoot.io/api/"
+
+    def search(self, query, limit=5, near=DEFAULT_CENTER):
+        key = _cache_key("photon", query.casefold(), limit, near)
+        cached = cache.get(key)
+        if cached is not None:
+            return cached
+        try:
+            response = requests.get(
+                self.URL,
+                params={"q": query, "limit": limit * 2, "lat": near[0], "lon": near[1], "lang": "en"},
+                headers={"User-Agent": USER_AGENT},
+                timeout=HTTP_TIMEOUT,
+            )
+            response.raise_for_status()
+            features = response.json().get("features", [])
+        except (requests.RequestException, ValueError, AttributeError) as error:
+            raise ProviderError(f"Photon request failed: {error}") from error
+
+        results = []
+        for feature in features:
+            props = feature.get("properties") or {}
+            if props.get("countrycode") not in (None, "PH"):
+                continue
+            try:
+                lng, lat = feature["geometry"]["coordinates"][:2]
+            except (KeyError, TypeError, ValueError):
+                continue
+            street = " ".join(part for part in (props.get("housenumber"), props.get("street")) if part)
+            name = props.get("name") or street
+            if not name:
+                continue
+            parts = [street, props.get("district") or props.get("locality"), props.get("city") or props.get("county"),
+                     props.get("state")]
+            address = ", ".join(dict.fromkeys(part for part in parts if part and part != name))
+            category = category_from_osm_tags({props.get("osm_key"): props.get("osm_value")})
+            results.append({
+                "name": name,
+                "address": address,
+                "lat": round(float(lat), 6),
+                "lng": round(float(lng), 6),
+                "category": str(category) if category else "",
+                "source": "osm",
+            })
+            if len(results) >= limit:
+                break
+
+        cache.set(key, results, CACHE_SECONDS)
+        return results
+
 
 class NominatimGeocoder:
     BASE_URL = "https://nominatim.openstreetmap.org"
@@ -231,6 +332,8 @@ class NominatimGeocoder:
 
     def search(self, query, limit=5):
         data = self._get("search", {"q": query, "countrycodes": "ph", "limit": limit})
+        if not isinstance(data, list):
+            raise ProviderError("Nominatim sent an unexpected answer")
         return [
             {
                 "name": item.get("name") or item.get("display_name", "").split(",")[0],
