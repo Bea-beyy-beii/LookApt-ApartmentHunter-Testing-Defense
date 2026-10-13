@@ -9,6 +9,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
@@ -170,7 +171,7 @@ def otp_resend_view(request):
     return redirect('otp')
 
 # ------------------------------------------------------------------ FORGOT PASSWORD
-# 1 Account (email or phone) -> 2 Code (emailed, same page as sign-up's OTP) -> 3 New password
+# 1 Account (email + phone number) -> 2 Code (emailed, same page as sign-up's OTP) -> 3 New password
 
 RESET = 'password_reset'               # session: {'user_id', 'email', 'name', 'verified_at'}
 RESET_WINDOW = timedelta(minutes=10)   # time to choose a new password after the code
@@ -190,26 +191,33 @@ def _send_reset_code(request, data):
 
 
 def forgot_password_view(request):
-    """Step 1: which account? Then a code goes to the account's email."""
-    identifier, error = '', ''
+    """Step 1: which account? The email and the phone number must both be that account's.
+    Then a code goes to the account's email."""
+    values, errors = {'email': '', 'phone_number': ''}, {}
     if request.method == 'POST':
-        identifier = request.POST.get('identifier', '').strip()
-        user = AccountService.find_account(identifier)
-        if not identifier:
-            error = "Enter the email or phone number on your account."
-        elif user is None:
-            error = "We couldn't find an account with that email or phone number."
-        elif not user.email:
-            error = f"This account has no email address. Please contact {SUPPORT_EMAIL}."
+        values = {name: request.POST.get(name, '').strip() for name in values}
+        if not values['email']:
+            errors['email'] = "Enter the email on your account."
         else:
-            data = {'user_id': str(user.pk), 'email': user.email.lower(), 'name': user.first_name, 'verified_at': None}
-            request.session[RESET] = data
-            _send_reset_code(request, data)
-            return redirect('forgot_password_code')
+            try:
+                validate_email(values['email'])
+            except ValidationError:
+                errors['email'] = "Enter a valid email address."
+        if not values['phone_number']:
+            errors['phone_number'] = "Enter the phone number on your account."
 
-    return render(request, 'core_accounts/forgot_password.html', {
-        'step': 1, 'identifier': identifier, 'errors': {'identifier': error} if error else {},
-    })
+        if not errors:
+            user = AccountService.find_account(values['email'], values['phone_number'])
+            if user is None:
+                # Same message whether the email exists or not: it doesn't tell who has an account
+                errors['email'] = "That email and phone number don't belong to the same account."
+            else:
+                data = {'user_id': str(user.pk), 'email': user.email.lower(), 'name': user.first_name, 'verified_at': None}
+                request.session[RESET] = data
+                _send_reset_code(request, data)
+                return redirect('forgot_password_code')
+
+    return render(request, 'core_accounts/forgot_password.html', {'step': 1, 'errors': errors, **values})
 
 
 def forgot_password_code_view(request):

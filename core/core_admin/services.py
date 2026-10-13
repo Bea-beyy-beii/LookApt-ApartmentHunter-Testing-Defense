@@ -348,7 +348,7 @@ def send_password_help(user):
     return send_email(
         user, "LookApt: resetting your password",
         ["Our team was asked to help you get back into your LookApt account.",
-         "Open the link below, enter your email or phone number, and we'll send you a code to choose a new password."],
+         "Open the link below, enter your email and phone number, and we'll send you a code to choose a new password."],
         button=("Reset my password", "/forgot-password/"),
     )
 

@@ -246,3 +246,46 @@ class PhotosEverywhereTests(TestCase):
         from core.core_reports.services import reportable_people
         person = reportable_people(self.renter)[0]
         self.assertEqual((person["avatar"], person["role"]), (self.landlord.avatar_url, "landlord"))
+
+
+from django.core import mail as _mail
+
+
+@override_settings(MAILERS={"default": {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"}})
+class ForgotPasswordTests(TestCase):
+    """Step 1 needs the email AND the phone number of the same account."""
+
+    def setUp(self):
+        self.mia = User.objects.create_user(username="mia", password="Old#Pass2026", first_name="Mia", last_name="A",
+                                            email="mia@example.com", phone_number="09171234567")
+        self.ben = User.objects.create_user(username="ben", password="Old#Pass2026", first_name="Ben", last_name="B",
+                                            email="ben@example.com", phone_number="09179999999")
+
+    def ask(self, email, phone):
+        return self.client.post(reverse("forgot_password"), {"email": email, "phone_number": phone})
+
+    def test_matching_email_and_phone_sends_the_code(self):
+        response = self.ask("MIA@example.com", "0917 123 4567")
+        self.assertRedirects(response, reverse("forgot_password_code"), fetch_redirect_response=False)
+        self.assertEqual(self.client.session["password_reset"]["user_id"], str(self.mia.pk))
+        self.assertEqual(_mail.outbox[-1].to, ["mia@example.com"])
+
+    def test_someone_elses_email_is_refused(self):
+        response = self.ask("ben@example.com", "09171234567")       # Ben's email, Mia's phone
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "don&#x27;t belong to the same account")
+        self.assertNotIn("password_reset", self.client.session)
+        self.assertEqual(_mail.outbox, [])
+
+    def test_unknown_email_gets_the_same_message(self):
+        self.assertContains(self.ask("nobody@example.com", "09171234567"), "don&#x27;t belong to the same account")
+
+    def test_only_an_email_is_accepted(self):
+        response = self.ask("09171234567", "09171234567")            # a phone number in the email box
+        self.assertContains(response, "Enter a valid email address.")
+        self.assertNotIn("password_reset", self.client.session)
+
+    def test_both_fields_are_required(self):
+        response = self.ask("", "")
+        self.assertContains(response, "Enter the email on your account.")
+        self.assertContains(response, "Enter the phone number on your account.")
