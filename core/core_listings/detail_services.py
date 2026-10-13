@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 from core.core_inquiries.models import Application
-from core.core_inquiries.services import current_lease_end, earliest_move_in
+from core.core_inquiries.services import LeaseSchedule
 from core.core_maps.maps.services import ComplexLandmarks
 
 from .models import BedroomType, Complex, ListingView, SavedListing, Unit
@@ -64,8 +64,9 @@ def _attach_inquiry_info(units, user):
     for unit in units:
         unit.demand = demand[unit.pk]               # renters interested / on the waitlist
         unit.has_pending = unit.pk in mine          # this renter already applied
-        unit.earliest_move_in = earliest_move_in(unit)
-        unit.lease_end = current_lease_end(unit)    # None when the landlord hasn't set it
+        lease = LeaseSchedule(unit)
+        unit.earliest_move_in = lease.earliest_move_in
+        unit.lease_end = lease.current_end          # None when the landlord hasn't set it
     return units
 
 

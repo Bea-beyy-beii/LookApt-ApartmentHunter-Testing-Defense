@@ -7,11 +7,16 @@
 # - Conversation + Message: "Inquire with Landlord"
 #                -> shows up in Messages for both sides
 #   A conversation is always started by a renter: landlords can only reply.
+import os
 import uuid
 
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
+
+from .labels import clock_label, date_label, size_label, time_label
+from .managers import ApplicationQuerySet, ConversationQuerySet
 
 
 class Application(models.Model):
@@ -32,6 +37,7 @@ class Application(models.Model):
     OPEN_STATUSES = (Status.PENDING, Status.WAITLISTED)
     # Finished without a tenancy (shown in the Archive)
     ARCHIVED_STATUSES = (Status.DECLINED, Status.WITHDRAWN, Status.CLOSED)
+    ARCHIVE_DAYS = 30          # how long a finished request stays in the Archive
 
     class SiteVisit(models.TextChoices):
         PENDING = "pending", "Pending"
@@ -77,6 +83,8 @@ class Application(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    objects = ApplicationQuerySet.as_manager()
+
     class Meta:
         ordering = ["-created_at"]
         constraints = [
@@ -95,6 +103,47 @@ class Application(models.Model):
     def is_open(self):
         return self.status in self.OPEN_STATUSES
 
+    @property
+    def visit_label(self):
+        """"Oct 25, 2026 · 2:00 PM" ("" when no site visit was asked for)."""
+        if not self.site_visit_date:
+            return ""
+        label = date_label(self.site_visit_date)
+        if self.site_visit_time:
+            label += f" · {clock_label(self.site_visit_time)}"
+        return label
+
+    @property
+    def changes_label(self):
+        """"move-in Nov 1, 2026 · site visit Oct 25, 2026 · 2:00 PM" (what an edit set)."""
+        parts = [f"move-in {date_label(self.move_in_date)}"]
+        if self.site_visit_date:
+            parts.append(f"site visit {self.visit_label}")
+        return " · ".join(parts)
+
+    # ---------- status changes (the rules for when they're allowed live in workflow.py)
+
+    def close(self, status, reason="", note=""):
+        """Move the request to the Archive (declined / withdrawn / closed)."""
+        self.status = status
+        self.reason = reason
+        self.reason_note = note
+        self.decided_at = timezone.now()
+        self.save(update_fields=["status", "reason", "reason_note", "decided_at", "updated_at"])
+
+    def move_to_waitlist(self):
+        self.status = self.Status.WAITLISTED
+        self.decided_at = timezone.now()
+        self.save(update_fields=["status", "decided_at", "updated_at"])
+
+    def mark_notified(self):
+        self.notified_at = timezone.now()
+        self.save(update_fields=["notified_at", "updated_at"])
+
+    def set_site_visit_status(self, status):
+        self.site_visit_status = status
+        self.save(update_fields=["site_visit_status", "updated_at"])
+
 
 class Conversation(models.Model):
     """One thread per renter per landlord, whatever unit or complex it's about.
@@ -109,6 +158,8 @@ class Conversation(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     last_message_at = models.DateTimeField(auto_now_add=True)
 
+    objects = ConversationQuerySet.as_manager()
+
     class Meta:
         ordering = ["-last_message_at"]
         constraints = [
@@ -118,12 +169,64 @@ class Conversation(models.Model):
     def __str__(self):
         return f"{self.renter.user} ↔ {self.landlord.user} ({self.subject})"
 
+    @staticmethod
+    def subject_for(unit, complex_obj):
+        """"Unit 201 · Sunrise Residences" or just "Sunrise Residences"."""
+        return f"{unit.unit_name} · {complex_obj.complex_name}" if unit else complex_obj.complex_name
+
     @property
     def subject(self):
-        """"Unit 201 · Sunrise Residences" or just "Sunrise Residences"."""
-        if self.unit_id:
-            return f"{self.unit.unit_name} · {self.complex.complex_name}"
-        return self.complex.complex_name
+        return self.subject_for(self.unit if self.unit_id else None, self.complex)
+
+    @staticmethod
+    def landlord_can_contact(landlord_user, renter):
+        """A landlord may write first only to renters with a real link to them:
+        a current/past tenant, or someone who applied to one of their units."""
+        from core.core_rentals.models import Tenancy   # imported here: core_rentals imports this app
+        mine = Q(unit__complex__landlord__user=landlord_user)
+        return (
+            Tenancy.objects.filter(mine, renter=renter).exists()
+            or Application.objects.filter(mine, renter=renter).exists()
+        )
+
+    def can_send(self, user):
+        """Renters can always reply in their own thread.
+        Landlords can reply once the renter has written first, or when the
+        renter is/was their tenant or applied to one of their units."""
+        if self.renter.user_id == user.pk:
+            return True
+        if self.landlord.user_id == user.pk:
+            return (
+                self.messages.filter(sender=self.renter.user).exists()
+                or self.landlord_can_contact(user, self.renter)
+            )
+        return False
+
+    def other_party(self, user):
+        """The person on the other side of the thread (a User)."""
+        if self.renter.user_id == user.pk:
+            return self.landlord.user
+        return self.renter.user
+
+    def mark_read(self, user):
+        """Everything the other side sent is now seen."""
+        self.messages.filter(read_at__isnull=True).exclude(sender=user).update(read_at=timezone.now())
+
+    def add_message(self, sender, body, attachment=None, attachment_kind="", topic="",
+                    kind="message", bulletin_event=""):
+        """Save a (checked) message in this thread and move the thread to the top."""
+        message = Message(conversation=self, sender=sender, body=body, topic=topic,
+                          kind=kind, bulletin_event=bulletin_event[:200])
+        if attachment:
+            message.attachment = attachment
+            message.attachment_name = os.path.basename(attachment.name)[:255]
+            message.attachment_kind = attachment_kind
+            message.attachment_size = attachment.size
+        message.save()
+
+        self.last_message_at = message.created_at
+        self.save(update_fields=["last_message_at"])
+        return message
 
 
 class Message(models.Model):
@@ -171,3 +274,15 @@ class Message(models.Model):
         if self.kind == self.Kind.BULLETIN:
             return f"Bulletin: {self.body}"
         return self.body or f"📎 {self.attachment_name or self.get_attachment_kind_display()}"
+
+    @property
+    def time_label(self):
+        return time_label(self.created_at)
+
+    @property
+    def seen_label(self):
+        return time_label(self.read_at) if self.read_at else ""
+
+    @property
+    def attachment_size_label(self):
+        return size_label(self.attachment_size)
