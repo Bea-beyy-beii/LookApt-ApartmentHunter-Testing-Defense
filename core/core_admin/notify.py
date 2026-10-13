@@ -9,7 +9,7 @@ undoes the change (core_accounts/emails.py logs it instead).
 """
 from django.db import transaction
 
-from core.core_accounts.emails import send_email
+from core.core_accounts.emails import NoticeEmail
 from core.core_reports.services import SUPPORT_EMAIL
 
 from .models import Notice
@@ -20,7 +20,7 @@ DASHBOARD = ("Open LookApt", "/login/")
 def notify(user, title, message, tone=Notice.Tone.GREEN, email=None):
     Notice.objects.create(user=user, title=title, message=message, tone=tone)
     if email:
-        transaction.on_commit(lambda: send_email(user, **email))
+        transaction.on_commit(lambda: NoticeEmail(user, **email).send())
 
 
 # ------------------------------------------------------------------ the messages
@@ -101,12 +101,12 @@ def warning(user, message):
 
 def suspended(user, reason):
     # No bell notice: they can't log in to see it
-    transaction.on_commit(lambda: send_email(
+    transaction.on_commit(lambda: NoticeEmail(
         user, subject="LookApt: your account has been suspended",
         paragraphs=["Your LookApt account has been suspended, so you can't log in for now."
                     + (" Your listings are hidden from renters." if user.role == "landlord" else ""),
                     f"If you think this is a mistake, email {SUPPORT_EMAIL}."],
-        quote=reason))
+        quote=reason).send())
 
 
 def reactivated(user):
@@ -126,7 +126,7 @@ def unpublished_by_admin(user, reason):
 
 def account_deleted(user):
     # Email only: the account (and its bell) is gone. user still holds the email address in memory.
-    transaction.on_commit(lambda: send_email(
+    transaction.on_commit(lambda: NoticeEmail(
         user, subject="LookApt: your account has been deleted",
         paragraphs=["As you asked, your LookApt account and the data linked to it have been deleted.",
-                    "Thank you for using LookApt. You're welcome to sign up again anytime."]))
+                    "Thank you for using LookApt. You're welcome to sign up again anytime."]).send())

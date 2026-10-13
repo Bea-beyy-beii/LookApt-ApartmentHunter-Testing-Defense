@@ -4,7 +4,7 @@ from django.urls import reverse
 from core.models import User
 
 from .legal import TERMS_VERSION
-from .services import AccountService
+from .services import SignUp
 
 SIGNUP = {
     "first_name": "Nina", "last_name": "Reyes", "phone_number": "09555555555", "email": "nina@example.com",
@@ -31,7 +31,7 @@ class TermsStepTests(TestCase):
         response = self.client.post(reverse("signup"), {**SIGNUP, "agree_terms": "1"})
         self.assertRedirects(response, reverse("otp"), fetch_redirect_response=False)
         request = self.client.get(reverse("otp")).wsgi_request
-        user = AccountService.create_pending_account(request)
+        user = SignUp(request).create_account()
         self.assertEqual(user.terms_version, TERMS_VERSION)
         self.assertIsNotNone(user.terms_accepted_at)
 
@@ -197,9 +197,9 @@ class PhotosEverywhereTests(TestCase):
 
         self.landlord = make("liza", "landlord", "09111111111")
         self.renter = make("rina", "renter", "09222222222")
-        from .account import save_avatar
-        save_avatar(self.landlord, photo())
-        save_avatar(self.renter, photo("r.png"))
+        from .account import Account
+        Account(self.landlord).save_avatar(photo())
+        Account(self.renter).save_avatar(photo("r.png"))
 
         complex_obj = Complex.objects.create(
             landlord=self.landlord.landlord, area=Area.objects.create(area_name="Davao City"),

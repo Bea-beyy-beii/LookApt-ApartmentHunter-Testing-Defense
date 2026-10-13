@@ -76,20 +76,22 @@ class User(AbstractUser):
     def save(self, *args, **kwargs):
         self.first_name = self.first_name.strip()
         self.last_name = self.last_name.strip()
-
         if not self.username:
-            first_clean = re.sub(r'\s+', '', self.first_name).lower()
-            last_clean = re.sub(r'\s+', '', self.last_name).lower()
-            base_username = f"{first_clean}.{last_clean}"
-            username = base_username
-
-            counter = 1
-            while User.objects.filter(username=username).exists():
-                username = f"{base_username}{counter}"
-                counter += 1
-            self.username = username
-
+            self.username = self._unique_username()
         super().save(*args, **kwargs)
+
+    def _unique_username(self):
+        """firstname.lastname, with a number added if someone has it already."""
+        first_clean = re.sub(r'\s+', '', self.first_name).lower()
+        last_clean = re.sub(r'\s+', '', self.last_name).lower()
+        base_username = f"{first_clean}.{last_clean}"
+        username = base_username
+
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{base_username}{counter}"
+            counter += 1
+        return username
 
 
 
@@ -109,6 +111,10 @@ class User(AbstractUser):
         """Where this user lands after logging in (each profile type answers for itself)."""
         profile = self.profile
         return profile.HOME_URL_NAME if profile else self.ADMIN_HOME
+
+    def create_profile(self):
+        """Make the Renter / Landlord row that goes with a new account."""
+        return Profile.for_role(self.role).objects.create(user=self)
 
     @property
     def is_landlord(self):
@@ -178,6 +184,11 @@ class Profile(models.Model):
 
     class Meta:
         abstract = True
+
+    @classmethod
+    def for_role(cls, role):
+        """The profile class for 'renter' / 'landlord' (None for any other role)."""
+        return {profile_class.ROLE: profile_class for profile_class in cls.__subclasses__()}.get(role)
 
     @property
     def role_label(self):

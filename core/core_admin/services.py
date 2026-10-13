@@ -342,15 +342,15 @@ def delete_account(user, confirm, requested):
 
 def send_password_help(user):
     """Email the steps to reset their password (the code itself comes from Forgot Password)."""
-    from core.core_accounts.emails import send_email
+    from core.core_accounts.emails import NoticeEmail
     if not user.email:
         raise ValidationError("This user has no email address.")
-    return send_email(
+    return NoticeEmail(
         user, "LookApt: resetting your password",
         ["Our team was asked to help you get back into your LookApt account.",
          "Open the link below, enter your email and phone number, and we'll send you a code to choose a new password."],
         button=("Reset my password", "/forgot-password/"),
-    )
+    ).send()
 
 
 # =========================================================

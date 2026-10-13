@@ -4,17 +4,28 @@ Who may use the preview-only parts of other apps (e.g. the map in core_maps).
 Opening /preview/renter/ or /preview/landlord/ marks the visitor's session, so
 the map on those pages works without an account. Everything that saves data
 still needs a real login.
+
+    PreviewAccess(request).start()
+    PreviewAccess(request).is_previewing
+    PreviewAccess(request).allowed       signed in, or trying a preview
 """
-PREVIEW_SESSION_KEY = "lookapt_preview"
 
 
-def start_preview(request):
-    request.session[PREVIEW_SESSION_KEY] = True
+class PreviewAccess:
+    """The visitor's preview mark, kept in their session."""
 
+    SESSION_KEY = "lookapt_preview"
 
-def is_previewing(request):
-    return bool(request.session.get(PREVIEW_SESSION_KEY))
+    def __init__(self, request):
+        self.request = request
 
+    def start(self):
+        self.request.session[self.SESSION_KEY] = True
 
-def signed_in_or_previewing(request):
-    return request.user.is_authenticated or is_previewing(request)
+    @property
+    def is_previewing(self):
+        return bool(self.request.session.get(self.SESSION_KEY))
+
+    @property
+    def allowed(self):
+        return self.request.user.is_authenticated or self.is_previewing

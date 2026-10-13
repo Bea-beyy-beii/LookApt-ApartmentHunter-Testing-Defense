@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.http import require_GET
 from core.core_listings.models import Complex
-from core.core_preview.access import signed_in_or_previewing
+from core.core_preview.access import PreviewAccess
 import json
 
 from .maps import services
@@ -50,7 +50,7 @@ def login_or_preview(view):
     """Signed-in users, and visitors trying the renter / landlord preview (core_preview)."""
     @wraps(view)
     def wrapper(request, *args, **kwargs):
-        if not signed_in_or_previewing(request):
+        if not PreviewAccess(request).allowed:
             return redirect_to_login(request.get_full_path())
         return view(request, *args, **kwargs)
     return wrapper
