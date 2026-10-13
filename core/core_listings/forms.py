@@ -249,7 +249,11 @@ class ComplexForm(forms.ModelForm):
 
 
     def clean_landmarks_json(self):
-        raw = self.cleaned_data.get("landmarks_json") or "[]"
+        # Blank = the map never sent a list (still loading, or OpenStreetMap was
+        # down): keep the saved landmarks instead of wiping them. "[]" = none.
+        raw = self.cleaned_data.get("landmarks_json")
+        if not raw:
+            return None
         try:
             landmarks = json.loads(raw)
         except ValueError:

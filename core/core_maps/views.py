@@ -7,7 +7,11 @@ from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.http import require_GET
 from core.core_listings.models import Complex
 from core.core_preview.access import signed_in_or_previewing
+import json
+
 from .maps import services
+from .maps.categories import category_style
+from .maps.geo import haversine_m
 from .maps.folium_maps import build_map
 from .maps.geo import DEFAULT_RADIUS_KM, clamp_radius, normalize_mode, radius_for_minutes
 
@@ -111,6 +115,25 @@ def reverse_api(request):
 # FOLIUM MAP (shown in an iframe)
 # =========================================================
 
+def _manual_pins(raw, lat, lng, mode, limit=15):
+    """Landmarks the landlord added by hand (not saved yet), drawn on the map too.
+    ?pins=[{"name", "category", "lat", "lng"}, ...]"""
+    try:
+        pins = json.loads(raw or "[]")
+    except ValueError:
+        return []
+    items = []
+    for pin in pins[:limit] if isinstance(pins, list) else []:
+        try:
+            name, plat, plng = str(pin["name"])[:120], float(pin["lat"]), float(pin["lng"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        distance_m = haversine_m(lat, lng, plat, plng)
+        items.append({"name": name, "lat": plat, "lng": plng, **category_style(pin.get("category")),
+                      **services._travel_info(distance_m, mode)})
+    return items
+
+
 @login_or_preview
 @require_GET
 @xframe_options_sameorigin
@@ -136,6 +159,8 @@ def map_frame(request):
             complexes = services.complexes_near(lat, lng, radius_km, mode)
         elif kind == "landlord":
             landmarks, _ = services.nearby_landmarks(lat, lng, radius_km, mode)
+        if kind == "landlord":
+            landmarks = landmarks + _manual_pins(request.GET.get("pins"), lat, lng, mode)
 
     html = build_map(
         lat, lng,

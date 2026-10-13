@@ -744,3 +744,146 @@
         display: none;
     }
 }
+
+
+/* =========================================================
+   "Try again" after a failed lookup, manual landmarks,
+   picking a spot on the map, address suggestions
+========================================================= */
+
+.lk-retry {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: #2f73bd;
+    font: inherit;
+    font-weight: 700;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+/* "Pick on map": tell the landlord what the next click does */
+.lk-map.is-picking .lk-map-frame-wrap { outline: 3px solid var(--gold); outline-offset: -3px; border-radius: inherit; }
+.lk-map.is-picking .lk-map-hint { opacity: 0; }
+.lk-map.is-picking .lk-map-status { color: #9a6508; font-weight: 700; }
+
+.lk-landmark-manual {
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: rgba(245, 185, 76, 0.2);
+    color: #9a6508;
+    font-size: 10.5px;
+    font-style: normal;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.lk-manual { margin-top: 12px; }
+
+.lk-manual-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    width: 100%;
+    height: 40px;
+    border: 1.5px dashed var(--border-medium, #c9d2de);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--navy);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.lk-manual-toggle:hover { border-color: var(--navy); background: #f6f8fc; }
+.lk-manual-toggle svg { width: 16px; height: 16px; }
+.lk-manual-toggle[hidden], .lk-manual-form[hidden], .lk-manual-error[hidden] { display: none; }
+
+.lk-manual-form {
+    display: grid;
+    gap: 10px;
+    padding: 14px;
+    border: 1px solid var(--border-light);
+    border-radius: 14px;
+    background: #fbfaf7;
+}
+
+.lk-manual-title { margin: 0; color: var(--navy); font-size: 14px; font-weight: 700; }
+.lk-manual-hint { margin: -6px 0 0; color: var(--text-secondary); font-size: 12px; }
+
+.lk-manual-field { display: grid; gap: 5px; }
+.lk-manual-field > span { color: var(--text-secondary); font-size: 12px; font-weight: 700; }
+
+.lk-manual-field input,
+.lk-manual-field select {
+    width: 100%;
+    height: 38px;
+    padding: 0 11px;
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    background-color: var(--white);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 13px;
+}
+
+.lk-manual-field select { padding-right: 32px; }
+.lk-manual-field :is(input, select):focus-visible { outline: none; border-color: var(--navy); box-shadow: 0 0 0 3px rgba(32, 58, 104, 0.1); }
+
+.lk-manual-search,
+.location-address-search { position: relative; }
+
+.lk-manual-where { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.lk-manual-point { color: var(--text-secondary); font-size: 12px; line-height: 1.4; }
+.lk-manual-point.is-set { color: #2f8a52; font-weight: 700; }
+
+.lk-manual-pick {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 5px;
+    height: 32px;
+    padding: 0 11px;
+    border: 1px solid var(--border-light);
+    border-radius: 999px;
+    background: var(--white);
+    color: var(--navy);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.lk-manual-pick:hover { border-color: var(--navy); }
+.lk-manual-pick svg { width: 14px; height: 14px; }
+
+.lk-manual-error { margin: 0; color: var(--error, #c94b4b); font-size: 12px; font-weight: 600; }
+
+.lk-manual-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+.lk-manual-actions button {
+    height: 36px;
+    padding: 0 16px;
+    border-radius: 999px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.lk-manual-cancel { border: 1px solid var(--border-light); background: transparent; color: var(--text-primary); }
+.lk-manual-add { border: 0; background: var(--navy); color: #fff; }
+.lk-manual-add:hover { background: var(--navy-dark, #172c52); }
+
+/* Address field suggestions (same list as the map's search box) */
+.location-address-search .lk-map-search-results { z-index: 30; right: 0; }
+
+html[data-theme="dark"] .lk-manual-form { background: rgba(255, 255, 255, 0.03); border-color: rgba(255, 255, 255, 0.1); }
+html[data-theme="dark"] .lk-manual-field :is(input, select),
+html[data-theme="dark"] .lk-manual-pick { background-color: #1b2b47; border-color: rgba(255, 255, 255, 0.12); color: var(--text-primary); }
+html[data-theme="dark"] :is(.lk-manual-title, .lk-manual-toggle) { color: var(--text-primary); }
+html[data-theme="dark"] .lk-manual-toggle:hover { background: rgba(255, 255, 255, 0.04); }
+html[data-theme="dark"] .lk-landmark-manual { color: #f5c86e; }
+html[data-theme="dark"] .lk-retry { color: #8fb0e8; }

@@ -296,6 +296,7 @@ class ComplexLandmark(models.Model):   # junction: complex <-> landmark, plus th
     distance_m = models.PositiveIntegerField()
     travel_minutes = models.PositiveSmallIntegerField()
     travel_mode = models.CharField(max_length=10, default="driving")  # or walking
+    is_manual = models.BooleanField(default=False)   # added by the landlord, not found on OpenStreetMap
 
     class Meta:
         unique_together = ("complex", "landmark", "travel_mode")

@@ -6,7 +6,7 @@ from django.db import transaction
 from django.urls import reverse
 
 from core.core_accounts.decorators import role_required
-from core.core_maps.maps.services import resolve_area, save_complex_landmarks
+from core.core_maps.maps.services import complex_landmarks, resolve_area, save_complex_landmarks
 from core.core_verification.services import can_publish
 
 from .models import Complex, ComplexPicture, Unit, UnitPicture
@@ -44,6 +44,7 @@ def _save_property(form, landlord):
     """Save the wizard form + the landmarks picked on the map (step 2)."""
     property_obj = form.save(commit=False)
     property_obj.landlord = landlord
+    moved = bool(property_obj.pk) and {"latitude", "longitude"} & set(form.changed_data)
 
     # Which create button was clicked: "unpublished" or "active"
     # (landlords who aren't verified yet can only save it unpublished)
@@ -59,11 +60,14 @@ def _save_property(form, landlord):
 
     property_obj.save()
 
-    save_complex_landmarks(
-        property_obj,
-        form.cleaned_data.get("landmarks_json") or [],
-        form.cleaned_data.get("travel_mode"),
-    )
+    landmarks = form.cleaned_data.get("landmarks_json")
+    travel_mode = form.cleaned_data.get("travel_mode")
+    if landmarks is None and moved:
+        # New pin but no new list: keep the landmarks, with distances from the new spot
+        landmarks = saved = complex_landmarks(property_obj)
+        travel_mode = travel_mode or (saved[0]["travel_mode"] if saved else None)
+    if landmarks is not None:
+        save_complex_landmarks(property_obj, landmarks, travel_mode)
 
     photos = form.cleaned_data.get("photos") or []
     has_cover = property_obj.pictures.filter(is_cover=True).exists()

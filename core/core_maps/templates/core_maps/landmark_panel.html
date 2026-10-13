@@ -2,6 +2,8 @@
     "Nearby Landmarks" side panel.
     - With `landmarks` (saved ComplexLandmarks): rendered on the server.
     - With `target_id` only: maps.js fills it after the landlord drops a pin.
+    - With `manual=True` (landlord form): "+ Add a landmark" by hand
+      (name, category, and its spot: a search result or a click on the map).
 {% endcomment %}
 {% load core_maps %}
 
@@ -44,5 +46,60 @@
         {% endfor %}
 
     </ul>
+
+    {% if manual %}
+        {% landmark_categories as categories %}
+        {{ categories|json_script:"lk-manual-categories" }}
+
+        <div class="lk-manual" data-lk-manual>
+            <button type="button" class="lk-manual-toggle" data-manual-toggle>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                Add a landmark
+            </button>
+
+            {# No name="" on these inputs: they are not part of the property form #}
+            <div class="lk-manual-form" data-manual-form hidden>
+                <p class="lk-manual-title">Add a landmark</p>
+                <p class="lk-manual-hint">For places the map doesn't list.</p>
+
+                <label class="lk-manual-field">
+                    <span>Name</span>
+                    <div class="lk-manual-search">
+                        <input type="text" maxlength="120" autocomplete="off" data-manual-name
+                               placeholder="e.g. Karwasan ni Sikoy" aria-label="Landmark name">
+                        <ul class="lk-map-search-results" data-manual-suggest role="listbox" hidden></ul>
+                    </div>
+                </label>
+
+                <label class="lk-manual-field">
+                    <span>Category</span>
+                    <select data-manual-category aria-label="Landmark category">
+                        <option value="">Choose a category</option>
+                        {% for c in categories %}
+                            <option value="{{ c.category }}">{{ c.label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <div class="lk-manual-field">
+                    <span>Location</span>
+                    <div class="lk-manual-where">
+                        <span class="lk-manual-point" data-manual-point data-empty="Pick a suggestion above, or its spot on the map.">Pick a suggestion above, or its spot on the map.</span>
+                        <button type="button" class="lk-manual-pick" data-manual-pick>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s7-6.1 7-12A7 7 0 1 0 5 9c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></svg>
+                            Pick on map
+                        </button>
+                    </div>
+                </div>
+
+                <p class="lk-manual-error" data-manual-error role="alert" hidden></p>
+
+                <div class="lk-manual-actions">
+                    <button type="button" class="lk-manual-cancel" data-manual-cancel>Cancel</button>
+                    <button type="button" class="lk-manual-add" data-manual-add>Add landmark</button>
+                </div>
+            </div>
+        </div>
+    {% endif %}
 
 </aside>

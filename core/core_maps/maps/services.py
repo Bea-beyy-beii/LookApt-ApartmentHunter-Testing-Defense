@@ -12,7 +12,7 @@ from core.core_listings.models import Area, Complex, ComplexLandmark, Landmark
 
 from .categories import category_style
 from .geo import RADIUS_PRESETS_KM, TRAVEL_MODES, bounding_box, estimate_minutes, haversine_m, normalize_mode
-from .providers import LocalProvider, NominatimGeocoder, OverpassProvider, ProviderError
+from .providers import LocalProvider, NominatimGeocoder, OverpassProvider, PhotonGeocoder, ProviderError
 
 from core.core_listings.services import renter_visible_complexes
 
@@ -43,24 +43,36 @@ def _overpass_rings(lat, lng, radius_km):
     Overpass caps how many places it returns and does NOT return the nearest
     first, so one big circle could drop a landmark that the small circle
     showed. Asking for every smaller preset circle too means a landmark seen
-    at "< 1 km" is still there at 3/5/10 km. Each circle is cached, so
-    switching between radius chips doesn't ask Overpass again.
+    at "< 1 km" is still there at 3/5/10 km. All the circles go in ONE
+    request (they used to be one request each, one after the other) and the
+    answer is cached, so switching back to a radius doesn't ask again.
     """
     rings = [km for km in RADIUS_PRESETS_KM if km < radius_km] + [radius_km]
-    provider = OverpassProvider()
-    results = []
-    fetched_any = False
+    try:
+        return OverpassProvider().fetch_rings(lat, lng, [km * 1000 for km in rings]), "live"
+    except ProviderError as error:
+        logger.warning("Overpass failed, using saved landmarks only: %s", error)
+        return [], "offline"
 
-    for km in rings:
-        try:
-            results += provider.fetch(lat, lng, km * 1000)
-            fetched_any = True
-        except ProviderError as error:
-            # A bigger circle would fail too; keep what the smaller ones found
-            logger.warning("Overpass failed for %s km, using what we have: %s", km, error)
-            break
 
-    return results, ("live" if fetched_any else "offline")
+def _remember(landmarks):
+    """Keep the OSM landmarks we showed in our own Landmark table, so place
+    search finds them right away and they still show when Overpass is down."""
+    fresh = [item for item in landmarks if item.get("source") == "osm"]
+    if not fresh:
+        return
+    key = lambda name, category, lat, lng: (name.casefold(), str(category), round(float(lat), 5), round(float(lng), 5))
+    known = {
+        key(*row) for row in Landmark.objects.filter(name__in={item["name"] for item in fresh})
+        .values_list("name", "category", "latitude", "longitude")
+    }
+    new = {}
+    for item in fresh:
+        k = key(item["name"], item["category"], item["lat"], item["lng"])
+        if k not in known:
+            new[k] = Landmark(name=item["name"][:200], category=item["category"],
+                              latitude=round(item["lat"], 6), longitude=round(item["lng"], 6))
+    Landmark.objects.bulk_create(new.values())
 
 
 
@@ -100,6 +112,11 @@ def nearby_landmarks(lat, lng, radius_km, mode, per_category=3, limit=40):
         if len(results) >= limit:
             break
 
+    if source == "live":
+        try:
+            _remember(results)
+        except Exception as error:      # never let bookkeeping break the map
+            logger.warning("Couldn't remember landmarks: %s", error)
     return results, source
 
 
@@ -107,7 +124,8 @@ def nearby_landmarks(lat, lng, radius_km, mode, per_category=3, limit=40):
 def save_complex_landmarks(complex_obj, landmarks, mode):
     """Replace a complex's landmarks with the ones the landlord kept.
 
-    `landmarks` is the list sent by the wizard: [{name, category, lat, lng}, ...]
+    `landmarks` is the list sent by the wizard: [{name, category, lat, lng, manual}, ...]
+    ("manual": added by the landlord, kept when the landmarks are generated again).
     Distances/times are recomputed here from the saved complex coordinates,
     the browser values are never trusted.
     """
@@ -144,6 +162,7 @@ def save_complex_landmarks(complex_obj, landmarks, mode):
             defaults={
                 "distance_m": round(distance_m),
                 "travel_minutes": estimate_minutes(distance_m, mode),
+                "is_manual": bool(item.get("manual")),
             },
         )
         saved.append(link)
@@ -165,6 +184,7 @@ def complex_landmarks(complex_obj):
             "lat": float(link.landmark.latitude),
             "lng": float(link.landmark.longitude),
             "travel_mode": link.travel_mode,
+            "manual": link.is_manual,
             **category_style(link.landmark.category),
             **_travel_info(link.distance_m, link.travel_mode),
         }
@@ -249,16 +269,21 @@ def search_place(query, limit=6):
             "address": landmark.get_category_display(),
             "lat": float(landmark.latitude),
             "lng": float(landmark.longitude),
+            "category": landmark.category,
             "source": "local",
         }
         for landmark in _local_landmark_matches(query, limit)
     ]
 
+    # Photon understands half-typed words; Nominatim only whole ones (and asks
+    # not to be used while typing), so it's only asked when Photon is down.
     if len(results) < limit:
-        try:
-            results += NominatimGeocoder().search(query, limit=limit - len(results))
-        except ProviderError as error:
-            logger.warning("Place search fell back to local results: %s", error)
+        for geocoder in (PhotonGeocoder(), NominatimGeocoder()):
+            try:
+                results += geocoder.search(query, limit=limit - len(results))
+                break
+            except ProviderError as error:
+                logger.warning("Place search: %s", error)
 
     seen = set()
     unique = []
@@ -276,12 +301,20 @@ def _fold(text):
 
 
 def _local_landmark_matches(query, limit):
-    matches = list(Landmark.objects.filter(name__icontains=query)[:limit])
+    """Every word must appear, in any order: "college jose" finds Jose Maria College."""
+    words = query.split()
+    queryset = Landmark.objects.all()
+    for word in words:
+        queryset = queryset.filter(name__icontains=word)
+    matches = list(queryset[:limit])
     if len(matches) < limit:
-        folded = _fold(query)
+        # Accents: "mapua" should find "Mapúa" (only names with accents need this check)
+        folded = [_fold(word) for word in words]
         seen = {m.pk for m in matches}
-        for landmark in Landmark.objects.only("landmark_id", "name", "category", "latitude", "longitude").iterator():
-            if landmark.pk not in seen and folded in _fold(landmark.name):
+        accented = Landmark.objects.filter(name__regex=r"[^\x00-\x7F]")
+        for landmark in accented.only("landmark_id", "name", "category", "latitude", "longitude").iterator():
+            name = _fold(landmark.name)
+            if landmark.pk not in seen and all(word in name for word in folded):
                 matches.append(landmark)
                 if len(matches) >= limit:
                     break
