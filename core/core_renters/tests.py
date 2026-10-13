@@ -144,3 +144,13 @@ class OtherListingsTabTests(ListingsSetup):
 
         response = self.client.get(reverse("core_listings:renter_complex_detail", args=[self.harbor.pk]))
         self.assertContains(response, "No other listings")
+
+
+class PagesTests(ListingsSetup):
+
+    def test_home_and_saved_grids_are_paged(self):
+        response = self.client.get(reverse("core_renters:dashboard"))
+        self.assertContains(response, 'data-paginate="9"')       # Home: 9 cards a page
+        self.assertContains(response, 'data-paginate="8"')       # Saved Listings: 2 rows of 4
+        self.assertContains(response, 'id="home-pager"')
+        self.assertContains(response, "data-near-banner-close")

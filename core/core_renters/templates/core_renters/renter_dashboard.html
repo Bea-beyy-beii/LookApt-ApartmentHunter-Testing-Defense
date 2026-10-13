@@ -20,7 +20,8 @@
 
     <!-- FIND NEAR (compact banner) -->
 
-    <section class="near-banner">
+    {# The ✕ hides it for this browser (renter_dashboard.js) #}
+    <section class="near-banner" data-near-banner>
 
         <span class="near-banner-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="currentColor">
@@ -39,6 +40,10 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </a>
 
+        <button type="button" class="near-banner-close" data-near-banner-close aria-label="Close this banner">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+
     </section>
 
 
@@ -54,15 +59,20 @@
                 <button type="button" data-search-reset>Clear search</button>
             </p>
 
+            {# 9 cards per page (core/js/paginate.js) #}
             <section
                 class="listing-grid"
                 aria-label="Apartment listings"
                 data-home-grid
+                data-paginate="9"
+                data-pager="#home-pager"
             >
                 {% for listing in listings %}
                     {% include "core_renters/partials/listing_card.html" %}
                 {% endfor %}
             </section>
+
+            <nav class="pager" id="home-pager" aria-label="Listing pages" hidden></nav>
 
             <div class="listing-empty" data-home-empty {% if listings %}hidden{% endif %}>
                 <h3 data-empty-search {% if not search_active %}hidden{% endif %}>No listings match your search</h3>
@@ -113,15 +123,20 @@
         <p data-empty-none {% if search_active %}hidden{% endif %}>Tap the ribbon on any listing to keep it here for later.</p>
     </div>
 
+    {# 2 rows × 4 columns = 8 per page (core/js/paginate.js) #}
     <section
         class="listing-grid saved-listing-grid"
         aria-label="Saved apartment listings"
         data-saved-grid
+        data-paginate="8"
+        data-pager="#saved-pager"
     >
         {% for listing in saved_listings %}
             {% include "core_renters/partials/listing_card.html" with origin="saved" %}
         {% endfor %}
     </section>
+
+    <nav class="pager" id="saved-pager" aria-label="Saved listing pages" hidden></nav>
 
 </section>
 
