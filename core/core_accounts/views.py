@@ -12,7 +12,7 @@ from django.views import View
 from django.views.generic import RedirectView, TemplateView
 from core.core_inquiries.services import NotificationFeed
 from core.core_reports.services import SUPPORT_EMAIL
-from core.core_admin import notify
+from core.core_admin.notify import Welcome
 
 from .account import Account
 from .legal import LegalContextMixin
@@ -166,7 +166,7 @@ class SignUpCodeView(SignUpFlowMixin, CodePageView):
         except ValidationError as e:
             messages.error(self.request, "; ".join(e.messages))
             return redirect('signup')
-        notify.welcome(user)
+        Welcome.for_user(user).send()
         SignIn(self.request).log_in(user)
         return redirect(user.home_url_name)
 

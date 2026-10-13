@@ -4,7 +4,6 @@ from django import forms
 from django.contrib import admin, messages
 from django.utils.html import format_html
 
-from . import services
 from .models import VerificationRequest
 
 Status = VerificationRequest.Status
@@ -30,6 +29,7 @@ class VerificationRequestAdmin(admin.ModelAdmin):
     the status (approved / new documents needed / rejected) and save."""
 
     form = ReviewForm
+    DECISIONS = (Status.APPROVED, Status.RESUBMIT, Status.REJECTED)
     list_display = ("landlord_name", "status", "id_type", "ownership_type", "created_at", "reviewed_by")
     list_filter = ("status", "id_type", "ownership_type")
     search_fields = ("landlord__user__first_name", "landlord__user__last_name", "landlord__user__email")
@@ -90,15 +90,9 @@ class VerificationRequestAdmin(admin.ModelAdmin):
                            json.dumps(obj.ai_result, indent=2, ensure_ascii=False))
 
     def save_model(self, request, obj, form, change):
-        if "status" not in form.changed_data:
-            obj.save()
-            return
-        if obj.status == Status.APPROVED:
-            services.approve(obj, request.user)
-        elif obj.status == Status.RESUBMIT:
-            services.ask_resubmit(obj, request.user, obj.message)
-        elif obj.status == Status.REJECTED:
-            services.reject(obj, request.user, obj.message)
+        """A new decision goes through the model (badge + notice); anything else is a plain save."""
+        if "status" in form.changed_data and obj.status in self.DECISIONS:
+            obj.decide(obj.status, request.user, obj.message)
         else:
             obj.save()
 
@@ -106,6 +100,6 @@ class VerificationRequestAdmin(admin.ModelAdmin):
     def approve_selected(self, request, queryset):
         count = 0
         for obj in queryset.select_related("landlord__user"):
-            services.approve(obj, request.user)
+            obj.approve(request.user)
             count += 1
         self.message_user(request, f"{count} landlord(s) approved.", messages.SUCCESS)

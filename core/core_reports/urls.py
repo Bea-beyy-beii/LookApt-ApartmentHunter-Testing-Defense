@@ -4,5 +4,5 @@ from . import views
 app_name = "core_reports"
 
 urlpatterns = [
-    path("reports/create/", views.create_report, name="create"),
+    path("reports/create/", views.CreateReportView.as_view(), name="create"),
 ]

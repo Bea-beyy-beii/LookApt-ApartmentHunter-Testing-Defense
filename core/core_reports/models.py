@@ -1,3 +1,4 @@
+import os
 import uuid
 
 from django.conf import settings
@@ -31,6 +32,17 @@ LANDLORD_CATEGORIES = [
 # a renter's and a landlord's report validate against the same field.
 
 ALL_CATEGORIES = list(dict(RENTER_CATEGORIES + LANDLORD_CATEGORIES).items())
+
+
+class ReportQuerySet(models.QuerySet):
+
+    def open(self):
+        return self.filter(status__in=Report.OPEN_STATUSES)
+
+    def received_counts(self, user_ids):
+        """{user id: how many reports they've received} (for the admin's repeat flag)."""
+        return dict(self.filter(reported_user_id__in=user_ids)
+                    .values_list("reported_user_id").annotate(n=models.Count("pk")))
 
 
 class Report(models.Model):
@@ -73,11 +85,20 @@ class Report(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    objects = ReportQuerySet.as_manager()
+
     class Meta:
         ordering = ["-created_at"]
 
     def __str__(self):
         return f"{self.get_category_display()} ({self.get_status_display()})"
+
+    @property
+    def reason(self):
+        """What the reporter picked, or their own words for "Others"."""
+        if self.category == "others" and self.other_category_text:
+            return self.other_category_text
+        return self.get_category_display()
 
 
 class ReportEvidence(models.Model):
@@ -96,3 +117,8 @@ class ReportEvidence(models.Model):
 
     def __str__(self):
         return self.name or self.file.name
+
+    @classmethod
+    def from_upload(cls, report, upload, kind):
+        return cls.objects.create(report=report, file=upload, name=os.path.basename(upload.name)[:255],
+                                  kind=kind, size=upload.size)

@@ -7,7 +7,7 @@ from django.views.generic import TemplateView
 
 from core.core_accounts.mixins import LandlordRequiredMixin
 from core.core_inquiries.views import JsonViewMixin
-from core.core_verification.services import NOT_VERIFIED_TO_POST, landlord_must_verify
+from core.core_verification.services import NOT_VERIFIED_TO_POST, LandlordVerification
 
 from .services import Bulletin, Calendar
 
@@ -29,7 +29,7 @@ class EventsApiView(LoginRequiredMixin, JsonViewMixin, View):
 class PostBulletinView(LandlordRequiredMixin, JsonViewMixin, View):
 
     def post(self, request):
-        if landlord_must_verify(request.user):
+        if LandlordVerification(request.user).must_verify:
             return JsonResponse({"errors": {"__all__": NOT_VERIFIED_TO_POST}}, status=403)
         data = self.payload()
 
