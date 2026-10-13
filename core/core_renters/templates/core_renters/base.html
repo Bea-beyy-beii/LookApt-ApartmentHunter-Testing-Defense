@@ -31,6 +31,9 @@
     <link rel="stylesheet" href="{% static 'core/css/components/topbar_menus.css' %}">
     <link rel="stylesheet" href="{% static 'core/css/components/renter_search.css' %}">
 
+    {# Field error messages (after the page styles, so every form looks the same) #}
+    <link rel="stylesheet" href="{% static 'core/css/components/field_errors.css' %}">
+
     {% block extra_css %}{% endblock %}
 
     {# Dark mode (html[data-theme="dark"]); loaded last so it wins #}
@@ -169,6 +172,7 @@
 <script src="{% static 'core/js/paginate.js' %}"></script>
 <script src="{% static 'core/js/topbar_menus.js' %}"></script>
 <script src="{% static 'core/js/custom_select.js' %}"></script>
+<script src="{% static 'core/js/field_errors.js' %}"></script>
 <script src="{% static 'core/js/submit_guard.js' %}"></script>
 {% block extra_js %}{% endblock %}
 

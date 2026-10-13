@@ -35,12 +35,9 @@ function wizardNext() {
     const panel = document.querySelector(`.wizard-step-panel[data-step="${currentStep}"]`);
     const fields = panel.querySelectorAll('input, select, textarea');
 
-    for (const field of fields) {
-        if (!field.checkValidity()) {
-            field.reportValidity();
-            return;
-        }
-    }
+    // checkValidity() makes field_errors.js show each problem under its field
+    const invalid = [...fields].filter(field => !field.checkValidity());
+    if (invalid.length) return;
 
     // Only the property wizard's location step has a map pin
     if (panel.querySelector('[name="latitude"]') && !hasPinnedLocation()) {
@@ -222,11 +219,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const panels = document.querySelectorAll('.wizard-step-panel');
         for (const panel of panels) {
             const invalid = [...panel.querySelectorAll('input, select, textarea')]
-                .find(f => !f.checkValidity());
-            if (invalid) {
+                .filter(f => !f.checkValidity());
+            if (invalid.length) {
                 e.preventDefault();
                 goToStep(Number(panel.dataset.step));
-                invalid.reportValidity();
                 return;
             }
         }
