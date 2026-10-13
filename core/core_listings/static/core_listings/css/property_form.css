@@ -358,7 +358,6 @@
     color: var(--text-secondary);
     font-size: 12px;
     text-align: right;
-    margin-right: -160px;
 }
 
 
@@ -478,10 +477,12 @@
     grid-row: 1;
 }
 
-/* The small note sits on its own row under the buttons */
+/* The small note sits on its own row under the buttons.
+   "1 / -1" doesn't reach the last button here: the grid has no declared
+   columns, so -1 only means the end of the first one. Span both buttons. */
 .wizard-submit-note {
     grid-row: 2;
-    grid-column: 1 / -1;
+    grid-column: 1 / span 2;
     text-align: right;
 }
 
