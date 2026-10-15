@@ -180,7 +180,7 @@
             before: "",
             name: card.dataset.propertyName,
             after: makePublic
-                ? " will be visible to renters once it's approved by an admin."
+                ? " will be visible to renters right away."
                 : " will be hidden from renters. You can make it public again anytime.",
             confirmLabel: makePublic ? "Make Public" : "Set as Unpublished",
             variant: "primary",
