@@ -48,6 +48,9 @@
 
     {% block extra_css %}{% endblock %}
 
+    {# Phones / small tablets: after every page's styles, so it wins on small screens #}
+    <link rel="stylesheet" href="{% static 'core/css/responsive/mobile.css' %}">
+
     {# Dark mode (html[data-theme="dark"]); loaded last so it wins #}
     <link rel="stylesheet" href="{% static 'core/css/theme/dark_auto.css' %}">
     <link rel="stylesheet" href="{% static 'core/css/theme/dark.css' %}">

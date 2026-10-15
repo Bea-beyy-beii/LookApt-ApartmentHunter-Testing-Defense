@@ -1,0 +1,130 @@
+/* =========================================================
+   PHONES AND SMALL TABLETS
+   Loaded after every page's own CSS (landlord, renter and admin
+   base.html), so these rules win on small screens only. The
+   desktop layout isn't touched.
+========================================================= */
+
+
+/* ---------- Top bar (dark mode switch, bell, profile) ---------- */
+
+@media (max-width: 900px) {
+
+    /* On the landlord's dashboard tabs the top bar floats in the corner on
+       desktop (topbar_menus.css). On narrow screens there's no room beside the
+       page title, so it goes back above it, on its own row. */
+    body[data-tab]:not([data-tab=""]):not([data-tab="myListings"]) .landlord-dashboard .dashboard-topbar {
+        position: relative;
+        top: auto;
+        right: auto;
+        justify-content: flex-end;
+        margin: 0 0 14px;
+    }
+
+    /* Home's welcome left room for the floating top bar */
+    html .lh-welcome { padding-top: 0; }
+
+    /* Calendar / Reports Filed: their button no longer needs to drop below the top bar */
+    body[data-tab]:not([data-tab=""]):not([data-tab="myListings"]) .landlord-dashboard :is(.listings-header, .reports-page-header):has(> button) {
+        min-height: 0;
+    }
+
+    /* My Listings and the forms: breadcrumbs get a full row under the bell / profile */
+    .landlord-dashboard .dashboard-topbar { flex-wrap: wrap; row-gap: 10px; }
+    .landlord-dashboard .topbar-breadcrumb { order: 2; flex: 1 1 100%; min-width: 0; }
+}
+
+
+/* ---------- Bell / profile menus: full width under the top bar ---------- */
+
+@media (max-width: 650px) {
+
+    /* The menus hang from the whole top bar instead of from their button,
+       so they can't open past the left edge of the screen */
+    :is(.landlord-dashboard, .renter-dashboard) .dashboard-topbar { position: relative; }
+    :is(.landlord-dashboard, .renter-dashboard) .dashboard-topbar :is(.topbar-right, .topbar-menu-wrap) { position: static; }
+
+    :is(.landlord-dashboard, .renter-dashboard) .topbar-menu,
+    :is(.landlord-dashboard, .renter-dashboard) .topbar-menu--notifs {
+        left: 0;
+        right: 0;
+        width: auto;
+        max-width: none;
+    }
+
+    /* A long name would push the bell and switch off the row */
+    .profile-display-name {
+        max-width: 110px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+
+/* ---------- Landlord Home: one card per row ---------- */
+
+@media (max-width: 560px) {
+
+    html .lh-cards { grid-template-columns: 1fr; }
+}
+
+
+/* ---------- My Listings: complex facts and unit cards ---------- */
+
+@media (max-width: 640px) {
+
+    /* Facts two per row instead of one narrow column */
+    html .property-facts {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    html .property-fact { min-width: 0; padding-right: 10px; }
+    html .property-fact > div { min-width: 0; overflow-wrap: anywhere; }
+}
+
+@media (max-width: 760px) {
+
+    /* The price had only the photo's narrow column, so "/ mo" ran under the ⋮ button */
+    html .unit-card .unit-price {
+        grid-column: 1 / 3;
+        justify-self: start;
+        padding: 0;
+    }
+}
+
+
+/* ---------- Inquiries: all four tabs visible (Waitlist / Archive were cut off) ---------- */
+
+@media (max-width: 650px) {
+
+    html .inquiry-tabs {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0 16px;
+        height: auto;
+        padding: 4px 16px;
+        overflow: visible;
+    }
+
+    html .inquiry-tab {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        height: 44px;
+        min-width: 0;
+        white-space: normal;
+        text-align: left;
+    }
+}
+
+
+/* ---------- Reports Filed: "urgent safety concern" box stacks ---------- */
+
+@media (max-width: 560px) {
+
+    html .rp-urgent { flex-wrap: wrap; align-items: flex-start; }
+    html .rp-urgent div { flex: 1 1 calc(100% - 40px); }
+    html .rp-urgent .rp-btn { margin-left: 34px; }
+}
