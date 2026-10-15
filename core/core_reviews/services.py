@@ -107,16 +107,21 @@ class ReviewSubmission:
         return review
 
 
-class ComplexReviews:
-    """The complex page's Reviews tab: averages, the 5→1 star breakdown, every review."""
+class ReviewList:
+    """A list of reviews with its averages and a 5→1 star breakdown of one part.
+    Subclasses pick which reviews (queryset()) and which part the breakdown counts."""
 
-    def __init__(self, complex_obj):
-        self.complex = complex_obj
+    BREAKDOWN_PART = "complex"
+
+    def __init__(self):
         self.reviews = list(
-            Review.objects.for_complex(complex_obj)
-            .select_related("renter__user", "unit", "tenancy")
+            self.queryset()
+            .select_related("renter__user", "unit__complex", "tenancy")
             .prefetch_related("photos")
         )
+
+    def queryset(self):
+        raise NotImplementedError
 
     @property
     def count(self):
@@ -126,20 +131,59 @@ class ComplexReviews:
         return round(sum(getattr(r, field) for r in self.reviews) / self.count, 1) if self.count else 0
 
     def _breakdown(self):
+        field = f"{self.BREAKDOWN_PART}_rating"
         rows = []
         for stars in range(5, 0, -1):
-            n = sum(1 for r in self.reviews if r.complex_rating == stars)
+            n = sum(1 for r in self.reviews if getattr(r, field) == stars)
             rows.append({"stars": stars, "count": n, "percent": round(n * 100 / self.count) if self.count else 0})
         return rows
 
-    def context(self):
+    def summary(self):
         return {
-            "reviews": self.reviews,
-            "review_summary": {
-                "count": self.count,
-                "complex": self._average("complex_rating"),
-                "unit": self._average("unit_rating"),
-                "landlord": self._average("landlord_rating"),
-                "breakdown": self._breakdown(),
-            },
+            "count": self.count,
+            "complex": self._average("complex_rating"),
+            "unit": self._average("unit_rating"),
+            "landlord": self._average("landlord_rating"),
+            "breakdown": self._breakdown(),
         }
+
+    def context(self):
+        return {"reviews": self.reviews, "review_summary": self.summary()}
+
+
+class ComplexReviews(ReviewList):
+    """The complex page's Reviews tab (renters): every review of one complex."""
+
+    def __init__(self, complex_obj):
+        self.complex = complex_obj
+        super().__init__()
+
+    def queryset(self):
+        return Review.objects.for_complex(self.complex)
+
+
+class LandlordReviews(ReviewList):
+    """Inquiries > Reviews (landlords): every review of this landlord's rentals, newest first.
+    The breakdown counts the Landlord stars; `chat` (optional) adds a Message link per review."""
+
+    BREAKDOWN_PART = "landlord"
+
+    def __init__(self, landlord, chat=None):
+        self.landlord = landlord
+        super().__init__()
+        if chat:
+            for review in self.reviews:
+                review.chat = chat(review)
+
+    def queryset(self):
+        return Review.objects.for_landlord(self.landlord).order_by("-created_at")
+
+    def complexes(self):
+        """The complexes that have reviews, for the filter."""
+        seen = {}
+        for review in self.reviews:
+            seen.setdefault(review.complex_id, review.unit.complex.complex_name)
+        return sorted(({"id": str(pk), "name": name} for pk, name in seen.items()), key=lambda c: c["name"].lower())
+
+    def context(self):
+        return {**super().context(), "review_complexes": self.complexes()}

@@ -1,4 +1,4 @@
-{% load static %}
+{% load static review_tags %}
 {# Top bar, right side: dark mode switch · bell · profile menu. Rendered by {% topbar_right %} (topbar_tags). #}
 {# Preview visitors without an account get Log in / Create an Account instead (core_preview). #}
 {% if preview %}{% include "core_preview/partials/topbar.html" %}{% else %}
@@ -51,7 +51,11 @@
         </button>
         <div class="topbar-menu topbar-menu--profile" hidden>
             <div class="topbar-profile">
-                <strong>{{ user.display_name }}</strong>
+                <span class="topbar-profile-name">
+                    <strong>{{ user.display_name }}</strong>
+                    {# Landlords: average stars from renters' reviews (Inquiries > Reviews) #}
+                    {% if landlord_rating %}{% star_rating landlord_rating.avg landlord_rating.count %}{% endif %}
+                </span>
                 <small>@{{ user.username }}</small>
                 <span class="topbar-profile-tags">
                     <span class="topbar-role">{{ user.get_role_display }}</span>

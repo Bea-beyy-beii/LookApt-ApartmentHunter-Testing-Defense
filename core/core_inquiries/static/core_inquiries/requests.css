@@ -79,7 +79,8 @@
 
 .requests-view,
 .waitlist-view,
-.archive-view { padding: 14px; }
+.archive-view,
+.reviews-view { padding: 14px; }
 
 .rq-list { display: grid; gap: 12px; }
 
@@ -656,3 +657,32 @@
 .notification-icon--green  { background: #e5f5ec; color: #2f8a52; }
 .notification-icon--yellow { background: #fdf0d6; color: #a86a12; }
 .notification-icon--red    { background: #fdeceb; color: var(--error); }
+
+
+/* ---------- Reviews (landlords): star styles come from core_reviews/reviews.css ---------- */
+
+.rvw-filter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.rvw-filter select {
+    min-width: 0;
+    max-width: 100%;
+    height: 38px;
+    padding: 0 10px;
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    background: var(--white);
+    color: var(--navy);
+    font: inherit;
+}
+
+.rvl-item[hidden] { display: none; }
+
+.rvw-message { margin-left: auto; flex-shrink: 0; }

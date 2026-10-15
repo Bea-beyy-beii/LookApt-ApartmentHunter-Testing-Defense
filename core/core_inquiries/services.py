@@ -583,7 +583,7 @@ class NotificationFeed(ABC):
 
     def items(self):
         """Newest first, at most MAX_ITEMS, each flagged "is_new" if it came after the bell was last opened."""
-        items = self._message_items() + self._request_items() + self._notice_items()
+        items = self._message_items() + self._request_items() + self._notice_items() + self._extra_items()
 
         # "Clear all" hides everything up to that moment
         cleared = self.user.notifications_cleared_at
@@ -625,6 +625,10 @@ class NotificationFeed(ABC):
     def _application_item(self, application, where, key):
         """The notification for one request, or None."""
 
+    def _extra_items(self):
+        """Anything else only this kind of user hears about (landlords: reviews)."""
+        return []
+
     def _notice_items(self):
         """Messages from LookApt itself (verification results, report updates ...: core_admin/notify.py)."""
         from core.core_admin.models import Notice
@@ -635,6 +639,27 @@ class NotificationFeed(ABC):
 
 
 class LandlordNotifications(NotificationFeed):
+
+    # An edit counts as an update only if it came a while after the review was written
+    REVIEW_EDIT_GRACE = timedelta(minutes=1)
+
+    def _extra_items(self):
+        """A renter left or edited a review of one of your rentals."""
+        from core.core_reviews.models import Review
+        reviews = (Review.objects.filter(landlord__user=self.user)
+                   .select_related("renter__user", "unit__complex")[:self.MAX_ITEMS])
+        items = []
+        for review in reviews:
+            edited = review.updated_at - review.created_at > self.REVIEW_EDIT_GRACE
+            name = review.renter.user.display_name
+            where = f"{review.unit.unit_name} at {review.unit.complex.complex_name}"
+            stars = f"{review.landlord_rating} star{'s' if review.landlord_rating != 1 else ''}"
+            items.append(self._item(
+                f"r-{review.pk}", "Review updated" if edited else "New review",
+                f"{name} {'changed their review' if edited else 'reviewed their stay'} at {where}: {stars} for you.",
+                review.updated_at, self.YELLOW, type_="review",
+            ))
+        return items
 
     def _application_item(self, a, where, key):
         S = Application.Status

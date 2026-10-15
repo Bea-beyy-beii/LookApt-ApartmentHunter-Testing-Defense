@@ -356,6 +356,11 @@ class RequestTabs:
             })
         return application
 
+    def chat_with(self, item):
+        """The Message link for anything tied to a renter and a unit (a request, a review)."""
+        pair = (item.renter_id, item.unit.complex.landlord_id)
+        return self._chat(item, self.by_pair.get(pair))
+
     def _chat(self, application, conversation):
         """What the Message column and the chat pop-up need."""
         landlord_view = self.landlord_view

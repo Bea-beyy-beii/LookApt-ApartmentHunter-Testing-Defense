@@ -20,6 +20,11 @@
       <button type="button" class="inquiry-tab" data-tab="archive">
         {% feature_icon "clock" %} Archive {% if archive_count %}<span class="badge">{{ archive_count }}</span>{% endif %}
       </button>
+      {% if is_landlord_inbox %}
+        <button type="button" class="inquiry-tab" data-tab="reviews">
+          {% feature_icon "star" %} Reviews {% if review_summary.count %}<span class="badge">{{ review_summary.count }}</span>{% endif %}
+        </button>
+      {% endif %}
     </div>
 
     <div id="tab-messages" class="inquiry-tabpanel">
@@ -41,6 +46,11 @@
     <div id="tab-archive" class="inquiry-tabpanel" hidden>
       {% include "core_inquiries/partials/archive.html" %}
     </div>
+    {% if is_landlord_inbox %}
+      <div id="tab-reviews" class="inquiry-tabpanel" hidden>
+        {% include "core_inquiries/partials/reviews.html" %}
+      </div>
+    {% endif %}
   </section>
 
   <aside class="inquiry-side">

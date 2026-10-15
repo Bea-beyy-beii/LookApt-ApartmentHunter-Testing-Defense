@@ -168,6 +168,10 @@ html[data-theme="dark"] .topbar-menu-clear { color: #8fb0e8; }
 }
 
 .topbar-profile strong { color: var(--navy); font-size: 14px; }
+
+/* Name + the landlord's star rating beside it */
+.topbar-profile-name { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+.topbar-profile-name .star-rating { font-size: 12px; }
 .topbar-profile small { color: var(--text-secondary); font-size: 12px; overflow-wrap: anywhere; }
 
 /* "Renter  ✓ Verified" chips under the name */

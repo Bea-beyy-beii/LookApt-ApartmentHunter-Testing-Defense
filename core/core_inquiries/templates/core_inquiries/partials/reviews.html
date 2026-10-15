@@ -1,0 +1,87 @@
+{% comment %}
+    Reviews (landlords only): what renters said about your rentals, newest first.
+    Data: core_reviews.services.LandlordReviews (reviews, review_summary, review_complexes).
+    The star styles (rvl-*) come from core_reviews/reviews.css; the filter is in inquiries.js.
+{% endcomment %}
+{% load listing_tags review_tags %}
+<div class="reviews-view">
+
+    {% if reviews %}
+        <div class="rvl rvl--landlord">
+
+            <div class="rvl-summary">
+                <div class="rvl-score">
+                    <strong>{{ review_summary.landlord|floatformat:1 }}</strong>
+                    {% star_rating review_summary.landlord size="md" %}
+                    <small>Your rating · {{ review_summary.count }} review{{ review_summary.count|pluralize }}</small>
+                </div>
+
+                <ul class="rvl-bars" aria-label="Your ratings as a landlord">
+                    {% for row in review_summary.breakdown %}
+                        <li><span class="sr-only">{{ row.stars }} stars: </span><b aria-hidden="true">{{ row.stars }} ★</b><span><i style="width: {{ row.percent }}%"></i></span>{{ row.count }}</li>
+                    {% endfor %}
+                </ul>
+
+                <dl class="rvl-parts">
+                    <div><dt>Landlord</dt><dd>{% star_rating review_summary.landlord %}</dd></div>
+                    <div><dt>Complexes</dt><dd>{% star_rating review_summary.complex %}</dd></div>
+                    <div><dt>Units</dt><dd>{% star_rating review_summary.unit %}</dd></div>
+                </dl>
+            </div>
+
+            {% if review_complexes|length > 1 %}
+                <label class="rvw-filter">
+                    <span>Show reviews for</span>
+                    <select data-review-filter aria-label="Show reviews for">
+                        <option value="">All complexes</option>
+                        {% for c in review_complexes %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+                    </select>
+                </label>
+            {% endif %}
+
+            <ul class="rvl-list">
+                {% for review in reviews %}
+                    <li class="rvl-item" data-review-complex="{{ review.complex_id }}">
+                        <div class="rvl-who">
+                            <span class="rvl-avatar avatar--renter" aria-hidden="true">{% if review.reviewer_avatar %}<img src="{{ review.reviewer_avatar }}" alt="">{% else %}{{ review.reviewer_initials }}{% endif %}</span>
+                            <div>
+                                {# Full name: it's your own tenant (renters see initials on public listings) #}
+                                <strong>{{ review.renter.user.display_name }}</strong>
+                                <small>{{ review.unit.complex.complex_name }} – {{ review.unit.unit_name }} · Rented {{ review.tenancy.start_date|date:"M Y" }} · Reviewed {{ review.created_at|date:"M j, Y" }}</small>
+                            </div>
+                            {% if review.chat %}<span class="rvw-message">{% include "core_inquiries/partials/chat_button.html" with chat=review.chat %}</span>{% endif %}
+                        </div>
+
+                        <dl class="rvl-parts-list">
+                            {% for part in review.parts %}
+                                <div class="rvl-part">
+                                    <dt>{{ part.label }}</dt>
+                                    <dd>
+                                        {% star_rating part.rating %}
+                                        {% if part.feedback %}<p>{{ part.feedback }}</p>{% endif %}
+                                    </dd>
+                                </div>
+                            {% endfor %}
+                        </dl>
+
+                        {% if review.photos.all %}
+                            <div class="rvl-photos">
+                                {% for photo in review.photos.all %}
+                                    <a href="{{ photo.image.url }}" target="_blank" rel="noopener"><img src="{{ photo.image.url }}" alt="Photo from {{ review.renter.user.display_name }}'s review" loading="lazy"></a>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+
+        </div>
+    {% else %}
+        <div class="inquiry-empty-state">
+            <div class="empty-state-icon" aria-hidden="true">{% feature_icon "star" %}</div>
+            <h3>No reviews yet</h3>
+            <p>When your tenants rate their stay, their reviews appear here. Renters see them on your listings too.</p>
+        </div>
+    {% endif %}
+
+</div>

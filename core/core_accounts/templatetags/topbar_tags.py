@@ -4,6 +4,7 @@ from django.urls import reverse
 from core.core_feedback.forms import FeedbackForm
 from core.core_feedback.guide import UserGuide
 from core.core_reports.services import SUPPORT_EMAIL
+from core.core_reviews.models import Review
 
 register = template.Library()
 
@@ -25,7 +26,17 @@ def topbar_right(context):
         # Profile menu > LookApt Guide / Feedback Form (renters and landlords)
         "guide": UserGuide.for_user(request.user),
         "feedback_form": FeedbackForm(),
+        # Landlords: their average Landlord stars beside the name (none until the first review)
+        "landlord_rating": landlord_rating(request.user),
     }
+
+
+def landlord_rating(user):
+    """{"avg", "count"} of the Landlord stars renters gave this user, or None (not a landlord / no reviews)."""
+    if not user.is_landlord:
+        return None
+    rating = Review.objects.filter(landlord__user=user).summary("landlord")
+    return rating if rating["count"] else None
 
 
 @register.simple_tag

@@ -36,8 +36,8 @@ STORAGES = {
 }
 
 
-@override_settings(STORAGES=STORAGES)
-class ReviewTests(TestCase):
+class ReviewSetup(TestCase):
+    """A landlord, a renter renting one unit (logged in), and another renter."""
 
     def setUp(self):
         self.landlord = make_user("liza", "landlord", "09111111111", "Liza", "Soberano")
@@ -62,6 +62,10 @@ class ReviewTests(TestCase):
                 "complex_feedback": "  Quiet place.  ", "unit_feedback": "", "landlord_feedback": "Slow replies."}
         data.update(overrides)
         return self.client.post(self.url, data, HTTP_ACCEPT="application/json")
+
+
+@override_settings(STORAGES=STORAGES)
+class ReviewTests(ReviewSetup):
 
     def test_leave_a_review_with_photos(self):
         response = self.post(photos=[photo(), photo("b.png", "PNG")])
@@ -130,3 +134,52 @@ class ReviewTests(TestCase):
         response = self.client.get(reverse("core_listings:renter_complex_detail", args=[self.complex.pk]))
         self.assertContains(response, "No reviews yet")
         self.assertIsNone(response.context["units"][0].rating)
+
+
+# ------------------------------------------------------------------ Landlords: Inquiries > Reviews, bell, profile menu
+
+@override_settings(STORAGES=STORAGES)
+class LandlordReviewTests(ReviewSetup):
+    """The renter leaves a review first, then the landlord looks."""
+
+    def setUp(self):
+        super().setUp()
+        self.post()                                   # Landlord 3 stars, Complex 4, Unit 5
+        self.client.force_login(self.landlord)
+
+    def test_reviews_tab_shows_the_review_and_averages(self):
+        from .services import LandlordReviews
+        context = LandlordReviews(self.landlord.landlord).context()
+        self.assertEqual(context["review_summary"]["count"], 1)
+        self.assertEqual(context["review_summary"]["landlord"], 3)
+        self.assertEqual(context["review_complexes"], [{"id": str(self.complex.pk), "name": "Sunrise"}])
+
+        html = self.client.get(reverse("core_landlords:dashboard") + "?tab=inquiries").content.decode()
+        self.assertIn('data-tab="reviews"', html)
+        self.assertIn("Slow replies.", html)
+
+    def test_renters_have_no_reviews_tab(self):
+        self.client.force_login(self.renter)
+        html = self.client.get(reverse("core_renters:dashboard") + "?tab=inquiries").content.decode()
+        self.assertNotIn('data-tab="reviews"', html)
+
+    def test_new_review_reaches_the_bell(self):
+        from core.core_inquiries.services import NotificationFeed
+        items = NotificationFeed.for_user(self.landlord).items()
+        review = next(item for item in items if item["type"] == "review")
+        self.assertEqual(review["title"], "New review")
+        self.assertIn("3 stars for you", review["message"])
+
+        # An edit later on reads as "Review updated"
+        Review.objects.update(updated_at=Review.objects.get().created_at + timedelta(hours=1))
+        items = NotificationFeed.for_user(self.landlord).items()
+        self.assertEqual(next(i for i in items if i["type"] == "review")["title"], "Review updated")
+
+    def test_rating_beside_the_name_in_the_profile_menu(self):
+        html = self.client.get(reverse("core_landlords:dashboard")).content.decode()
+        self.assertIn('class="topbar-profile-name"', html)
+        self.assertIn("<b>3.0</b><small>(1)</small>", html)
+
+        Review.objects.all().delete()                 # no reviews -> no stars
+        html = self.client.get(reverse("core_landlords:dashboard")).content.decode()
+        self.assertNotIn("<b>3.0</b>", html)

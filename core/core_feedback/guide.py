@@ -126,7 +126,7 @@ class LandlordGuide(UserGuide):
                       "Financials for a PDF) and how your listings perform.",
                       "Home"),
             GuideStep("Reviews and safety",
-                      "Read what tenants say in your listings' reviews. If a renter causes trouble, file a report, "
-                      "or reach us through Contact Support.",
-                      "Listing page > Reviews, and Reports Filed"),
+                      "Read what tenants say about you, your complexes and units; your star rating shows beside your "
+                      "name. If a renter causes trouble, file a report, or reach us through Contact Support.",
+                      "Inquiries > Reviews, and Reports Filed"),
         ]

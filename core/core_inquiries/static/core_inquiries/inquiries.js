@@ -1,6 +1,6 @@
 // =========================================================
 // INQUIRIES TAB (renter + landlord dashboards)
-// - Messages / Pending Requests / Waitlist / Archive tabs
+// - Messages / Pending Requests / Waitlist / Archive (+ Reviews for landlords) tabs
 // - thread list refreshes every 8 s (newest conversation on top)
 // - search the thread list by person or property name
 // - an open thread refreshes every 4 s (chat.js), with ✓✓ seen
@@ -8,7 +8,7 @@
 // =========================================================
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Tab switching (Messages / Pending Requests / Waitlist / Archive).
+  // Tab switching (Messages / Pending Requests / Waitlist / Archive / Reviews).
   const tabs = document.querySelectorAll(".inquiry-tab");
   const panels = document.querySelectorAll(".inquiry-tabpanel");
 
@@ -29,6 +29,14 @@ document.addEventListener("DOMContentLoaded", () => {
       if (tab) showTab(tab);
     }
   } catch (err) { /* ignore */ }
+
+  // Reviews (landlords): show one complex's reviews
+  const reviewFilter = document.querySelector("[data-review-filter]");
+  reviewFilter?.addEventListener("change", () => {
+    document.querySelectorAll("[data-review-complex]").forEach((item) => {
+      item.hidden = Boolean(reviewFilter.value) && item.dataset.reviewComplex !== reviewFilter.value;
+    });
+  });
 
   const threadList = document.getElementById("messages-view");
   const convo = document.getElementById("conversation-view");
