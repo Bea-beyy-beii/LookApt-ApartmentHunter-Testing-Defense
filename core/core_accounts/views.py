@@ -17,8 +17,8 @@ from core.core_admin.notify import Welcome
 from .account import Account
 from .legal import LegalContextMixin
 from .otp import OTPError
-from .services import (GoogleSignIn, GoogleSignInError, NewPasswordStep, PasswordReset, SignIn, SignUp,
-                       SignUpForm)
+from .throttle import LoginAttempts, RateLimitMixin
+from .services import (GoogleSignIn, GoogleSignInError, NewPasswordStep, PasswordReset, SignIn, SignUp, SignUpForm)
 
 
 # ------------------------------------------------------------------ shared by the code pages
@@ -109,7 +109,7 @@ class CodeResendView(View):
 SIGNUP_FIELDS = ('first_name', 'last_name', 'phone_number', 'email', 'sex', 'role', 'agree_terms')
 
 
-class SignUpView(LegalContextMixin, SignUpFlowMixin, TemplateView):
+class SignUpView(RateLimitMixin, LegalContextMixin, SignUpFlowMixin, TemplateView):
     """Sign-up in 5 steps (Name, Contact, Profile, Security, Terms) on one page.
     Next / Back are handled by signup.js; each Next is checked by SignUpCheckView.
     "Create Account" checks everything again, keeps the sign-up in the session
@@ -117,6 +117,18 @@ class SignUpView(LegalContextMixin, SignUpFlowMixin, TemplateView):
     (SignUp.create_account) once the code is verified."""
 
     template_name = 'core_accounts/signup.html'
+
+    # "Create Account" at most 10 times an hour from one address (slows down
+    # scripts testing which emails / phone numbers already have an account)
+    rate_scope = 'signup'
+    rate_limit = 10
+    rate_window = 60 * 60
+    rate_methods = ('POST',)
+
+    def rate_limited(self, limit):
+        messages.error(self.request, f"Too many sign-up attempts. Please try again in {limit.minutes_left} minutes.")
+        return self.render_to_response(self.get_context_data(
+            form_data={f: self.request.POST.get(f, '') for f in SIGNUP_FIELDS}), status=429)
 
     def get_context_data(self, **kwargs):
         # Coming back from the OTP page: keep what they typed (except the password).
@@ -138,8 +150,17 @@ class SignUpView(LegalContextMixin, SignUpFlowMixin, TemplateView):
         return redirect('otp')
 
 
-class SignUpCheckView(View):
+class SignUpCheckView(RateLimitMixin, View):
     """Next button: check one step. {"ok": true} or {"ok": false, "errors": {field: message}}."""
+
+    rate_scope = 'signup-check'
+    rate_limit = 30                 # a real sign-up uses about 5
+    rate_window = 10 * 60
+
+    def rate_limited(self, limit):
+        # Over the limit, Next stops checking (so a script learns nothing about
+        # existing accounts); "Create Account" still checks everything
+        return JsonResponse({'ok': True, 'errors': {}})
 
     def post(self, request):
         try:
@@ -204,14 +225,20 @@ class LoginView(View):
 
     def post(self, request):
         identifier, password = request.POST.get('identifier', ''), request.POST.get('password', '')
+        attempts = LoginAttempts(request, identifier)
+        if attempts.blocked:                       # too many wrong passwords: don't even check this one
+            messages.error(request, attempts.message)
+            return render(request, self.template_name, status=429)
         sign_in = SignIn(request)
         user = sign_in.authenticate(identifier, password)
         if user:
+            attempts.succeeded()
             sign_in.log_in(user)
             return redirect(user.home_url_name)
         if sign_in.is_suspended(identifier, password):
             messages.error(request, f"Your account is suspended. Please contact {SUPPORT_EMAIL}.")
         else:
+            attempts.failed()
             messages.error(request, "Invalid phone/username or password.")
         return render(request, self.template_name)
 
@@ -229,9 +256,22 @@ class LogoutView(RedirectView):
 # ------------------------------------------------------------------ FORGOT PASSWORD
 # 1 Account (email + phone number) -> 2 Code (emailed, same page as sign-up's OTP) -> 3 New password
 
-class ForgotPasswordView(PasswordResetFlowMixin, View):
+class ForgotPasswordView(RateLimitMixin, PasswordResetFlowMixin, View):
     """Step 1: which account? The email and the phone number must both be that account's.
     Then a code goes to the account's email."""
+
+    # At most 10 tries an hour from one address (guessing email + phone pairs)
+    rate_scope = 'forgot-password'
+    rate_limit = 10
+    rate_window = 60 * 60
+    rate_methods = ('POST',)
+
+    def rate_limited(self, limit):
+        values = {name: self.request.POST.get(name, '').strip() for name in ('email', 'phone_number')}
+        errors = {'email': f"Too many tries. Please try again in {limit.minutes_left} minutes."}
+        response = self.page(values, errors)
+        response.status_code = 429
+        return response
 
     def get(self, request):
         return self.page({'email': '', 'phone_number': ''}, {})

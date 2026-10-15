@@ -6,6 +6,7 @@ from django.views import View
 from django.views.generic import TemplateView
 
 from core.core_accounts.mixins import RenterRequiredMixin
+from core.core_accounts.throttle import RateLimitMixin
 from core.core_inquiries.sections import InquiriesSection
 from core.core_preview.access import PreviewAccess
 from core.core_rentals.sections import RenterRentalsSection
@@ -20,7 +21,7 @@ class DashboardView(RenterRequiredMixin, SectionedDashboardMixin, TemplateView):
     sections = (InquiriesSection, ReportsSection, RenterListingsSection, RenterRentalsSection)
 
 
-class SearchListingsView(View):
+class SearchListingsView(RateLimitMixin, View):
     """Search bar / "Filter by" (renter_search.js): the Home and Saved Listings cards again,
     narrowed down. Also works in the renter preview (no account)."""
 

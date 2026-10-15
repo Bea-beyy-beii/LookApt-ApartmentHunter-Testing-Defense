@@ -308,3 +308,89 @@ class WelcomeMessageTests(TestCase):
         self.log_in_and_open_home()
         self.client.logout()
         self.assertContains(self.log_in_and_open_home(), "Welcome back, Lara!")
+
+
+from django.core.cache import cache as _cache
+
+from core.core_maps.views import JsonApiView
+
+
+@override_settings(RATE_LIMITS=True)
+class RateLimitTests(TestCase):
+    """Too-many-tries limits (throttle.py) and the hidden Django admin."""
+
+    def setUp(self):
+        _cache.clear()
+        self.user = User.objects.create_user(username="mara", password="Right#Pass2026", first_name="Mara",
+                                             last_name="M", email="mara@example.com", phone_number="09176660000",
+                                             role="renter")
+        Renter.objects.create(user=self.user)
+
+    def tearDown(self):
+        _cache.clear()
+
+    def log_in(self, password, identifier="mara"):
+        return self.client.post(reverse("login"), {"identifier": identifier, "password": password})
+
+    def test_five_wrong_passwords_pause_log_in(self):
+        for _ in range(5):
+            self.assertContains(self.log_in("wrong"), "Invalid phone/username or password.")
+        response = self.log_in("Right#Pass2026")            # even the right password waits now
+        self.assertEqual(response.status_code, 429)
+        self.assertContains(response, "Too many failed log-in attempts", status_code=429)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_a_good_log_in_resets_the_count(self):
+        for _ in range(4):
+            self.log_in("wrong")
+        self.assertRedirects(self.log_in("Right#Pass2026"), reverse("core_renters:dashboard"), fetch_redirect_response=False)
+        self.client.logout()
+        for _ in range(4):
+            self.log_in("wrong")
+        self.assertEqual(self.log_in("Right#Pass2026").status_code, 302)
+
+    def test_many_accounts_from_one_address(self):
+        for n in range(30):
+            self.log_in("wrong", identifier=f"someone{n}")
+        self.assertEqual(self.log_in("Right#Pass2026").status_code, 429)
+
+    @override_settings(RATE_LIMITS=False)
+    def test_limits_can_be_turned_off(self):
+        for _ in range(8):
+            self.log_in("wrong")
+        self.assertEqual(self.log_in("Right#Pass2026").status_code, 302)
+
+    def test_signup_check_stops_revealing_accounts(self):
+        url = reverse("signup_check")
+        taken = {"step": "2", "email": "mara@example.com", "phone_number": "09170001111"}
+        self.assertIn("email", self.client.post(url, taken).json()["errors"])
+        for _ in range(30):
+            self.client.post(url, taken)
+        self.assertEqual(self.client.post(url, taken).json(), {"ok": True, "errors": {}})
+
+    def test_forgot_password_tries_are_limited(self):
+        url = reverse("forgot_password")
+        for _ in range(10):
+            self.client.post(url, {"email": "nobody@example.com", "phone_number": "09170000000"})
+        response = self.client.post(url, {"email": "nobody@example.com", "phone_number": "09170000000"})
+        self.assertContains(response, "Too many tries", status_code=429)
+
+    def test_map_endpoints_are_limited(self):
+        self.client.force_login(self.user)
+        url = reverse("core_maps:complexes_api")
+        with _mock.patch.object(JsonApiView, "rate_limit", 2):
+            self.client.get(url)
+            self.client.get(url)
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, 429)
+        self.assertIn("error", response.json())
+
+    def test_django_admin_is_hidden_from_everyone_but_staff(self):
+        self.assertEqual(self.client.get("/lookapt-manage/").status_code, 404)
+        self.assertEqual(self.client.get("/lookapt-manage/login/").status_code, 404)
+        self.client.force_login(self.user)                 # a renter: still nothing there
+        self.assertEqual(self.client.get("/lookapt-manage/").status_code, 404)
+        staff = User.objects.create_user(username="boss2", password="x", first_name="B", last_name="S",
+                                         phone_number="09170009999", role="admin", is_staff=True)
+        self.client.force_login(staff)
+        self.assertNotEqual(self.client.get("/lookapt-manage/").status_code, 404)

@@ -9,6 +9,7 @@ from django.views import View
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 
 from core.core_listings.models import Complex
+from core.core_accounts.throttle import RateLimitMixin
 from core.core_preview.access import PreviewAccess
 
 from .maps.folium_maps import LocationMap
@@ -88,8 +89,11 @@ class MapView(LoginOrPreviewMixin, View):
 # JSON API
 # =========================================================
 
-class JsonApiView(MapView, ABC):
-    """Template method: get() wraps payload() in a JsonResponse (400 on a BadRequest)."""
+class JsonApiView(RateLimitMixin, MapView, ABC):
+    """Template method: get() wraps payload() in a JsonResponse (400 on a BadRequest).
+    All map endpoints share one limit per visitor (120 requests a minute)."""
+
+    rate_scope = "maps-api"
 
     def get(self, request, *args, **kwargs):
         try:

@@ -14,6 +14,7 @@ from django.urls import path, include
 from pathlib import Path
 import environ 
 import os 
+import sys
 import tempfile
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,6 +26,7 @@ env = environ.Env(
     DB_CONN_MAX_AGE=(int, 0),               # 0 = close after each request (right for Supabase's transaction pooler)
     DB_TRANSACTION_POOLER=(bool, True),     # True when DB_PORT is 6543
     SECURE_SSL_REDIRECT=(bool, True),       # production only: send http:// to https://
+    RATE_LIMITS=(bool, True),               # False on a staging copy for a stress test (core_accounts/throttle.py)
 )
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
@@ -74,6 +76,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'core.core_accounts.middleware.HideAdminMiddleware',   # /lookapt-manage/ is a 404 unless you're staff
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -81,6 +84,9 @@ MIDDLEWARE = [
 # DEBUG only: print each request's time + database time in the runserver console
 if DEBUG:
     MIDDLEWARE.append("core.dev_timing.RequestTimingMiddleware")
+
+# Too-many-tries limits (log in, sign-up, forgot password, search, map); off while the tests run
+RATE_LIMITS = env('RATE_LIMITS') and sys.argv[1:2] != ['test']
 
 ROOT_URLCONF = 'LookApt.urls'
 
