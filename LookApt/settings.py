@@ -77,6 +77,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'core.core_accounts.middleware.HideAdminMiddleware',   # /lookapt-manage/ is a 404 unless you're staff
+    'core.core_accounts.middleware.NoCacheWhenLoggedInMiddleware',   # Back after log-out doesn't show the account
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]

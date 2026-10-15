@@ -394,3 +394,25 @@ class RateLimitTests(TestCase):
                                          phone_number="09170009999", role="admin", is_staff=True)
         self.client.force_login(staff)
         self.assertNotEqual(self.client.get("/lookapt-manage/").status_code, 404)
+
+
+# ------------------------------------------------------------------ Back button after log-out (middleware.py)
+
+class NoCacheWhenLoggedInTests(TestCase):
+
+    def test_logged_in_pages_are_not_stored_by_the_browser(self):
+        user = User.objects.create_user(username="rina", password="pw-12345!", first_name="Rina", last_name="T",
+                                        phone_number="09111111119", sex="female", role="renter",
+                                        email="rina@example.com")
+        self.client.force_login(user)
+        response = self.client.get("/renters/dashboard/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("no-store", response["Cache-Control"])
+
+        # After log-out the same page sends you to log in (that's what Back now shows)
+        self.client.get(reverse("logout"))
+        response = self.client.get("/renters/dashboard/")
+        self.assertRedirects(response, "/login/?next=/renters/dashboard/", fetch_redirect_response=False)
+
+    def test_public_pages_can_still_be_cached(self):
+        self.assertNotIn("no-store", self.client.get(reverse("login")).get("Cache-Control", ""))

@@ -1,4 +1,5 @@
 from django.http import Http404
+from django.utils.cache import add_never_cache_headers
 
 
 class HideAdminMiddleware:
@@ -15,3 +16,17 @@ class HideAdminMiddleware:
             if not (user.is_authenticated and user.is_staff):
                 raise Http404
         return self.get_response(request)
+
+class NoCacheWhenLoggedInMiddleware:
+    """Pages shown to a logged-in user are never stored by the browser.
+    Without this, pressing Back after logging out shows the account's pages
+    again from the browser's memory (the session is gone, but the copy isn't)."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        if request.user.is_authenticated and 'Cache-Control' not in response:
+            add_never_cache_headers(response)    # no-cache, no-store, must-revalidate, private
+        return response
