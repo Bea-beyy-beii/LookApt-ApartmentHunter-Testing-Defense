@@ -144,6 +144,55 @@ class VerificationTests(Base):
         self.assertFalse(self.landlord.is_verified)
 
 
+class DirectVerificationTests(Base):
+    """Users > a landlord > Verify landlord / Remove verification."""
+
+    def test_verify_without_documents(self):
+        self.post("user_detail", self.landlord.pk, {"action": "verify"})
+        self.landlord.refresh_from_db()
+        self.assertTrue(self.landlord.is_verified)
+        self.assertTrue(Notice.objects.filter(user=self.landlord, title="You're verified!").exists())
+        self.assertIn("verified", mail.outbox[-1].subject)
+
+    def test_verify_approves_documents_that_are_waiting(self):
+        request = self.make_request("review")
+        self.post("user_detail", self.landlord.pk, {"action": "verify"})
+        request.refresh_from_db()
+        self.landlord.refresh_from_db()
+        self.assertEqual((request.status, request.reviewed_by), ("approved", self.admin))
+        self.assertTrue(self.landlord.is_verified)
+
+    def test_renters_cant_be_verified(self):
+        response = self.post("user_detail", self.renter.pk, {"action": "verify"})
+        self.renter.refresh_from_db()
+        self.assertFalse(self.renter.is_verified)
+        self.assertContains(self.client.get(response.url), "Only landlords get verified.")
+
+    def test_remove_verification_needs_a_reason_and_lets_them_upload_again(self):
+        from core.core_verification.services import LandlordVerification
+        self.make_request("approved")
+        self.landlord.is_verified = True
+        self.landlord.save()
+
+        self.post("user_detail", self.landlord.pk, {"action": "unverify", "reason": " "})
+        self.landlord.refresh_from_db()
+        self.assertTrue(self.landlord.is_verified)                  # no reason, nothing happened
+
+        self.post("user_detail", self.landlord.pk, {"action": "unverify", "reason": "Your permit expired."})
+        self.landlord.refresh_from_db()
+        self.assertFalse(self.landlord.is_verified)
+        self.assertTrue(Notice.objects.filter(user=self.landlord, title="Your verification was removed",
+                                              message="Your permit expired.").exists())
+        self.assertIn("Your permit expired.", mail.outbox[-1].body)
+        self.assertTrue(LandlordVerification(self.landlord).can_submit)
+
+    def test_buttons_on_the_landlord_page(self):
+        url = reverse("core_admin:user_detail", args=[self.landlord.pk])
+        self.assertContains(self.client.get(url), 'value="verify"')
+        self.assertNotContains(self.client.get(reverse("core_admin:user_detail", args=[self.renter.pk])),
+                               'value="verify"')
+
+
 class UserTests(Base):
 
     def setUp(self):
