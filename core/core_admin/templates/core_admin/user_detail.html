@@ -125,6 +125,27 @@
         <section class="ap-card">
             <header class="ap-card-head"><div><h2>Actions</h2><p>The user is notified by bell and email.</p></div></header>
             <div class="ap-actions">
+                {# Landlords: verify directly (e.g. checked in person), or take it back #}
+                {% if account.role == "landlord" %}
+                    {% if account.is_verified %}
+                    <details class="ap-action">
+                        <summary class="ap-btn ap-btn--ghost ap-btn--danger-text ap-btn--block">Remove verification</summary>
+                        <form method="post" class="ap-form" data-ap-confirm="Remove {{ account.display_name }}'s verification? They won't be able to publish listings, post bulletins or file reports until they're verified again.">
+                            {% csrf_token %}<input type="hidden" name="action" value="unverify">
+                            <textarea name="reason" class="ap-textarea" rows="3" required placeholder="Reason (sent to them by email)"></textarea>
+                            <button type="submit" class="ap-btn ap-btn--danger">Remove verification</button>
+                        </form>
+                    </details>
+                    {% else %}
+                    {% with latest=verifications.0 %}
+                    <form method="post" data-ap-confirm="Verify {{ account.display_name }}?{% if latest.status == 'checking' or latest.status == 'review' or latest.status == 'resubmit' %} This also approves the documents they sent.{% else %} They haven't sent documents, so only verify landlords you've checked yourself.{% endif %}">
+                        {% csrf_token %}<input type="hidden" name="action" value="verify">
+                        <button type="submit" class="ap-btn ap-btn--primary ap-btn--block">{% ap_icon "check" 15 %} Verify landlord</button>
+                    </form>
+                    {% endwith %}
+                    {% endif %}
+                {% endif %}
+
                 {% if account.email %}
                 <form method="post">{% csrf_token %}<input type="hidden" name="action" value="password">
                     <button type="submit" class="ap-btn ap-btn--ghost ap-btn--block">Email password reset steps</button>
