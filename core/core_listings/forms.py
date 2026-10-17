@@ -12,7 +12,7 @@ from django.db import transaction
 from core.core_maps.maps.services import AreaName, ComplexLandmarks
 
 from .icons import Icon
-from .models import Complex, Unit
+from .models import Complex, PropertyType, Unit
 
 
 # =========================================================
@@ -231,6 +231,9 @@ class ComplexForm(ListingForm):
     def feature_fields(self):
         return self._icon_fields(self.FEATURE_FIELDS)
 
+    def clean_property_type(self):
+        return self.cleaned_data.get("property_type") or self.instance.property_type or PropertyType.APARTMENT
+
 
     class Meta:
         model = Complex
@@ -329,6 +332,9 @@ class ComplexForm(ListingForm):
         self.landlord = landlord or (self.instance.landlord if self.instance.landlord_id else None)
         self.creating = self.instance._state.adding
         self.publish_refused = False    # set by save_listing()
+
+        # Not sent (older pages, scripts): keep the saved type, or Apartment for a new property
+        self.fields["property_type"].required = False
 
         # A property must be pinned on the map
         self.fields["latitude"].required = True

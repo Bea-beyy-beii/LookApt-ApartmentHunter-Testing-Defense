@@ -341,7 +341,9 @@ class ReportTests(Base):
             response = self.client.post(reverse("core_reports:create"), {
                 "reported_user": str(self.landlord.pk), "category": "price_mismatch", "description": "Too high."})
         self.assertEqual(response.status_code, 201)
-        self.assertIn("we received your report", mail.outbox[-1].subject)
+        to_reporter = [m for m in mail.outbox if m.to == ["arem@example.com"]]
+        self.assertIn("we received your report", to_reporter[-1].subject)
+        self.assertTrue(any("New report" in m.subject for m in mail.outbox))      # the admins hear about it too
 
     def test_repeat_flag(self):
         self.make_report()
