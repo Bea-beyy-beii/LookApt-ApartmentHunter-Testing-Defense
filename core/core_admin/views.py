@@ -151,7 +151,7 @@ class VerificationDetailView(AdminDetailView):
 class UserDetailView(AdminDetailView):
     section = "users"
     url_name = "core_admin:user_detail"
-    ACTIONS = ("edit", "suspend", "reactivate", "warn", "delete", "password")
+    ACTIONS = ("edit", "verify", "unverify", "suspend", "reactivate", "warn", "delete", "password")
 
     def get_object(self):
         return get_object_or_404(User.objects.exclude(role="admin"), pk=self.kwargs["pk"])
@@ -181,6 +181,14 @@ class UserDetailView(AdminDetailView):
             return None
         messages.error(self.request, "Please fix the details below.")
         return self.show(form)
+
+    def _verify(self):
+        self.moderation.verify(self.request.user)
+        messages.success(self.request, f"{self.object.display_name} is verified and was notified.")
+
+    def _unverify(self):
+        self.moderation.remove_verification(self.request.POST.get("reason"))
+        messages.success(self.request, f"{self.object.display_name}'s verification was removed and they were notified.")
 
     def _suspend(self):
         self.moderation.suspend(self.request.POST.get("reason"))

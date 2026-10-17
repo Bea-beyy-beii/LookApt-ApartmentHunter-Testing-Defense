@@ -134,6 +134,40 @@ class Verified(VerificationNotice):
     button = DASHBOARD
 
 
+class VerifiedByAdmin(Verified):
+    """An admin verified the landlord directly from Users (no documents needed)."""
+
+    def __init__(self, user):
+        Notification.__init__(self, user)
+        self.reason = ""
+
+
+class VerificationRemoved(Notification):
+    """An admin took back a landlord's verification (Users)."""
+    tone = Notice.Tone.RED
+    title = "Your verification was removed"
+    subject = "LookApt: your verification was removed"
+    button = DASHBOARD
+
+    def __init__(self, user, reason):
+        super().__init__(user)
+        self.reason = reason
+
+    @property
+    def message(self):
+        return self.reason
+
+    @property
+    def quote(self):
+        return self.reason
+
+    @property
+    def paragraphs(self):
+        return ["Our team removed the verified badge from your landlord account. Until you're verified again "
+                "you can't publish listings, post bulletins or file reports.",
+                f"You can upload new documents from your dashboard, or reply to {SUPPORT_EMAIL}. The reason:"]
+
+
 class NewDocumentsNeeded(VerificationNotice):
     tone = Notice.Tone.YELLOW
     title = "Please upload new documents"

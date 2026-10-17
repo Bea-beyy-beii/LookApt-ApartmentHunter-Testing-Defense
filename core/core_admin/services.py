@@ -27,7 +27,8 @@ from core.core_reports.models import Report
 from core.core_verification.models import VerificationRequest
 from core.models import User
 
-from .notify import AccountDeleted, AccountWarning, ListingsUnpublished, Reactivated, ReportUpdated, Suspended
+from .notify import (AccountDeleted, AccountWarning, ListingsUnpublished, Reactivated, ReportUpdated, Suspended,
+                     VerificationRemoved, VerifiedByAdmin)
 
 logger = logging.getLogger(__name__)
 
@@ -245,6 +246,40 @@ class UserModeration:
             status=Complex.ComplexStatus.UNPUBLISHED, updated_at=timezone.now())
         ListingsUnpublished(self.user, reason).send()
         return count
+
+    # ---------------------------------------------------------- landlord verification
+
+    def _check_landlord(self):
+        if not self.user.is_landlord:
+            raise ValidationError("Only landlords get verified.")
+
+    @transaction.atomic
+    def verify(self, admin):
+        """Verify a landlord directly. Documents waiting for a decision are approved with it;
+        with none, the admin vouches for them (e.g. checked in person)."""
+        self._check_landlord()
+        if self.user.is_verified:
+            raise ValidationError("This landlord is already verified.")
+        SidebarBadges.forget()
+        S = VerificationRequest.Status
+        latest = VerificationRequest.objects.filter(landlord__user=self.user).first()     # newest first
+        if latest and latest.status in (S.CHECKING, S.REVIEW, S.RESUBMIT):
+            latest.approve(admin)               # sets the badge and sends "You're verified!"
+            return
+        self.user.is_verified = True
+        self.user.save(update_fields=["is_verified"])
+        VerifiedByAdmin(self.user).send()
+
+    @transaction.atomic
+    def remove_verification(self, reason):
+        """Take the verified badge back. The landlord can upload documents again."""
+        self._check_landlord()
+        if not self.user.is_verified:
+            raise ValidationError("This landlord isn't verified.")
+        reason = self._required(reason, "Write the reason; the landlord will see it.")
+        self.user.is_verified = False
+        self.user.save(update_fields=["is_verified"])
+        VerificationRemoved(self.user, reason).send()
 
     def send_password_help(self):
         """Email the steps to reset their password (the code itself comes from Forgot Password)."""
