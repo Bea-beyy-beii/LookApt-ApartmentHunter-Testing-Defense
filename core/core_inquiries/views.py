@@ -1,7 +1,7 @@
 # core_inquiries/views.py
 # JSON endpoints used by the listing pages' pop-ups and the Inquiries tab.
 import json
-from datetime import date, time
+from abc import ABC, abstractmethod
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -13,13 +13,14 @@ from django.views import View
 from core.core_accounts.mixins import LandlordRequiredMixin, RenterRequiredMixin
 from core.core_listings.models import Complex, Unit
 from core.models import Renter
+from core.parsing import ParsesDates
 
 from . import workflow
 from .models import Application, Conversation
 from .services import ApplicationRequest, ChatJSON, Inbox, LandlordMessage, RenterInquiry, ThreadReply
 
 
-class JsonViewMixin:
+class JsonViewMixin(ParsesDates):
     """Reading the posted JSON and answering with JSON errors (shared by every endpoint here
     and by core_calendar)."""
 
@@ -28,20 +29,6 @@ class JsonViewMixin:
             return json.loads(self.request.body or "{}")
         except ValueError:
             return {}
-
-    @staticmethod
-    def parse_date(value):
-        try:
-            return date.fromisoformat(value) if value else None
-        except (TypeError, ValueError):
-            return None
-
-    @staticmethod
-    def parse_time(value):
-        try:
-            return time.fromisoformat(value) if value else None
-        except (TypeError, ValueError):
-            return None
 
     @staticmethod
     def errors(error):
@@ -254,14 +241,15 @@ class SendToRenterView(LandlordRequiredMixin, InquiryViewMixin, View):
 # "Approve as Tenant" posts to core_rentals:assign_tenant (same as Manage Rentals).
 # =========================================================
 
-class RequestActionView(InquiryViewMixin, View):
+class RequestActionView(InquiryViewMixin, View, ABC):
     """POST one button of a request card. Subclasses name the RequestAction to run
     and which requests the user may touch (their own, or the ones to their units)."""
 
     action_class = None
 
+    @abstractmethod
     def own_requests(self):
-        raise NotImplementedError
+        """The requests this user may act on."""
 
     def get_application(self, pk):
         return get_object_or_404(self.own_requests(), pk=pk)

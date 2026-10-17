@@ -1,4 +1,6 @@
 # core_listings/views.py
+from abc import ABC, abstractmethod
+
 from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
@@ -130,15 +132,16 @@ class PropertyEditView(PropertyWizardView):
         return get_object_or_404(Complex.objects.owned_by(self.request.user), pk=self.kwargs["pk"])
 
 
-class UnitWizardView(ListingWizardView):
+class UnitWizardView(ListingWizardView, ABC):
     template_name = "core_listings/landlords/forms/unit_form.html"
 
     @cached_property
     def complex(self):
         return self.get_complex()
 
+    @abstractmethod
     def get_complex(self):
-        raise NotImplementedError
+        """The complex the unit belongs to."""
 
     @property
     def bulk(self):
@@ -184,7 +187,7 @@ class UnitEditView(UnitWizardView):
 # ⋮ MENU ACTIONS (called with fetch() from listings_cards.js)
 # ---------------------------------------------------------
 
-class ListingMenuView(LandlordRequiredMixin, MyListingsMixin, View):
+class ListingMenuView(LandlordRequiredMixin, MyListingsMixin, View, ABC):
     """Base of the menu actions (POST only): find the landlord's own complex or
     unit (`model`), act on it, answer JSON to fetch() or redirect otherwise."""
 
@@ -216,9 +219,9 @@ class ListingMenuView(LandlordRequiredMixin, MyListingsMixin, View):
         self.after_redirect_action(payload)
         return redirect(self.my_listings_url())
 
+    @abstractmethod
     def act(self, listing):
         """Do the action; returns the JSON payload."""
-        raise NotImplementedError
 
     def after_redirect_action(self, payload):
         """Extra step when the answer is a redirect (not JSON)."""

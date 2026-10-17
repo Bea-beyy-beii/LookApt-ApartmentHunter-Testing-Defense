@@ -23,6 +23,7 @@ from core.core_inquiries.models import Application, Message
 from core.core_inquiries.services import LandlordMessage, today
 from core.core_listings.models import Complex
 from core.core_rentals.models import Tenancy
+from core.roles import RoleBased
 
 from .models import CalendarEvent
 
@@ -31,7 +32,7 @@ from .models import CalendarEvent
 # ITEMS FOR A DATE RANGE
 # =========================================================
 
-class Calendar(ABC):
+class Calendar(RoleBased, ABC):
     """Everything on one user's calendar between start and end (inclusive).
 
     Polymorphism: LandlordCalendar and RenterCalendar each pick their own
@@ -51,8 +52,7 @@ class Calendar(ABC):
 
     @classmethod
     def for_user(cls, user, start, end):
-        calendar_class = LandlordCalendar if user.is_landlord else RenterCalendar
-        return calendar_class(user, start, end)
+        return cls.class_for(user)(user, start, end)
 
     def items(self):
         """Every item, sorted by day, then all-day first, then time."""
@@ -160,6 +160,7 @@ class Calendar(ABC):
 
 class LandlordCalendar(Calendar):
     """Rent is grouped per complex ("Rental due (3 units)") and items name the tenant."""
+    ROLE = "landlord"
 
     def _events(self):
         return CalendarEvent.objects.filter(self._overlapping, landlord__user=self.user).prefetch_related("complexes")
@@ -184,6 +185,7 @@ class LandlordCalendar(Calendar):
 
 class RenterCalendar(Calendar):
     """Bulletins only for complexes they're an approved tenant of, from their move-in date on."""
+    ROLE = "renter"
 
     @cached_property
     def _my_tenancies(self):

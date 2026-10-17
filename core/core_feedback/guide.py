@@ -8,6 +8,8 @@ UserGuide is abstract; RenterGuide and LandlordGuide each give their own steps
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+from core.roles import RoleBased
+
 
 @dataclass(frozen=True)
 class GuideStep:
@@ -16,7 +18,7 @@ class GuideStep:
     where: str = ""        # where to find it in the app
 
 
-class UserGuide(ABC):
+class UserGuide(RoleBased, ABC):
 
     title = "LookApt Guide"
     intro = ""
@@ -26,13 +28,15 @@ class UserGuide(ABC):
     def steps(self):
         """The journey, in order (a list of GuideStep)."""
 
-    @staticmethod
-    def for_user(user):
-        guide_class = {"renter": RenterGuide, "landlord": LandlordGuide}.get(user.role)
+    @classmethod
+    def for_user(cls, user):
+        """RenterGuide / LandlordGuide, or None for admins (they have no guide)."""
+        guide_class = cls.for_role(user.role)
         return guide_class() if guide_class else None
 
 
 class RenterGuide(UserGuide):
+    ROLE = "renter"
 
     intro = "Your journey as a renter, from finding a place to moving in and beyond."
 
@@ -84,6 +88,7 @@ class RenterGuide(UserGuide):
 
 
 class LandlordGuide(UserGuide):
+    ROLE = "landlord"
 
     intro = "Your journey as a landlord, from listing your first property to managing your tenants."
 

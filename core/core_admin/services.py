@@ -28,7 +28,7 @@ from core.core_verification.models import VerificationRequest
 from core.models import User
 
 from .notify import (AccountDeleted, AccountWarning, ListingsUnpublished, Reactivated, ReportUpdated, Suspended,
-                     VerificationRemoved, VerifiedByAdmin)
+                     VerificationRemoved, Verified)
 
 logger = logging.getLogger(__name__)
 
@@ -160,17 +160,29 @@ class VerificationDecision:
         self.request = request
         self.admin = admin
 
+    ACTIONS = ("approve", "resubmit", "reject")
+
     def make(self, action, reason):
-        SidebarBadges.forget()
-        reason = (reason or "").strip()
-        if action == "approve":
-            self.request.approve(self.admin)
-        elif action in ("resubmit", "reject"):
-            if not reason:
-                raise ValidationError("Write or pick a reason; the landlord will see it.")
-            (self.request.ask_resubmit if action == "resubmit" else self.request.reject)(self.admin, reason)
-        else:
+        """Runs _approve / _resubmit / _reject by name (no if/elif chain)."""
+        if action not in self.ACTIONS:
             raise ValidationError("Pick a decision.")
+        SidebarBadges.forget()
+        getattr(self, f"_{action}")((reason or "").strip())
+
+    def _approve(self, reason):
+        self.request.approve(self.admin)
+
+    def _resubmit(self, reason):
+        self.request.ask_resubmit(self.admin, self._required(reason))
+
+    def _reject(self, reason):
+        self.request.reject(self.admin, self._required(reason))
+
+    @staticmethod
+    def _required(reason):
+        if not reason:
+            raise ValidationError("Write or pick a reason; the landlord will see it.")
+        return reason
 
 
 # =========================================================
@@ -268,7 +280,7 @@ class UserModeration:
             return
         self.user.is_verified = True
         self.user.save(update_fields=["is_verified"])
-        VerifiedByAdmin(self.user).send()
+        Verified(self.user).send()                 # same notice as approving documents
 
     @transaction.atomic
     def remove_verification(self, reason):

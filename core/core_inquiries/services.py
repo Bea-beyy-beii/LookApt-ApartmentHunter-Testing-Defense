@@ -22,6 +22,7 @@ from PIL import Image
 
 from core.core_listings.models import LeaseTerm, Unit
 from core.models import Renter
+from core.roles import RoleBased
 
 from .labels import date_label, size_label, time_label
 from .models import Application, Conversation, Message
@@ -553,7 +554,7 @@ class Inbox:
 # NOTIFICATIONS (the bell)
 # =========================================================
 
-class NotificationFeed(ABC):
+class NotificationFeed(RoleBased, ABC):
     """The bell's list: new messages, request updates and notices from LookApt.
 
     Polymorphism: landlords and renters hear about different request changes,
@@ -574,7 +575,7 @@ class NotificationFeed(ABC):
     def for_user(cls, user, conversations=None, applications=None):
         """The right feed for this user. Loads the threads/requests itself when not given
         (the bell on any page); the Inquiries tab passes the ones it already has."""
-        feed_class = LandlordNotifications if user.is_landlord else RenterNotifications
+        feed_class = cls.class_for(user)
         if applications is None:
             applications = list(Application.objects.visible_to(user).prefetch_related(None))   # no photos needed
         if conversations is None:
@@ -639,6 +640,7 @@ class NotificationFeed(ABC):
 
 
 class LandlordNotifications(NotificationFeed):
+    ROLE = "landlord"
 
     # An edit counts as an update only if it came a while after the review was written
     REVIEW_EDIT_GRACE = timedelta(minutes=1)
@@ -677,6 +679,7 @@ class LandlordNotifications(NotificationFeed):
 
 
 class RenterNotifications(NotificationFeed):
+    ROLE = "renter"
 
     def _application_item(self, a, where, key):
         S = Application.Status

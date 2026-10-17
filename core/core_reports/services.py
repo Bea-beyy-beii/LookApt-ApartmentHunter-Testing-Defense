@@ -18,6 +18,7 @@ from core.core_inquiries.models import Application, Conversation
 from core.core_listings.models import Complex
 from core.core_rentals.models import Tenancy
 from core.models import User
+from core.roles import RoleBased
 
 from .models import LANDLORD_CATEGORIES, RENTER_CATEGORIES, Report, ReportEvidence
 
@@ -66,7 +67,7 @@ class EvidenceFile:
         return kind
 
 
-class Reporter(ABC):
+class Reporter(RoleBased, ABC):
     """A user filing reports. Polymorphism: renters and landlords pick from
     different reasons and may report different people (RenterReporter /
     LandlordReporter); for_user() picks the class."""
@@ -83,7 +84,7 @@ class Reporter(ABC):
 
     @classmethod
     def for_user(cls, user):
-        return {"renter": RenterReporter}.get(user.role, LandlordReporter)(user)
+        return cls.class_for(user)(user)
 
     @staticmethod
     def _initials(user):
@@ -192,6 +193,7 @@ class Reporter(ABC):
 
 
 class RenterReporter(Reporter):
+    ROLE = "renter"
     categories = RENTER_CATEGORIES
     target = "landlord"
 
@@ -213,6 +215,7 @@ class RenterReporter(Reporter):
 
 
 class LandlordReporter(Reporter):
+    ROLE = "landlord"
     categories = LANDLORD_CATEGORIES
     target = "renter"
 

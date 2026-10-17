@@ -10,6 +10,8 @@ Logged out -> the login page; logged in with another role -> 403.
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 
+from core.core_preview.access import PreviewAccess
+
 
 class RoleRequiredMixin(LoginRequiredMixin):
     role = None               # set by the subclasses below
@@ -30,3 +32,25 @@ class LandlordRequiredMixin(RoleRequiredMixin):
 
 class AdminRequiredMixin(RoleRequiredMixin):
     role = 'admin'
+
+
+class RoleOrPreviewMixin:
+    """Signed in with `role`, or a visitor trying that preview (core_preview); anyone else gets a 403.
+    `self.viewer` is the signed-in user, or None in the preview."""
+    role = None
+
+    def dispatch(self, request, *args, **kwargs):
+        user = request.user
+        allowed = user.role == self.role if user.is_authenticated else PreviewAccess(request).is_previewing
+        if not allowed:
+            raise PermissionDenied
+        return super().dispatch(request, *args, **kwargs)
+
+    @property
+    def viewer(self):
+        user = self.request.user
+        return user if user.is_authenticated else None
+
+
+class RenterOrPreviewMixin(RoleOrPreviewMixin):
+    role = 'renter'

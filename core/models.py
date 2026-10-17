@@ -5,6 +5,8 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 from django.db.models import CheckConstraint, Q
 
+from .roles import RoleBased
+
 # --------------------------------------------------------------------------------------------------------------- REGEX FOR PHONE NUM
 
 phone_regex = RegexValidator(
@@ -108,9 +110,9 @@ class User(AbstractUser):
 
     @property
     def home_url_name(self):
-        """Where this user lands after logging in (each profile type answers for itself)."""
-        profile = self.profile
-        return profile.HOME_URL_NAME if profile else self.ADMIN_HOME
+        """Where this user lands after logging in (each profile class answers for itself)."""
+        profile_class = Profile.for_role(self.role)
+        return profile_class.HOME_URL_NAME if profile_class else self.ADMIN_HOME
 
     def create_profile(self):
         """Make the Renter / Landlord row that goes with a new account."""
@@ -170,7 +172,7 @@ class User(AbstractUser):
 
 # --------------------------------------------------------------------------------------------------------------- CLASS PROFILE - SHARED PARENT OF RENTER AND LANDLORD
 
-class Profile(models.Model):
+class Profile(RoleBased, models.Model):
     """What every role profile has: one User, and a home page.
 
     Abstract (no table of its own): Renter and Landlord inherit the `user` link
@@ -185,10 +187,12 @@ class Profile(models.Model):
     class Meta:
         abstract = True
 
-    @classmethod
-    def for_role(cls, role):
-        """The profile class for 'renter' / 'landlord' (None for any other role)."""
-        return {profile_class.ROLE: profile_class for profile_class in cls.__subclasses__()}.get(role)
+    # for_role("renter") -> Renter, for_role("admin") -> None: inherited from RoleBased
+
+    @property
+    def rating(self):
+        """Stars from renters' reviews; only landlords are rated (Landlord overrides this)."""
+        return None
 
     @property
     def role_label(self):
@@ -224,3 +228,10 @@ class Landlord(Profile):
 
     class Meta:
         db_table= 'landlords'
+
+    @property
+    def rating(self):
+        """{"avg", "count"} of the Landlord stars renters gave (profile menu), or None before the first review."""
+        from core.core_reviews.models import Review        # core_reviews loads after this app
+        rating = Review.objects.for_landlord(self).summary("landlord")
+        return rating if rating["count"] else None

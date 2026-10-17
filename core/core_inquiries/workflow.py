@@ -11,7 +11,8 @@
 # "Approve as Tenant" posts to core_rentals:assign_tenant, the same endpoint
 # as "Assign a Renter" in Manage Rentals, so both pages always agree.
 #
-# Each other arrow is a RequestAction subclass; RequestTabs builds the tabs.
+# Each other arrow is a RequestAction subclass; RequestTabs builds the tabs
+# (LandlordRequestTabs / RenterRequestTabs: RequestTabs.for_user() picks one).
 import json
 from abc import ABC, abstractmethod
 from datetime import timedelta
@@ -23,6 +24,8 @@ from django.utils.functional import cached_property
 
 from core.core_listings.models import Unit
 from core.core_rentals.models import Tenancy
+from core.core_reviews.services import LandlordReviews
+from core.roles import RoleBased
 
 from .labels import time_label
 from .models import Application
@@ -219,16 +222,19 @@ class DecideSiteVisit(RequestAction):
 # TAB DATA
 # =========================================================
 
-class RequestTabs:
+class RequestTabs(RoleBased, ABC):
     """Everything the Pending Requests / Waitlist / Archive tabs show for one user.
 
     conversations: this user's threads from Inbox (one per renter-landlord
     pair), used for the Message column.
+    Polymorphism: each side chats with the other person and sends through its
+    own endpoint (LandlordRequestTabs / RenterRequestTabs).
     """
+
+    SEND_URL_NAME = ""         # where the chat pop-up posts a new message
 
     def __init__(self, user, conversations, on=None):
         self.user = user
-        self.landlord_view = user.is_landlord
         self.on = on or today()
         self.by_pair = {(c.renter_id, c.landlord_id): c for c in conversations}
 
@@ -255,6 +261,20 @@ class RequestTabs:
             (a for a in self.applications if a.status in Application.ARCHIVED_STATUSES),
             key=lambda a: a.since, reverse=True,
         )
+
+    @classmethod
+    def for_user(cls, user, conversations, on=None):
+        return cls.class_for(user)(user, conversations, on)
+
+    # ---------- what differs per side
+
+    @abstractmethod
+    def _other_person(self, application):
+        """The User on the other side of this request."""
+
+    @abstractmethod
+    def _send_params(self, application):
+        """What the chat pop-up posts to SEND_URL_NAME to reach that person."""
 
     def context(self):
         pending, waitlisted, archived = self.pending, self.waitlisted, self.archived
@@ -341,10 +361,65 @@ class RequestTabs:
         application.chat = self._chat(application, conversation)
         application.since = application.decided_at or application.created_at
         application.can_notify = False      # set for vacant units in the waitlist
+        return application
 
-        if self.user.is_renter and application.status == S.PENDING:
+    def chat_with(self, item):
+        """The Message link for anything tied to a renter and a unit (a request, a review)."""
+        pair = (item.renter_id, item.unit.complex.landlord_id)
+        return self._chat(item, self.by_pair.get(pair))
+
+    def _chat(self, application, conversation):
+        """What the Message column and the chat pop-up need."""
+        other = self._other_person(application)
+        latest = conversation.latest_message if conversation else None
+        return {
+            "name": other.display_name,
+            "initials": other.initials,
+            "avatar": other.avatar_url,
+            "role": other.role,
+            "subject": f"{application.unit.unit_name} · {application.unit.complex.complex_name}",
+            "detail_url": reverse("core_inquiries:conversation_detail", args=[conversation.pk]) if conversation else "",
+            "send_url": reverse(self.SEND_URL_NAME),
+            "send_params": json.dumps(self._send_params(application)),
+            "preview": latest.preview if latest else "",
+            "mine": bool(latest and latest.sender_id == self.user.pk),
+            "time": time_label(latest.created_at) if latest else "",
+            "unread": conversation.unread_count if conversation else 0,
+        }
+
+
+class LandlordRequestTabs(RequestTabs):
+    """A landlord chats with the renter, and also gets the Reviews tab."""
+    ROLE = "landlord"
+    SEND_URL_NAME = "core_inquiries:send_to_renter"
+
+    def _other_person(self, application):
+        return application.renter.user
+
+    def _send_params(self, application):
+        return {"renter": str(application.renter_id)}
+
+    def context(self):
+        reviews = LandlordReviews(self.user.landlord, chat=self.chat_with).context()
+        return {**super().context(), **reviews}
+
+
+class RenterRequestTabs(RequestTabs):
+    """A renter chats with the landlord, and can edit a pending request."""
+    ROLE = "renter"
+    SEND_URL_NAME = "core_inquiries:send_inquiry"
+
+    def _other_person(self, application):
+        return application.unit.complex.landlord.user
+
+    def _send_params(self, application):
+        return {"unit": str(application.unit_id)}
+
+    def _decorate(self, application, conversation):
+        application = super()._decorate(application, conversation)
+        if application.status == S.PENDING:
             # "Edit Application" re-opens the form with these values
-            lease = LeaseSchedule(unit, self.on)
+            lease = LeaseSchedule(application.unit, self.on)
             application.earliest_move_in = lease.earliest_move_in
             application.lease_known = lease.current_end is not None
             visit_time = application.site_visit_time
@@ -355,28 +430,3 @@ class RequestTabs:
                 "site_visit_time": visit_time.strftime("%H:%M") if visit_time else "",
             })
         return application
-
-    def chat_with(self, item):
-        """The Message link for anything tied to a renter and a unit (a request, a review)."""
-        pair = (item.renter_id, item.unit.complex.landlord_id)
-        return self._chat(item, self.by_pair.get(pair))
-
-    def _chat(self, application, conversation):
-        """What the Message column and the chat pop-up need."""
-        landlord_view = self.landlord_view
-        other = application.renter.user if landlord_view else application.unit.complex.landlord.user
-        latest = conversation.latest_message if conversation else None
-        return {
-            "name": other.display_name,
-            "initials": other.initials,
-            "avatar": other.avatar_url,
-            "role": other.role,
-            "subject": f"{application.unit.unit_name} · {application.unit.complex.complex_name}",
-            "detail_url": reverse("core_inquiries:conversation_detail", args=[conversation.pk]) if conversation else "",
-            "send_url": reverse("core_inquiries:send_to_renter" if landlord_view else "core_inquiries:send_inquiry"),
-            "send_params": json.dumps({"renter": str(application.renter_id)} if landlord_view else {"unit": str(application.unit_id)}),
-            "preview": latest.preview if latest else "",
-            "mine": bool(latest and latest.sender_id == self.user.pk),
-            "time": time_label(latest.created_at) if latest else "",
-            "unread": conversation.unread_count if conversation else 0,
-        }

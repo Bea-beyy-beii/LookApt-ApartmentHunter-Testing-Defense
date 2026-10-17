@@ -16,6 +16,7 @@ from django.db import transaction
 
 from core.core_accounts.emails import NoticeEmail
 from core.core_reports.services import SUPPORT_EMAIL
+from core.roles import RoleBased
 
 from .models import Notice
 
@@ -82,7 +83,7 @@ class Notification(ABC):
 
 # ------------------------------------------------------------------ welcome
 
-class Welcome(Notification):
+class Welcome(RoleBased, Notification):
     """Sent after sign-up; renters and landlords get different first steps."""
 
     title = "Welcome to LookApt!"
@@ -91,10 +92,11 @@ class Welcome(Notification):
 
     @classmethod
     def for_user(cls, user):
-        return {"landlord": LandlordWelcome}.get(user.role, RenterWelcome)(user)
+        return cls.class_for(user)(user)
 
 
 class LandlordWelcome(Welcome):
+    ROLE = "landlord"
     message = "Verify your account to start publishing listings."
     paragraphs = ["Welcome to LookApt! Your landlord account is ready.",
                   "Before you can publish listings, please verify your account: upload a government ID, a selfie "
@@ -102,6 +104,7 @@ class LandlordWelcome(Welcome):
 
 
 class RenterWelcome(Welcome):
+    ROLE = "renter"
     message = "Start browsing apartments near you."
     paragraphs = ["Welcome to LookApt! Your account is ready.",
                   "Browse apartments near you, save the ones you like, and message landlords or apply right from LookApt."]
@@ -110,18 +113,18 @@ class RenterWelcome(Welcome):
 # ------------------------------------------------------------------ verification
 
 class VerificationNotice(Notification):
-    """The decision on a landlord's documents. request.message is the reason, if any."""
+    """A decision about a landlord's verification, with the admin's reason if any."""
 
-    def __init__(self, request):
-        super().__init__(request.landlord.user)
-        self.reason = request.message
+    def __init__(self, user, reason=""):
+        super().__init__(user)
+        self.reason = reason
 
     @classmethod
     def for_request(cls, request):
-        """The notice for the request's status, or None when there's nothing to tell."""
+        """The notice for a VerificationRequest's status, or None when there's nothing to tell."""
         notice_class = {"approved": Verified, "resubmit": NewDocumentsNeeded,
                         "rejected": VerificationRejected}.get(request.status)
-        return notice_class(request) if notice_class else None
+        return notice_class(request.landlord.user, request.message) if notice_class else None
 
 
 class Verified(VerificationNotice):
@@ -134,24 +137,12 @@ class Verified(VerificationNotice):
     button = DASHBOARD
 
 
-class VerifiedByAdmin(Verified):
-    """An admin verified the landlord directly from Users (no documents needed)."""
-
-    def __init__(self, user):
-        Notification.__init__(self, user)
-        self.reason = ""
-
-
-class VerificationRemoved(Notification):
+class VerificationRemoved(VerificationNotice):
     """An admin took back a landlord's verification (Users)."""
     tone = Notice.Tone.RED
     title = "Your verification was removed"
     subject = "LookApt: your verification was removed"
     button = DASHBOARD
-
-    def __init__(self, user, reason):
-        super().__init__(user)
-        self.reason = reason
 
     @property
     def message(self):

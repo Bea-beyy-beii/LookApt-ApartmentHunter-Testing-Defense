@@ -628,3 +628,27 @@ class ClearNotificationsTests(Base):
         self.assertIn("waitlist", html.lower())
         self.assertNotIn("New tenant application", html)
 
+
+
+class RequestTabsPerRoleTests(Base):
+    """RequestTabs.for_user(): each side chats with the other person; only renters get "Edit Application"."""
+
+    def test_each_side_gets_its_own_tabs(self):
+        from .workflow import LandlordRequestTabs, RenterRequestTabs, RequestTabs
+        Application.objects.create(renter=self.renter_user.renter, unit=self.available, kind="apply",
+                                   occupants=["Arem"], move_in_date=date.today() + timedelta(days=10))
+
+        renter_tabs = RequestTabs.for_user(self.renter_user, [])
+        self.assertIsInstance(renter_tabs, RenterRequestTabs)
+        request = renter_tabs.pending[0]
+        self.assertIn('"move_in_date"', request.prefill_json)                 # Edit Application
+        self.assertEqual(request.chat["name"], self.landlord_user.display_name)
+        self.assertIn('"unit"', request.chat["send_params"])
+
+        landlord_tabs = RequestTabs.for_user(self.landlord_user, [])
+        self.assertIsInstance(landlord_tabs, LandlordRequestTabs)
+        request = landlord_tabs.pending[0]
+        self.assertFalse(hasattr(request, "prefill_json"))
+        self.assertEqual(request.chat["name"], self.renter_user.display_name)
+        self.assertIn('"renter"', request.chat["send_params"])
+        self.assertIn("review_summary", landlord_tabs.context())             # the Reviews tab
