@@ -79,6 +79,42 @@ class UploadCheck(ABC):
         """Whether the file is of an accepted type."""
 
 
+class PhotoLayout:
+    """The photo order the landlord left in the edit form (photo_upload.js sends
+    "s:12,n:0,s:7": saved picture 12, then the first new upload, then picture 7).
+    Saved pictures left out are deleted on save; new uploads not mentioned go last.
+    No order sent (e.g. JavaScript off) keeps every saved picture as it was."""
+
+    def __init__(self, listing, order=""):
+        self.saved = {str(picture.pk): picture for picture in listing.pictures.all()} if listing.pk else {}
+        tokens = [token.strip() for token in (order or "").split(",") if token.strip()]
+        self.tokens = tokens or [f"s:{pk}" for pk in self.saved]
+
+    @property
+    def kept(self):
+        """The saved pictures that stay, in their new order."""
+        return self.ordered([])
+
+    def ordered(self, new_photos):
+        """Kept pictures and new uploads, in the landlord's order (for Listing.arrange_photos)."""
+        items, used = [], set()
+        for kind, ref in self._parts():
+            if (kind, ref) in used:
+                continue
+            if kind == "s" and ref in self.saved:
+                items.append(self.saved[ref])
+            elif kind == "n" and ref.isdigit() and int(ref) < len(new_photos):
+                items.append(new_photos[int(ref)])
+            else:
+                continue
+            used.add((kind, ref))
+        items += [photo for index, photo in enumerate(new_photos) if ("n", str(index)) not in used]
+        return items
+
+    def _parts(self):
+        return [tuple(token.split(":", 1)) for token in self.tokens if ":" in token]
+
+
 class PhotoCheck(UploadCheck):
     NOUN = "photos"
     MAX_SIZE_MB = 5
@@ -145,7 +181,9 @@ class ListingForm(forms.ModelForm):
 
     def clean_photos(self):
         photos = self.cleaned_data.get("photos") or []
-        existing = self.instance.pictures.count() if self.instance.pk else 0
+        # Saved photos the landlord kept (removed ones don't count), in their order
+        self.photo_layout = PhotoLayout(self.instance, self.data.get("photo_order"))
+        existing = len(self.photo_layout.kept)
         if existing + len(photos) < self.MIN_PHOTOS:
             raise ValidationError(f"Add at least {self.MIN_PHOTOS} photos of the {self.PHOTO_NOUN}.")
         return PhotoCheck(existing, self.MAX_PHOTOS).validate(photos)
@@ -348,7 +386,7 @@ class ComplexForm(ListingForm):
 
         complex_obj.save()
         self._save_landmarks(complex_obj, moved)
-        complex_obj.add_photos(self.cleaned_data.get("photos") or [])
+        complex_obj.arrange_photos(self.photo_layout.ordered(self.cleaned_data.get("photos") or []))
         return complex_obj
 
     def _save_landmarks(self, complex_obj, moved):
@@ -489,7 +527,13 @@ class UnitForm(ListingForm):
 
     def clean_videos(self):
         videos = self.cleaned_data.get("videos") or []
-        existing = self.instance.videos.count() if self.instance.pk else 0
+        # Saved videos the landlord removed (×); only this unit's own ids count
+        self.removed_video_ids, existing = [], 0
+        if self.instance.pk:
+            ids = [i for i in (self.data.get("remove_videos") or "").split(",") if i.strip().isdigit()]
+            saved = self.instance.videos.all()
+            self.removed_video_ids = list(saved.filter(pk__in=ids).values_list("pk", flat=True))
+            existing = saved.count() - len(self.removed_video_ids)
         return VideoCheck(existing, self.MAX_VIDEOS).validate(videos)
 
     def _clean_months(self, name):
@@ -512,7 +556,8 @@ class UnitForm(ListingForm):
         unit.complex = self.complex
         unit.apply_status_button(self.status_choice)
         unit.save()
-        unit.add_photos(self.cleaned_data.get("photos") or [])
+        unit.arrange_photos(self.photo_layout.ordered(self.cleaned_data.get("photos") or []))
+        unit.remove_videos(self.removed_video_ids)
         unit.add_videos(self.cleaned_data.get("videos") or [])
         return unit
 

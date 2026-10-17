@@ -366,3 +366,72 @@ class PropertyWizardTests(ListingFormSetup):
         self.assertEqual(self.client.get(url).context["property"], self.complex)
         self.client.force_login(make_landlord("other", "09222222222"))
         self.assertEqual(self.client.get(url).status_code, 404)
+
+
+@override_settings(STORAGES={
+    "default": {"BACKEND": "django.core.files.storage.InMemoryStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+})
+class EditPhotosTests(ListingFormSetup):
+    """Editing: saved photos can be removed and reordered (photo_order), saved videos removed."""
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.user)
+        self.url = reverse("core_listings:property_edit", args=[self.complex.pk])
+        for index, name in enumerate(("a.jpg", "b.jpg", "c.jpg")):
+            self.complex.pictures.create(image=jpg(name), position=index, is_cover=index == 0)
+        self.a, self.b, self.c = self.complex.pictures.order_by("position")
+
+    def save(self, order, photos=()):
+        data = {**self.complex_data(), "visibility": "active", "photo_order": order, "photos": list(photos)}
+        with self.captureOnCommitCallbacks(execute=True):        # files are deleted after the save
+            return self.client.post(self.url, data)
+
+    def layout(self):
+        return [(p.pk, p.is_cover) for p in self.complex.pictures.order_by("position")]
+
+    def test_reorder_remove_and_add(self):
+        storage = self.c.image.storage
+        removed_file = self.c.image.name
+        response = self.save(f"s:{self.b.pk},n:0,s:{self.a.pk}", photos=[jpg("new.jpg")])
+        self.assertEqual(response.status_code, 302)
+        pictures = list(self.complex.pictures.order_by("position"))
+        self.assertEqual([p.pk for p in pictures[::2]], [self.b.pk, self.a.pk])     # b first, a last
+        self.assertIn("new", pictures[1].image.name)                                 # the new one in between
+        self.assertEqual([p.is_cover for p in pictures], [True, False, False])        # b is the new cover
+        self.assertFalse(storage.exists(removed_file))                                # c and its file are gone
+
+    def test_keeps_everything_without_an_order(self):
+        self.save("")
+        self.assertEqual(self.layout(), [(self.a.pk, True), (self.b.pk, False), (self.c.pk, False)])
+
+    def test_still_needs_two_photos(self):
+        response = self.save(f"s:{self.a.pk}")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("at least 2 photos", str(response.context["form"].errors["photos"]))
+        self.assertEqual(self.complex.pictures.count(), 3)                            # nothing removed
+
+    def test_ignores_pictures_of_other_listings(self):
+        other = Complex.objects.create(landlord=self.user.landlord, area=self.complex.area, complex_name="Other",
+                                       address="x", complex_description="x", min_price=1, max_price=2,
+                                       lease_term="monthly")
+        stranger = other.pictures.create(image=jpg("x.jpg"), position=0, is_cover=True)
+        self.save(f"s:{stranger.pk},s:{self.a.pk},s:{self.b.pk}")
+        self.assertEqual(self.layout(), [(self.a.pk, True), (self.b.pk, False)])
+        self.assertTrue(other.pictures.filter(pk=stranger.pk).exists())
+
+    def test_remove_saved_unit_video(self):
+        unit = Unit.objects.create(complex=self.complex, identifier=1, bedroom_type="studio", width_dimension=4,
+                                   length_dimension=5, furnish_level="unfurnished", max_occupant=2, price=8000)
+        for index in range(2):
+            unit.pictures.create(image=jpg(f"u{index}.jpg"), position=index, is_cover=index == 0)
+        clip = unit.videos.create(video=SimpleUploadedFile("v.mp4", b"x", content_type="video/mp4"))
+        data = {"identifier": "1", "availability": "available", "bedroom_type": "studio", "width_dimension": "4",
+                "length_dimension": "5", "max_occupant": "2", "furnish_level": "unfurnished", "price": "8000",
+                "advance_months": "1", "deposit_months": "1", "photo_order": "", "remove_videos": str(clip.pk)}
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(reverse("core_listings:unit_edit", args=[unit.pk]), data)
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(unit.videos.exists())
+        self.assertEqual(unit.pictures.count(), 2)

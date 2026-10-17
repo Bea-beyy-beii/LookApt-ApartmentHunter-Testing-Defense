@@ -17,6 +17,10 @@
          data-existing="{{ saved_pictures|length }}"
          {% if allow_video %}data-allow-video="1" data-max-videos="{{ max_videos }}" data-existing-videos="{{ saved_videos|length }}"{% endif %}>
 
+        {# Filled by photo_upload.js: the photo order (saved + new) and the saved videos to delete #}
+        <input type="hidden" name="photo_order" data-photo-order>
+        {% if allow_video %}<input type="hidden" name="remove_videos" data-remove-videos>{% endif %}
+
         <!-- LEFT: drop zone -->
         <div class="photo-upload-left">
 
@@ -67,17 +71,17 @@
                 <span class="photo-count">(0/{{ max_photos|default:5 }})</span>
             </div>
 
-            <p class="photo-reorder-hint">Drag a photo onto another to swap them. The first photo is the cover.</p>
+            <p class="photo-reorder-hint">Move photos with ◀ ▶ (or drag one onto another). The first photo is the cover. × removes a photo when you save.</p>
 
             <div class="photo-preview-grid">
                 {% for picture in saved_pictures %}
-                    <div class="photo-tile is-saved">
+                    <div class="photo-tile is-saved" data-saved-id="{{ picture.pk }}">
                         <img src="{{ picture.image.url }}" alt="Saved photo {{ forloop.counter }}">
                         {% if picture.is_cover %}<span class="photo-cover-badge">Cover</span>{% endif %}
                     </div>
                 {% endfor %}
                 {% for clip in saved_videos %}
-                    <div class="photo-tile is-saved is-video">
+                    <div class="photo-tile is-saved is-video" data-saved-id="{{ clip.pk }}">
                         <video src="{{ clip.video.url }}" muted playsinline preload="metadata"></video>
                         <span class="photo-video-badge">▶ Video</span>
                     </div>

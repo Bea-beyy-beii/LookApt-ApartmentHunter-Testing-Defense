@@ -2,7 +2,7 @@
 import logging
 import uuid
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models import Q
 from django.utils import timezone
@@ -109,6 +109,26 @@ class Listing(models.Model):
             # the model allows only one cover per listing
             self.pictures.create(image=photo, position=start_position + index,
                                  is_cover=(not has_cover and index == 0))
+
+    @transaction.atomic
+    def arrange_photos(self, ordered):
+        """Save the photo layout from the edit form: `ordered` holds the kept saved
+        pictures and the new uploads, in order (forms.PhotoLayout). Saved pictures
+        left out are deleted with their files; the first photo is the cover."""
+        kept = {item.pk for item in ordered if isinstance(item, models.Model)}
+        removed = [picture for picture in self.pictures.all() if picture.pk not in kept]
+        files = [picture.image for picture in removed]
+        for picture in removed:
+            picture.delete()
+
+        self.pictures.update(is_cover=False)        # one cover per listing: clear it before moving it
+        for position, item in enumerate(ordered):
+            if isinstance(item, models.Model):
+                item.position, item.is_cover = position, position == 0
+                item.save(update_fields=["position", "is_cover"])
+            else:
+                self.pictures.create(image=item, position=position, is_cover=position == 0)
+        transaction.on_commit(lambda: self._delete_files(files))      # only once the save is final
 
     def delete_with_media(self):
         """Delete the listing and its files. Refused while a renter has a contract
@@ -459,6 +479,13 @@ class Unit(Listing):
 
     def status_payload(self):
         return {"availability": self.availability, "label": self.get_availability_display()}
+
+    def remove_videos(self, video_ids):
+        """Delete these saved videos of this unit, with their files."""
+        clips = list(self.videos.filter(pk__in=video_ids))
+        files = [clip.video for clip in clips]
+        self.videos.filter(pk__in=[clip.pk for clip in clips]).delete()
+        transaction.on_commit(lambda: self._delete_files(files))
 
     def add_videos(self, videos):
         start = self.videos.count()

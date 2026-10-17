@@ -6,7 +6,8 @@
 
 (function () {
 
-    const SKIP = new Set(["csrfmiddlewaretoken", "photos"]);
+    // photo_order / remove_videos are rebuilt by photo_upload.js from what's on screen
+    const SKIP = new Set(["csrfmiddlewaretoken", "photos", "photo_order", "remove_videos"]);
     const PENDING = "lookapt:wizard:pending";   // draft key of the form that was just submitted
 
     // The server adds ?saved=1 after a successful save: only now is it safe to

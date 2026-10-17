@@ -73,14 +73,8 @@
         const uploader = form.querySelector("[data-photo-upload]");
         const api = uploader && uploader.photoUpload;
 
-        const saved = [...form.querySelectorAll(".photo-tile.is-saved img, .photo-tile.is-saved video")]
-            .map(media => ({
-                url: media.src,
-                name: media.getAttribute("alt") || "Saved video",
-                kind: media.tagName === "VIDEO" ? "video" : "image",
-            }));
-        const added = api ? api.items() : [];
-        const all = [...saved, ...added];
+        // The uploader lists saved + new photos in the landlord's order
+        const all = api ? api.items() : [];
         const photos = all.filter(item => item.kind === "image");
         const videos = all.filter(item => item.kind === "video");
 
