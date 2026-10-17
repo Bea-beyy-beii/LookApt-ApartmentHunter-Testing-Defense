@@ -37,11 +37,21 @@
 
             <div class="filter-grid">
 
-                <label class="filter-field filter-field--wide">
+                <label class="filter-field">
                     <span>Sort by</span>
                     <select name="sort">
                         {% for value, label in filter_options.sorts %}
                             <option value="{{ value }}" {% if search.sort == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label class="filter-field">
+                    <span>Property Type</span>
+                    <select name="property_type">
+                        <option value="">Any</option>
+                        {% for value, label in filter_options.property_types %}
+                            <option value="{{ value }}" {% if search.property_type == value %}selected{% endif %}>{{ label }}</option>
                         {% endfor %}
                     </select>
                 </label>

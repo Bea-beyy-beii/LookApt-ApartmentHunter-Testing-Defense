@@ -76,6 +76,13 @@ class SearchTests(ListingsSetup):
         self.assertEqual(self.names(q="street"), ["Harbor View", "Sunrise Residences"])     # address
         self.assertEqual(self.names(q="nowhere"), [])
 
+    def test_property_type_filter(self):
+        Complex.objects.filter(pk=self.harbor.pk).update(property_type="dormitory")
+        self.assertEqual(self.names(property_type="dormitory"), ["Harbor View"])
+        self.assertEqual(self.names(property_type="apartment"), ["Sunrise Residences"])
+        self.assertEqual(self.names(property_type="condominium"), [])
+        self.assertEqual(self.names(property_type="castle"), ["Harbor View", "Sunrise Residences"])   # ignored
+
     def test_complex_filters(self):
         self.assertEqual(self.names(lease_term="annual"), ["Harbor View"])
         self.assertEqual(self.names(sex="female_only"), ["Sunrise Residences"])

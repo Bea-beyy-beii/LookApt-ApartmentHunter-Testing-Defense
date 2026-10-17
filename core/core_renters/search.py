@@ -1,7 +1,7 @@
 # core_renters/search.py
 # Search bar + "Filter by" on the renter's Home and Saved Listings tabs.
 #
-#   ?q=sunrise davao&lease_term=monthly&pets=1&budget_max=8000 ...
+#   ?q=sunrise davao&property_type=dormitory&lease_term=monthly&pets=1&budget_max=8000 ...
 #
 # Complex-level filters narrow the complexes; unit-level filters narrow the
 # units, and a complex only shows when at least one of its units still matches
@@ -10,7 +10,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.db.models import Q
 
-from core.core_listings.models import BedroomType, Complex, FurnishLevel, LeaseTerm, SexRestriction, Unit
+from core.core_listings.models import BedroomType, Complex, FurnishLevel, LeaseTerm, PropertyType, SexRestriction, Unit
 
 
 class ListingSearch:
@@ -79,6 +79,7 @@ class ListingSearch:
 
         return {
             "q": (params.get("q") or "").strip()[:self.MAX_QUERY_LENGTH],
+            "property_type": self._choice(params.get("property_type"), PropertyType.values),
             "lease_term": self._choice(params.get("lease_term"), LeaseTerm.values),
             "sex": self._choice(params.get("sex"), SexRestriction.values),
             "unit_type": self._choice(params.get("unit_type"), BedroomType.values),
@@ -102,7 +103,8 @@ class ListingSearch:
     def filter_count(self):
         """For the badge on the "Filter by" button (search text and sort don't count)."""
         f = self.filters
-        count = sum(bool(f[key]) for key in ("lease_term", "sex", "unit_type", "furnishing", "occupants", "available"))
+        count = sum(bool(f[key]) for key in ("property_type", "lease_term", "sex", "unit_type", "furnishing",
+                                              "occupants", "available"))
         count += bool(f["budget_min"] or f["budget_max"])
         return count + len(f["features"]) + len(f["amenities"])
 
@@ -125,6 +127,8 @@ class ListingSearch:
                 | Q(landlord__user__last_name__icontains=word)
             )
 
+        if f["property_type"]:
+            complexes = complexes.filter(property_type=f["property_type"])
         if f["lease_term"]:
             complexes = complexes.filter(lease_term=f["lease_term"])
         if f["sex"]:
@@ -164,6 +168,7 @@ class ListingSearch:
     def options(cls):
         """Choices for the filter panel (template)."""
         return {
+            "property_types": PropertyType.choices,
             "lease_terms": LeaseTerm.choices,
             "sex_restrictions": [c for c in SexRestriction.choices if c[0] != SexRestriction.NO_RESTRICTION]
                                 + [(SexRestriction.NO_RESTRICTION, "No restriction")],
