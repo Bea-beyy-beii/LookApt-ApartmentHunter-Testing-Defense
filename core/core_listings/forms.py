@@ -237,6 +237,7 @@ class ComplexForm(ListingForm):
 
         fields = [
             "complex_name",
+            "property_type",
             "complex_description",
             "address",
             "latitude",
@@ -280,6 +281,8 @@ class ComplexForm(ListingForm):
             # Kept as hidden inputs; the map picker writes them
             "latitude": forms.HiddenInput(),
             "longitude": forms.HiddenInput(),
+
+            "property_type": forms.Select(),
 
             "lease_term": forms.Select(),
 

@@ -47,9 +47,11 @@ class RoleBasedTests(TestCase):
             Reporter.for_user(self.admin)          # used to fall back to LandlordReporter
         self.assertIsNone(UserGuide.for_user(self.admin))
 
-    def test_admins_get_no_notifications(self):
+    def test_admins_get_their_own_bell(self):
+        from core.core_inquiries.services import AdminNotifications, NotificationFeed
+        self.assertIsInstance(NotificationFeed.for_user(self.admin), AdminNotifications)
         self.client.force_login(self.admin)
-        self.assertEqual(self.client.get(reverse("account_notifications")).status_code, 403)
+        self.assertEqual(self.client.get(reverse("account_notifications")).status_code, 200)
 
     def test_home_pages(self):
         self.assertEqual(self.landlord.home_url_name, "core_landlords:dashboard")

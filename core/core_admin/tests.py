@@ -369,3 +369,51 @@ class EmailTests(TestCase):
         user = make_user("nina", "renter", "09444444444")
         with mock.patch("core.core_accounts.emails.EmailWithInlineLogo.send", side_effect=OSError("SMTP down")):
             self.assertFalse(NoticeEmail(user, "Hi", ["Hello"]).send())
+
+class AdminAlertTests(Base):
+    """The admin bell + email: new users, documents checked by Claude, new reports."""
+
+    def bell(self):
+        self.client.force_login(self.admin)
+        return self.client.get(reverse("account_notifications")).json()["html"]
+
+    def send(self, alert_class, about):
+        with self.captureOnCommitCallbacks(execute=True):     # emails go out after the save
+            alert_class.send_to_admins(about)
+
+    def test_new_user(self):
+        from .notify import NewUserSignedUp
+        self.send(NewUserSignedUp, self.renter)
+        notice = Notice.objects.get(user=self.admin)
+        self.assertEqual(notice.title, "New renter")
+        self.assertEqual(notice.link, reverse("core_admin:user_detail", args=[self.renter.pk]))
+        self.assertEqual(mail.outbox[-1].to, ["boss@example.com"])
+        self.assertIn("New renter", mail.outbox[-1].subject)
+        self.assertIn(notice.link, self.bell())                     # the bell item opens the user's page
+        self.assertFalse(Notice.objects.filter(user=self.renter).exists())
+
+    def test_documents_checked(self):
+        from core.core_verification.services import DocumentCheck
+        request = self.make_request("checking")
+        with self.captureOnCommitCallbacks(execute=True):
+            DocumentCheck(request.pk).run()                         # no API key: it goes to an admin
+        notice = Notice.objects.get(user=self.admin)
+        self.assertEqual(notice.title, "Documents to review")
+        self.assertIn("Liza Test sent verification documents", notice.message)
+        self.assertIn("Documents to review", mail.outbox[-1].subject)
+
+        DocumentCheck(request.pk).run()                             # already checked: nothing new
+        self.assertEqual(Notice.objects.filter(user=self.admin).count(), 1)
+
+    def test_new_report(self):
+        from .notify import ReportFiled
+        report = self.make_report()
+        self.send(ReportFiled, report)
+        notice = Notice.objects.get(user=self.admin)
+        self.assertEqual((notice.title, notice.tone), ("New report", "red"))
+        self.assertIn("Arem Test reported Liza Test", notice.message)
+        self.assertIn(reverse("core_admin:report_detail", args=[report.pk]), self.bell())
+
+    def test_admin_panel_has_the_bell(self):
+        self.client.force_login(self.admin)
+        self.assertContains(self.client.get(reverse("core_admin:overview")), "data-notif-bell")

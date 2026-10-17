@@ -66,6 +66,8 @@
     <!-- Info -->
     <div class="listing-info">
 
+        <span class="property-type-tag">{{ listing.get_property_type_display }}</span>
+
         <div class="listing-heading-row">
             <h2 title="{{ listing.complex_name }}">
                 <a class="listing-card-link" href="{% url 'core_listings:renter_complex_detail' listing.pk %}?from={{ origin|default:'home' }}">{{ listing.complex_name }}</a>

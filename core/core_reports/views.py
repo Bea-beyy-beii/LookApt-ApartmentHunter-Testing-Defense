@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.views import View
 
-from core.core_admin.notify import ReportReceived
+from core.core_admin.notify import ReportFiled, ReportReceived
 from core.core_verification.services import NOT_VERIFIED_TO_POST, LandlordVerification
 
 from .services import Reporter
@@ -32,6 +32,7 @@ class CreateReportView(LoginRequiredMixin, View):
         except ValidationError as error:
             return JsonResponse({"errors": {f: " ".join(m) for f, m in error.message_dict.items()}}, status=400)
         ReportReceived(report).send()
+        ReportFiled.send_to_admins(report)
         return JsonResponse({
             "message": f"Your report about {report.reported_user.display_name} was sent. We'll review it soon.",
         }, status=201)

@@ -600,10 +600,11 @@ class NotificationFeed(RoleBased, ABC):
         return items
 
     @staticmethod
-    def _item(key, title, message, when, tone, is_read=True, type_="application"):
+    def _item(key, title, message, when, tone, is_read=True, type_="application", link=""):
         return {
             "id": key, "type": type_, "tone": tone, "is_read": is_read,
             "title": title, "message": message, "created_at": when,
+            "link": link,           # empty: the bell item opens the Inquiries tab
         }
 
     def _message_items(self):
@@ -634,7 +635,8 @@ class NotificationFeed(RoleBased, ABC):
         """Messages from LookApt itself (verification results, report updates ...: core_admin/notify.py)."""
         from core.core_admin.models import Notice
         return [
-            self._item(f"n-{notice.pk}", notice.title, notice.message, notice.created_at, notice.tone, type_="account")
+            self._item(f"n-{notice.pk}", notice.title, notice.message, notice.created_at, notice.tone,
+                       type_="account", link=notice.link)
             for notice in Notice.objects.filter(user=self.user)[:self.MAX_ITEMS]
         ]
 
@@ -704,3 +706,13 @@ class RenterNotifications(NotificationFeed):
                               f"Your site visit for {where} ({a.visit_label}) was {word}.",
                               a.updated_at, self.GREEN if confirmed else self.RED, type_="site_visit")
         return None
+
+
+class AdminNotifications(NotificationFeed):
+    """The admin panel's bell: only notices from LookApt itself (new users, documents
+    checked, reports: core_admin/notify.py AdminAlert), each linking to its page."""
+    ROLE = "admin"
+
+    def _application_item(self, application, where, key):
+        return None
+
