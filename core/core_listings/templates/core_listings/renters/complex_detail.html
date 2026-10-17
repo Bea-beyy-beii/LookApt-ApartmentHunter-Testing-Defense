@@ -28,6 +28,8 @@
 
             <header class="ld-header" data-listing-card data-complex-id="{{ complex.pk }}">
 
+                <span class="property-type-tag">{{ complex.get_property_type_display }}</span>
+
                 <div class="ld-header-row">
                     <div class="ld-title-row">
                         <h1 class="ld-title">{{ complex.complex_name }}</h1>
@@ -241,6 +243,7 @@
                     <div>{% feature_icon "units" %}<dt>Total Units</dt><dd>{{ units|length }}</dd></div>
                     <div>{% feature_icon "unit_type" %}<dt>Unit Types</dt><dd>{% for type in unit_types %}{{ type.label }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</dd></div>
                     <div>{% feature_icon "floor" %}<dt>Floors</dt><dd>{{ complex.num_of_floors }}</dd></div>
+                    <div>{% feature_icon "units" %}<dt>Property Type</dt><dd>{{ complex.get_property_type_display }}</dd></div>
                     <div>{% feature_icon "lease" %}<dt>Lease Term</dt><dd>{{ complex.get_lease_term_display }}</dd></div>
                     <div>{% feature_icon "sex_restriction" %}<dt>Sex Restriction</dt><dd>{{ complex.get_sex_restriction_display }}</dd></div>
                     <div>{% feature_icon "pet_friendly" %}<dt>Pet Policy</dt><dd>{% if complex.pet_friendly %}Allowed{% else %}Not allowed{% endif %}</dd></div>

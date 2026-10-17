@@ -109,6 +109,33 @@
                     </span>
                 </button>
 
+                {# NOTIFICATIONS: new users, documents checked, reports (core_admin/notify.py AdminAlert). #}
+                {# Same bell as the dashboards (topbar_menus.js); each item opens its page. #}
+                <div class="topbar-menu-wrap">
+                    <button type="button" class="notification-button" data-topbar-toggle data-notif-bell
+                            data-url="{% url 'account_notifications' %}" data-seen-url="{% url 'account_notifications_seen' %}"
+                            aria-haspopup="true" aria-expanded="false" aria-label="Notifications">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>
+                        </svg>
+                        <span class="notification-dot" hidden></span>
+                    </button>
+                    <div class="topbar-menu topbar-menu--notifs" hidden>
+                        <div class="topbar-menu-head">
+                            <p class="topbar-menu-title">Notifications</p>
+                            <button type="button" class="topbar-menu-clear" data-notif-clear data-url="{% url 'account_notifications_clear' %}">Clear all</button>
+                        </div>
+                        <p class="topbar-legend" aria-hidden="true">
+                            <span class="topbar-notif--green"><i class="topbar-notif-dot"></i>New users</span>
+                            <span class="topbar-notif--yellow"><i class="topbar-notif-dot"></i>Documents</span>
+                            <span class="topbar-notif--red"><i class="topbar-notif-dot"></i>Reports</span>
+                        </p>
+                        <div data-notif-list>
+                            <p class="topbar-menu-empty">Loading…</p>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="topbar-menu-wrap">
                     <button type="button" class="profile-overview profile-toggle" data-topbar-toggle aria-haspopup="true" aria-expanded="false">
                         <span class="ap-avatar profile-picture" aria-hidden="true">{% if request.user.avatar %}<img src="{{ request.user.avatar.url }}" alt="">{% else %}{{ request.user.initials }}{% endif %}</span>

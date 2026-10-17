@@ -1,6 +1,8 @@
 # core_reviews/services.py
 # Writing a review (Rental History → "Leave a Review") and the Reviews tab of
 # the complex page. The star averages are on Review.objects (models.py).
+from abc import ABC, abstractmethod
+
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from PIL import Image
@@ -107,7 +109,7 @@ class ReviewSubmission:
         return review
 
 
-class ReviewList:
+class ReviewList(ABC):
     """A list of reviews with its averages and a 5→1 star breakdown of one part.
     Subclasses pick which reviews (queryset()) and which part the breakdown counts."""
 
@@ -120,8 +122,9 @@ class ReviewList:
             .prefetch_related("photos")
         )
 
+    @abstractmethod
     def queryset(self):
-        raise NotImplementedError
+        """Which reviews this list shows."""
 
     @property
     def count(self):

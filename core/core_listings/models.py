@@ -30,6 +30,14 @@ class BedroomType(models.TextChoices):
     THREE_PLUS = "three_plus", "3 or more"
 
 
+class PropertyType(models.TextChoices):
+    """What kind of place the complex is (shown on the cards and listing page)."""
+    APARTMENT = "apartment", "Apartment"
+    BOARDING_HOUSE = "boarding_house", "Boarding house"
+    DORMITORY = "dormitory", "Dormitory"
+    CONDOMINIUM = "condominium", "Condominium"
+
+
 class LeaseTerm(models.TextChoices):
     MONTHLY = "monthly", "Monthly"
     QUARTERLY = "quarterly", "Quarterly (3 months)"
@@ -185,6 +193,7 @@ class Complex(Listing):
     area = models.ForeignKey(Area, on_delete=models.PROTECT, related_name="complexes")
 
     complex_name = models.TextField()
+    property_type = models.CharField(max_length=20, choices=PropertyType.choices, default=PropertyType.APARTMENT)
     address = models.TextField()
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)

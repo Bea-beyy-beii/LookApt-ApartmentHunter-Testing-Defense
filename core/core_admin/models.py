@@ -18,6 +18,7 @@ class Notice(models.Model):
     title = models.CharField(max_length=120)
     message = models.TextField()
     tone = models.CharField(max_length=10, choices=Tone.choices, default=Tone.GREEN)
+    link = models.CharField(max_length=300, blank=True)      # where clicking it goes (admin notices); empty = Inquiries
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

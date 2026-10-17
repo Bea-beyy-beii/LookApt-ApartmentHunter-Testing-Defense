@@ -9,7 +9,7 @@ how it filters (inheritance + polymorphism):
     VerificationTab(request.GET).context()
 """
 from abc import ABC, abstractmethod
-from datetime import date, timedelta
+from datetime import timedelta
 
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
@@ -21,9 +21,10 @@ from core.core_feedback.models import Feedback
 from core.core_reports.models import ALL_CATEGORIES, Report
 from core.core_verification.models import VerificationRequest
 from core.models import User
+from core.parsing import ParsesDates
 
 
-class ListTab(ABC):
+class ListTab(ParsesDates, ABC):
     """One list tab of the admin dashboard."""
 
     PAGE_SIZE = 25
@@ -148,13 +149,6 @@ class UsersTab(ListTab):
         super().__init__(params)
         self.filters = {k: params.get(k, "") for k in self.FILTERS}
 
-    @staticmethod
-    def _date(value):
-        try:
-            return date.fromisoformat(value) if value else None
-        except ValueError:
-            return None
-
     def _joined(self, users):
         """Date joined: a preset (today / 7 / 30 / 90 days / this year) or custom from–to dates."""
         joined = self.filters["joined"]
@@ -166,7 +160,7 @@ class UsersTab(ListTab):
         if joined == "year":
             return users.filter(date_joined__year=today.year)
         if joined == "custom":
-            start, end = self._date(self.filters["joined_from"]), self._date(self.filters["joined_to"])
+            start, end = self.parse_date(self.filters["joined_from"]), self.parse_date(self.filters["joined_to"])
             if start:
                 users = users.filter(date_joined__date__gte=start)
             if end:

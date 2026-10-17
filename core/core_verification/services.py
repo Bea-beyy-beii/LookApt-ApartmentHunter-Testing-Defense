@@ -166,21 +166,34 @@ class DocumentCheck:
             close_old_connections()       # this thread's own database connection
 
     def run(self):
+        if self._check():
+            self._tell_admins()
+
+    def _check(self):
+        """Claude reads the documents and decides; False if there was nothing to check."""
         try:
             request = VerificationRequest.objects.select_related("landlord__user").get(pk=self.request_pk)
             if request.status != Status.CHECKING:
-                return
+                return False
             try:
                 result = ai_reader.AIReader(request).read()
             except ai_reader.AIReadError as e:
                 logger.warning("Verification %s goes to admin review: %s", self.request_pk, e)
                 request.send_to_review(f"No automatic check: {e}")
-                return
+                return True
             request.apply_result(AIVerdict(result))
         except Exception:
             logger.exception("Verification check %s failed", self.request_pk)
             VerificationRequest.objects.filter(pk=self.request_pk, status=Status.CHECKING).update(
                 status=Status.REVIEW, ai_summary="The automatic check failed. Please review by hand.")
+        return True
+
+    def _tell_admins(self):
+        """Bell + email to the admins: what the landlord sent and what Claude decided."""
+        from core.core_admin.notify import DocumentsChecked       # core_admin imports this app
+        request = VerificationRequest.objects.select_related("landlord__user").filter(pk=self.request_pk).first()
+        if request:
+            DocumentsChecked.send_to_admins(request)
 
 
 # ------------------------------------------------------------------ deleting old documents

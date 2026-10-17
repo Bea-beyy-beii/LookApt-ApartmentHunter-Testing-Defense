@@ -22,6 +22,7 @@ from PIL import Image
 
 from core.core_listings.models import LeaseTerm, Unit
 from core.models import Renter
+from core.roles import RoleBased
 
 from .labels import date_label, size_label, time_label
 from .models import Application, Conversation, Message
@@ -553,7 +554,7 @@ class Inbox:
 # NOTIFICATIONS (the bell)
 # =========================================================
 
-class NotificationFeed(ABC):
+class NotificationFeed(RoleBased, ABC):
     """The bell's list: new messages, request updates and notices from LookApt.
 
     Polymorphism: landlords and renters hear about different request changes,
@@ -574,7 +575,7 @@ class NotificationFeed(ABC):
     def for_user(cls, user, conversations=None, applications=None):
         """The right feed for this user. Loads the threads/requests itself when not given
         (the bell on any page); the Inquiries tab passes the ones it already has."""
-        feed_class = LandlordNotifications if user.is_landlord else RenterNotifications
+        feed_class = cls.class_for(user)
         if applications is None:
             applications = list(Application.objects.visible_to(user).prefetch_related(None))   # no photos needed
         if conversations is None:
@@ -599,10 +600,11 @@ class NotificationFeed(ABC):
         return items
 
     @staticmethod
-    def _item(key, title, message, when, tone, is_read=True, type_="application"):
+    def _item(key, title, message, when, tone, is_read=True, type_="application", link=""):
         return {
             "id": key, "type": type_, "tone": tone, "is_read": is_read,
             "title": title, "message": message, "created_at": when,
+            "link": link,           # empty: the bell item opens the Inquiries tab
         }
 
     def _message_items(self):
@@ -633,12 +635,14 @@ class NotificationFeed(ABC):
         """Messages from LookApt itself (verification results, report updates ...: core_admin/notify.py)."""
         from core.core_admin.models import Notice
         return [
-            self._item(f"n-{notice.pk}", notice.title, notice.message, notice.created_at, notice.tone, type_="account")
+            self._item(f"n-{notice.pk}", notice.title, notice.message, notice.created_at, notice.tone,
+                       type_="account", link=notice.link)
             for notice in Notice.objects.filter(user=self.user)[:self.MAX_ITEMS]
         ]
 
 
 class LandlordNotifications(NotificationFeed):
+    ROLE = "landlord"
 
     # An edit counts as an update only if it came a while after the review was written
     REVIEW_EDIT_GRACE = timedelta(minutes=1)
@@ -677,6 +681,7 @@ class LandlordNotifications(NotificationFeed):
 
 
 class RenterNotifications(NotificationFeed):
+    ROLE = "renter"
 
     def _application_item(self, a, where, key):
         S = Application.Status
@@ -701,3 +706,13 @@ class RenterNotifications(NotificationFeed):
                               f"Your site visit for {where} ({a.visit_label}) was {word}.",
                               a.updated_at, self.GREEN if confirmed else self.RED, type_="site_visit")
         return None
+
+
+class AdminNotifications(NotificationFeed):
+    """The admin panel's bell: only notices from LookApt itself (new users, documents
+    checked, reports: core_admin/notify.py AdminAlert), each linking to its page."""
+    ROLE = "admin"
+
+    def _application_item(self, application, where, key):
+        return None
+

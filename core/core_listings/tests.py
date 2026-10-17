@@ -435,3 +435,24 @@ class EditPhotosTests(ListingFormSetup):
         self.assertEqual(response.status_code, 302)
         self.assertFalse(unit.videos.exists())
         self.assertEqual(unit.pictures.count(), 2)
+
+
+@override_settings(STORAGES={
+    "default": {"BACKEND": "django.core.files.storage.InMemoryStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+})
+class PropertyTypeTests(ListingFormSetup):
+
+    def test_saved_from_the_form_and_shown(self):
+        self.client.force_login(self.user)
+        url = reverse("core_listings:property_edit", args=[self.complex.pk])
+        self.assertContains(self.client.get(url), "Property Type")
+        self.complex.pictures.create(image=jpg(), position=0, is_cover=True)
+        self.complex.pictures.create(image=jpg("b.jpg"), position=1)
+        data = {**self.complex_data(), "visibility": "active", "property_type": "condominium", "photo_order": ""}
+        self.assertEqual(self.client.post(url, data).status_code, 302)
+        self.complex.refresh_from_db()
+        self.assertEqual(self.complex.get_property_type_display(), "Condominium")
+
+    def test_new_complexes_default_to_apartment(self):
+        self.assertEqual(self.complex.property_type, "apartment")

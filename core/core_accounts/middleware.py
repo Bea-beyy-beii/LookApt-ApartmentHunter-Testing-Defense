@@ -1,14 +1,13 @@
 from django.http import Http404
 from django.utils.cache import add_never_cache_headers
 
+from core.middleware import Middleware
 
-class HideAdminMiddleware:
+
+class HideAdminMiddleware(Middleware):
     """Django's built-in admin (/lookapt-manage/) doesn't exist for anyone but staff:
     visitors and scanning tools get a plain 404, not a login page to guess passwords on.
     Staff log in on the normal /login/ page first, then open /lookapt-manage/."""
-
-    def __init__(self, get_response):
-        self.get_response = get_response
 
     def __call__(self, request):
         if request.path.startswith('/lookapt-manage/'):
@@ -17,13 +16,10 @@ class HideAdminMiddleware:
                 raise Http404
         return self.get_response(request)
 
-class NoCacheWhenLoggedInMiddleware:
+class NoCacheWhenLoggedInMiddleware(Middleware):
     """Pages shown to a logged-in user are never stored by the browser.
     Without this, pressing Back after logging out shows the account's pages
     again from the browser's memory (the session is gone, but the copy isn't)."""
-
-    def __init__(self, get_response):
-        self.get_response = get_response
 
     def __call__(self, request):
         response = self.get_response(request)

@@ -11,20 +11,30 @@
     </div>
 
 
-    <!-- Complex Name -->
-    <div class="form-group">
+    <!-- Complex Name + Property Type -->
+    <div class="form-grid name-and-type">
 
-        <label for="{{ form.complex_name.id_for_label }}">
-            Complex Name <span>*</span>
-        </label>
+        <div class="form-group">
 
-        {{ form.complex_name }}
+            <label for="{{ form.complex_name.id_for_label }}">
+                Complex Name <span>*</span>
+            </label>
 
-        {% if form.complex_name.errors %}
-            <div class="field-error">
-                {{ form.complex_name.errors }}
-            </div>
-        {% endif %}
+            {{ form.complex_name }}
+
+            {% if form.complex_name.errors %}
+                <div class="field-error">
+                    {{ form.complex_name.errors }}
+                </div>
+            {% endif %}
+
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.property_type.id_for_label }}">Property Type</label>
+            {{ form.property_type }}
+            {% if form.property_type.errors %}<div class="field-error">{{ form.property_type.errors }}</div>{% endif %}
+        </div>
 
     </div>
 

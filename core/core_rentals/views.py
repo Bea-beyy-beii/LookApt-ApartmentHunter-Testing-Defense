@@ -2,7 +2,6 @@
 # JSON endpoints for the Manage Rentals tab (landlords only, their own units).
 import json
 from abc import ABC, abstractmethod
-from datetime import date
 
 from django.core.exceptions import ValidationError
 from django.http import Http404, JsonResponse
@@ -13,12 +12,13 @@ from core.core_accounts.mixins import LandlordRequiredMixin
 from core.core_inquiries.models import Application
 from core.core_inquiries.services import today
 from core.core_listings.models import Unit
+from core.parsing import ParsesDates
 
 from .models import Tenancy
 from .services import TenantAssignment
 
 
-class RentalActionView(LandlordRequiredMixin, View, ABC):
+class RentalActionView(LandlordRequiredMixin, ParsesDates, View, ABC):
     """Base for every Manage Rentals action (POST only).
 
     Template method: post() reads the JSON body and turns a ValidationError
@@ -47,13 +47,6 @@ class RentalActionView(LandlordRequiredMixin, View, ABC):
         except ValueError:
             return {}
 
-    @staticmethod
-    def _date(value):
-        try:
-            return date.fromisoformat(value) if value else None
-        except (TypeError, ValueError):
-            return None
-
 
 class AssignTenantView(RentalActionView):
     success_status = 201
@@ -75,7 +68,7 @@ class AssignTenantView(RentalActionView):
                 raise ValidationError({"application": "That application is no longer open."})
 
         tenancy = TenantAssignment.create(
-            unit, self._date(data.get("start_date")), application=application,
+            unit, self.parse_date(data.get("start_date")), application=application,
             tenant_name=data.get("tenant_name", ""), occupant_count=data.get("occupant_count", 1),
         ).save()
         return f"{tenancy.tenant_name} is now the tenant of {unit.unit_name}."

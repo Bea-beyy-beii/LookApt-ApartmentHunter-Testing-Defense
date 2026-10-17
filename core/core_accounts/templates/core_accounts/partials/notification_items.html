@@ -1,7 +1,7 @@
 {% load topbar_tags %}{% inquiries_url request.user as link %}
 {# The bell's list (account/notifications/ returns it as HTML). Needs notifications. #}
 {% for n in notifications %}
-    <a class="topbar-notif topbar-notif--{{ n.tone|default:'neutral' }}{% if n.is_new %} is-unread{% endif %}" href="{{ link }}">
+    <a class="topbar-notif topbar-notif--{{ n.tone|default:'neutral' }}{% if n.is_new %} is-unread{% endif %}" href="{{ n.link|default:link }}">
         <strong><i class="topbar-notif-dot" aria-hidden="true"></i>{{ n.title }}{% if n.is_new %}<em class="topbar-notif-new">New</em>{% endif %}</strong>
         <span>{{ n.message }}</span>
         {% if n.created_at %}<small>{{ n.created_at|timesince }} ago</small>{% endif %}

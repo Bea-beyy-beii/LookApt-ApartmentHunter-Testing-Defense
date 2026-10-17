@@ -12,7 +12,7 @@ from django.views import View
 from django.views.generic import RedirectView, TemplateView
 from core.core_inquiries.services import NotificationFeed
 from core.core_reports.services import SUPPORT_EMAIL
-from core.core_admin.notify import Welcome
+from core.core_admin.notify import NewUserSignedUp, Welcome
 
 from .account import Account
 from .legal import LegalContextMixin
@@ -188,6 +188,7 @@ class SignUpCodeView(SignUpFlowMixin, CodePageView):
             messages.error(self.request, "; ".join(e.messages))
             return redirect('signup')
         Welcome.for_user(user).send()
+        NewUserSignedUp.send_to_admins(user)
         SignIn(self.request).log_in(user)
         return redirect(user.home_url_name)
 

@@ -13,9 +13,11 @@ undoes the change (core_accounts/emails.py logs it instead).
 from abc import ABC, abstractmethod
 
 from django.db import transaction
+from django.urls import reverse
 
 from core.core_accounts.emails import NoticeEmail
 from core.core_reports.services import SUPPORT_EMAIL
+from core.roles import RoleBased
 
 from .models import Notice
 
@@ -29,6 +31,7 @@ class Notification(ABC):
     tone = Notice.Tone.GREEN
     in_bell = True            # False when they can't log in to see it
     button = None             # (label, path) at the bottom of the email
+    link = ""                 # where the bell item goes when clicked ("" = the Inquiries tab)
 
     def __init__(self, user):
         self.user = user
@@ -75,14 +78,15 @@ class Notification(ABC):
         if not self.should_send:
             return
         if self.in_bell:
-            Notice.objects.create(user=self.user, title=self.title, message=self.message, tone=self.tone)
+            Notice.objects.create(user=self.user, title=self.title, message=self.message, tone=self.tone,
+                                  link=self.link)
         email, user = self.email(), self.user
         transaction.on_commit(lambda: NoticeEmail(user, **email).send())
 
 
 # ------------------------------------------------------------------ welcome
 
-class Welcome(Notification):
+class Welcome(RoleBased, Notification):
     """Sent after sign-up; renters and landlords get different first steps."""
 
     title = "Welcome to LookApt!"
@@ -91,10 +95,11 @@ class Welcome(Notification):
 
     @classmethod
     def for_user(cls, user):
-        return {"landlord": LandlordWelcome}.get(user.role, RenterWelcome)(user)
+        return cls.class_for(user)(user)
 
 
 class LandlordWelcome(Welcome):
+    ROLE = "landlord"
     message = "Verify your account to start publishing listings."
     paragraphs = ["Welcome to LookApt! Your landlord account is ready.",
                   "Before you can publish listings, please verify your account: upload a government ID, a selfie "
@@ -102,6 +107,7 @@ class LandlordWelcome(Welcome):
 
 
 class RenterWelcome(Welcome):
+    ROLE = "renter"
     message = "Start browsing apartments near you."
     paragraphs = ["Welcome to LookApt! Your account is ready.",
                   "Browse apartments near you, save the ones you like, and message landlords or apply right from LookApt."]
@@ -110,18 +116,18 @@ class RenterWelcome(Welcome):
 # ------------------------------------------------------------------ verification
 
 class VerificationNotice(Notification):
-    """The decision on a landlord's documents. request.message is the reason, if any."""
+    """A decision about a landlord's verification, with the admin's reason if any."""
 
-    def __init__(self, request):
-        super().__init__(request.landlord.user)
-        self.reason = request.message
+    def __init__(self, user, reason=""):
+        super().__init__(user)
+        self.reason = reason
 
     @classmethod
     def for_request(cls, request):
-        """The notice for the request's status, or None when there's nothing to tell."""
+        """The notice for a VerificationRequest's status, or None when there's nothing to tell."""
         notice_class = {"approved": Verified, "resubmit": NewDocumentsNeeded,
                         "rejected": VerificationRejected}.get(request.status)
-        return notice_class(request) if notice_class else None
+        return notice_class(request.landlord.user, request.message) if notice_class else None
 
 
 class Verified(VerificationNotice):
@@ -134,24 +140,12 @@ class Verified(VerificationNotice):
     button = DASHBOARD
 
 
-class VerifiedByAdmin(Verified):
-    """An admin verified the landlord directly from Users (no documents needed)."""
-
-    def __init__(self, user):
-        Notification.__init__(self, user)
-        self.reason = ""
-
-
-class VerificationRemoved(Notification):
+class VerificationRemoved(VerificationNotice):
     """An admin took back a landlord's verification (Users)."""
     tone = Notice.Tone.RED
     title = "Your verification was removed"
     subject = "LookApt: your verification was removed"
     button = DASHBOARD
-
-    def __init__(self, user, reason):
-        super().__init__(user)
-        self.reason = reason
 
     @property
     def message(self):
@@ -338,3 +332,99 @@ class AccountDeleted(Notification):
     subject = "LookApt: your account has been deleted"
     paragraphs = ["As you asked, your LookApt account and the data linked to it have been deleted.",
                   "Thank you for using LookApt. You're welcome to sign up again anytime."]
+
+
+# ------------------------------------------------------------------ for the admins
+
+class AdminAlert(Notification):
+    """Something an admin should look at: a bell item in the admin panel + an email,
+    sent to every active admin account. Each subclass describes one kind of event."""
+
+    BUTTON_LABEL = "Open in the admin panel"
+
+    def __init__(self, admin, subject_of_alert):
+        super().__init__(admin)
+        self.about = subject_of_alert
+
+    @classmethod
+    def send_to_admins(cls, subject_of_alert):
+        from core.models import User           # core_admin is loaded after core
+        for admin in User.objects.filter(role="admin", is_active=True):
+            cls(admin, subject_of_alert).send()
+
+    @property
+    def button(self):
+        return (self.BUTTON_LABEL, self.link)
+
+    @property
+    def subject(self):
+        return f"LookApt admin: {self.title}"
+
+    @property
+    def paragraphs(self):
+        return [self.message]
+
+
+class NewUserSignedUp(AdminAlert):
+    """A renter or landlord finished signing up."""
+    tone = Notice.Tone.GREEN
+
+    @property
+    def title(self):
+        return f"New {self.about.get_role_display().lower()}"
+
+    @property
+    def message(self):
+        return f"{self.about.display_name} (@{self.about.username}) signed up as a {self.about.get_role_display().lower()}."
+
+    @property
+    def link(self):
+        return reverse("core_admin:user_detail", args=[self.about.pk])
+
+
+class DocumentsChecked(AdminAlert):
+    """A landlord sent verification documents and the automatic check is done
+    (it approved them, sent them to an admin, or asked for new ones)."""
+    tone = Notice.Tone.YELLOW
+    RESULTS = {
+        "approved": ("Landlord verified", "Claude approved the documents automatically."),
+        "review": ("Documents to review", "They're waiting for your review."),
+        "resubmit": ("New documents requested", "Claude asked the landlord to upload them again."),
+    }
+
+    @property
+    def should_send(self):
+        return self.about.status in self.RESULTS
+
+    @property
+    def title(self):
+        return self.RESULTS[self.about.status][0]
+
+    @property
+    def message(self):
+        name = self.about.landlord.user.display_name
+        summary = (self.about.ai_summary or "").strip()
+        text = f"{name} sent verification documents. {self.RESULTS[self.about.status][1]}"
+        return f"{text} Claude: {summary}" if summary else text
+
+    @property
+    def link(self):
+        return reverse("core_admin:verification_detail", args=[self.about.pk])
+
+
+class ReportFiled(AdminAlert):
+    """A renter or landlord filed a report."""
+    tone = Notice.Tone.RED
+
+    title = "New report"
+
+    @property
+    def message(self):
+        report = self.about
+        return (f"{report.reporter.display_name} reported {report.reported_user.display_name}: "
+                f"{report.get_category_display()}.")
+
+    @property
+    def link(self):
+        return reverse("core_admin:report_detail", args=[self.about.pk])
+

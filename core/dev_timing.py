@@ -9,11 +9,11 @@ import time
 from django.conf import settings
 from django.db import connection
 
-class RequestTimingMiddleware:
-    SKIP_PREFIXES = ("/static/", "/media/", "/favicon")
+from core.middleware import Middleware
 
-    def __init__(self, get_response):
-        self.get_response = get_response
+
+class RequestTimingMiddleware(Middleware):
+    SKIP_PREFIXES = ("/static/", "/media/", "/favicon")
 
     def _skip(self, request):
         # settings.DEBUG is checked per request: tests switch it off at runtime
