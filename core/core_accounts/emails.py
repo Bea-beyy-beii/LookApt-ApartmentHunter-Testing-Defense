@@ -5,8 +5,6 @@ LookApt's emails.
 
 LookAptEmail is the parent of every email we send: the same design and logo,
 and each subclass only gives its words (NoticeEmail here, CodeEmail in otp.py).
-A failed notice is logged, never raised: an admin's decision or a sign-up must
-not fail because SMTP is down.
 """
 import logging
 from abc import ABC, abstractmethod
